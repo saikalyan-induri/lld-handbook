@@ -2,7 +2,8 @@ document.addEventListener("DOMContentLoaded", function () {
   initActiveNav();
   initThemeToggle();
   initMobileMenu();
-  initCopyButtons();
+  initJumpSelect();
+  initCodeChrome();
   initHighlighting();
   initSearch();
   initDifficultyFilter();
@@ -40,10 +41,28 @@ function initMobileMenu() {
   });
 }
 
-function initCopyButtons() {
+function initJumpSelect() {
+  document.querySelectorAll("[data-jump-select]").forEach(function (sel) {
+    sel.addEventListener("change", function () {
+      if (sel.value) location.hash = sel.value;
+    });
+  });
+}
+
+function initCodeChrome() {
+  // Wrap every <pre> in a small read-only "editor window": a title bar
+  // (traffic-light dots + Copy button) on top of the existing dark <pre>.
+  // No execution affordance -- this is display-only chrome.
   document.querySelectorAll("pre").forEach(function (pre) {
-    if (pre.querySelector(".copy-btn")) return;
-    pre.style.position = "relative";
+    if (pre.parentElement.classList.contains("code-window")) return;
+    var wrapper = document.createElement("div");
+    wrapper.className = "code-window";
+
+    var bar = document.createElement("div");
+    bar.className = "code-window-bar";
+    bar.innerHTML =
+      '<span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>';
+
     var btn = document.createElement("button");
     btn.className = "copy-btn";
     btn.textContent = "Copy";
@@ -55,15 +74,23 @@ function initCopyButtons() {
         setTimeout(function () { btn.textContent = "Copy"; }, 1500);
       });
     });
-    pre.appendChild(btn);
+    bar.appendChild(btn);
+
+    pre.parentNode.insertBefore(wrapper, pre);
+    wrapper.appendChild(bar);
+    wrapper.appendChild(pre);
   });
 }
 
 function initHighlighting() {
   if (typeof hljs === "undefined") return;
   document.querySelectorAll("pre code").forEach(function (block) {
-    if (block.closest(".mermaid-src")) return;
-    hljs.highlightElement(block);
+    if (!block.closest(".mermaid-src")) {
+      hljs.highlightElement(block);
+    }
+    if (typeof hljs.lineNumbersBlock === "function") {
+      hljs.lineNumbersBlock(block);
+    }
   });
 }
 

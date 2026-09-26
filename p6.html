@@ -59,7 +59,7 @@
 <a href="#p6-y">Y. Scaling Boundary</a><a href="#p6-z">Z. Failure Scenarios</a><a href="#p6-aa">AA. Bad Designs</a>
 <a href="#p6-ab">AB. Trade-Offs</a><a href="#p6-ac">AC. Interviewer Evaluation</a><a href="#p6-ad">AD. Simulation</a>
 <a href="#p6-ae">AE. Source Comparison</a><a href="#p6-af">AF. Cheat Sheet</a>
-</div>
+</div><div class="jumpbar"><label for="jump-p6">Jump to section:</label><select id="jump-p6" class="jump-select" data-jump-select><option value="p6-a">A. Realistic Interview Prompt</option><option value="p6-b">B. Difficulty</option><option value="p6-c">C. What This Problem Tests</option><option value="p6-d">D. Requirements</option><option value="p6-e">E. Clarifying Questions</option><option value="p6-f">F. Assumptions</option><option value="p6-g">G. Actors</option><option value="p6-h">H. Core Domain Entities</option><option value="p6-i">I. Class Relationships</option><option value="p6-j">J. Class Diagram</option><option value="p6-k">K. Responsibility Mapping</option><option value="p6-l">L. SOLID Analysis</option><option value="p6-m">M. Design Patterns</option><option value="p6-n">N. What Is Likely to Change?</option><option value="p6-o">O. Design Evolution</option><option value="p6-p">P. API / Interface Design</option><option value="p6-q">Q. Pseudocode — Critical Logic</option><option value="p6-r">R. End-to-End Use Case</option><option value="p6-s">S. Data Structures</option><option value="p6-t">T. Complexity Analysis</option><option value="p6-u">U. Testing Strategy</option><option value="p6-v">V. Interviewer Follow-Ups</option><option value="p6-w">W. Concurrency</option><option value="p6-x">X. Persistence</option><option value="p6-y">Y. Scaling Boundary</option><option value="p6-z">Z. Failure Scenarios</option><option value="p6-aa">AA. Common Bad Designs</option><option value="p6-ab">AB. Design Trade-Offs</option><option value="p6-ac">AC. Interviewer Evaluation</option><option value="p6-ad">AD. Interview Simulation</option><option value="p6-ae">AE. Online Solution Comparison</option><option value="p6-af">AF. Interview Cheat Sheet</option></select></div>
 
 <h3 id="p6-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a logging framework. It should support multiple severity levels, multiple output destinations (console, file, network), configurable formatting, and must not become a bottleneck for the application threads that call it."</div>
@@ -422,6 +422,7 @@ writes to stdout      queue.offer(record) → returns immediately to caller
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>

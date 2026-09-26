@@ -114,6 +114,7 @@ HEAD_BOTTOM = (
 )
 SCRIPTS = (
     "\n<script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js\"></script>\n"
+    "<script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js\"></script>\n"
     "<script src=\"assets/app.js\"></script>\n"
     "</body>\n"
     "</html>\n"
@@ -143,11 +144,29 @@ def prevnext(idx, seq):
 seq = [(p["sid"], f'{p["num"]}. {p["name"]}') for p in problems if p["sid"] != "synthesis"]
 seq.append(("synthesis", "Cross-Problem Synthesis"))
 
+SECTOC_RE = re.compile(r'(<div class="section-toc">.*?</div>)', re.S)
+
+
+def with_jumpbar(p):
+    """Insert a slim sticky "jump to section" dropdown right after the
+    (non-sticky) overview grid, so users always have a compact way to jump
+    between A-AF sections without a giant nav box staying pinned to the
+    top of the page for its entire scroll range."""
+    if not p["subs"]:
+        return p["inner"]
+    options = "".join(
+        f'<option value="{aid}">{letter}. {title}</option>' for aid, letter, title in p["subs"])
+    jumpbar = (
+        f'<div class="jumpbar"><label for="jump-{p["sid"]}">Jump to section:</label>'
+        f'<select id="jump-{p["sid"]}" class="jump-select" data-jump-select>{options}</select></div>')
+    return SECTOC_RE.sub(lambda m: m.group(1) + jumpbar, p["inner"], count=1)
+
+
 generated_files = set()
 
 for idx, p in enumerate(problems):
     title = f'{p["num"]}. {p["name"]}' if p["num"] else p["name"]
-    main_html = p["inner"] + prevnext(idx, seq)
+    main_html = with_jumpbar(p) + prevnext(idx, seq)
     page = render_page(title, main_html)
     fname = f'{p["sid"]}.html'
     (HERE / fname).write_text(page, encoding="utf-8")
@@ -254,7 +273,7 @@ body{padding:0;}
 
 #sidebar{
   position:fixed; top:0; left:0; width:250px; height:100vh; overflow-y:auto;
-  background:var(--navy); color:#fff; padding:16px 14px; box-sizing:border-box; z-index:10;
+  background:#0f2540; color:#fff; padding:16px 14px; box-sizing:border-box; z-index:10;
 }
 #sidebar .sidebar-top{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px;}
 #sidebar .brand{color:#fff; font-weight:700; font-size:14.5px;}
@@ -272,9 +291,14 @@ body{padding:0;}
 .nav-list li a:hover{background:rgba(255,255,255,.08);}
 .nav-list li a.active{background:var(--accent); color:#fff; font-weight:600;}
 
-#menu-toggle{display:none; position:fixed; top:10px; left:10px; z-index:40; background:var(--navy); color:#fff; border:none; border-radius:6px; width:34px; height:34px; font-size:17px; cursor:pointer;}
+#menu-toggle{display:none; position:fixed; top:10px; left:10px; z-index:40; background:#0f2540; color:#fff; border:none; border-radius:6px; width:34px; height:34px; font-size:17px; cursor:pointer;}
 
-.section-toc{position:sticky; top:0; z-index:5; box-shadow:0 2px 6px rgba(0,0,0,.06);}
+h3[id]{scroll-margin-top:64px;}
+
+.jumpbar{position:sticky; top:0; z-index:6; background:var(--gray-bg); border:1px solid var(--border); border-radius:6px; padding:8px 14px; margin:0 0 16px; display:flex; align-items:center; gap:10px; font-size:12.5px;}
+.jumpbar label{font-weight:600; color:var(--navy); white-space:nowrap;}
+.jump-select{flex:1; max-width:340px; padding:4px 8px; border-radius:5px; border:1px solid var(--border); font-size:12.5px; background:#fff; color:#1a1f26;}
+html[data-theme="dark"] .jump-select{background:#0f172a; color:#e2e8f0;}
 
 .prevnext{display:flex; justify-content:space-between; align-items:center; margin:36px 0 24px; padding-top:14px; border-top:1px solid var(--border);}
 .prevnext-link{font-size:13px; font-weight:600;}
@@ -289,8 +313,24 @@ body{padding:0;}
 .problem-card .card-name{color:var(--navy); font-weight:600; font-size:14.5px;}
 .problem-card.hidden{display:none;}
 
-.copy-btn{position:absolute; top:6px; right:6px; font-size:10.5px; padding:2px 8px; border-radius:4px; border:1px solid #334155; background:#1e293b; color:#e2e8f0; cursor:pointer; opacity:.7;}
-.copy-btn:hover{opacity:1;}
+/* ---- read-only "editor" chrome for all <pre> code blocks ---- */
+.code-window{border-radius:8px; overflow:hidden; margin:10px 0 18px; border:1px solid #1e293b; box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.code-window-bar{background:#1e293b; padding:7px 10px; display:flex; align-items:center; gap:6px;}
+.code-window-bar .dot{width:9px; height:9px; border-radius:50%; display:inline-block;}
+.code-window-bar .dot-red{background:#ef4444;}
+.code-window-bar .dot-yellow{background:#f59e0b;}
+.code-window-bar .dot-green{background:#22c55e;}
+.code-window-bar .cw-label{color:#94a3b8; font-size:10.5px; margin-left:6px; text-transform:uppercase; letter-spacing:.04em;}
+.code-window pre{margin:0; border-radius:0;}
+.code-window .copy-btn{margin-left:auto; position:static; font-size:10.5px; padding:2px 9px; border-radius:4px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; cursor:pointer; opacity:.85;}
+.code-window .copy-btn:hover{opacity:1;}
+.mermaid-src .code-window{margin:6px 0 0;}
+
+/* highlightjs-line-numbers.js gutter */
+.hljs-ln{border-collapse:collapse; width:100%;}
+.hljs-ln td{padding:0;}
+.hljs-ln-numbers{text-align:right; color:#516074; padding:0 10px 0 6px !important; border-right:1px solid #334155; user-select:none; white-space:nowrap; vertical-align:top; width:1%;}
+.hljs-ln-code{padding:0 0 0 14px !important; vertical-align:top;}
 
 @media (max-width: 880px){
   #sidebar{left:-260px; transition:left .22s; box-shadow:2px 0 10px rgba(0,0,0,.2);}
@@ -317,7 +357,8 @@ APP_JS = '''document.addEventListener("DOMContentLoaded", function () {
   initActiveNav();
   initThemeToggle();
   initMobileMenu();
-  initCopyButtons();
+  initJumpSelect();
+  initCodeChrome();
   initHighlighting();
   initSearch();
   initDifficultyFilter();
@@ -355,10 +396,28 @@ function initMobileMenu() {
   });
 }
 
-function initCopyButtons() {
+function initJumpSelect() {
+  document.querySelectorAll("[data-jump-select]").forEach(function (sel) {
+    sel.addEventListener("change", function () {
+      if (sel.value) location.hash = sel.value;
+    });
+  });
+}
+
+function initCodeChrome() {
+  // Wrap every <pre> in a small read-only "editor window": a title bar
+  // (traffic-light dots + Copy button) on top of the existing dark <pre>.
+  // No execution affordance -- this is display-only chrome.
   document.querySelectorAll("pre").forEach(function (pre) {
-    if (pre.querySelector(".copy-btn")) return;
-    pre.style.position = "relative";
+    if (pre.parentElement.classList.contains("code-window")) return;
+    var wrapper = document.createElement("div");
+    wrapper.className = "code-window";
+
+    var bar = document.createElement("div");
+    bar.className = "code-window-bar";
+    bar.innerHTML =
+      '<span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>';
+
     var btn = document.createElement("button");
     btn.className = "copy-btn";
     btn.textContent = "Copy";
@@ -370,15 +429,23 @@ function initCopyButtons() {
         setTimeout(function () { btn.textContent = "Copy"; }, 1500);
       });
     });
-    pre.appendChild(btn);
+    bar.appendChild(btn);
+
+    pre.parentNode.insertBefore(wrapper, pre);
+    wrapper.appendChild(bar);
+    wrapper.appendChild(pre);
   });
 }
 
 function initHighlighting() {
   if (typeof hljs === "undefined") return;
   document.querySelectorAll("pre code").forEach(function (block) {
-    if (block.closest(".mermaid-src")) return;
-    hljs.highlightElement(block);
+    if (!block.closest(".mermaid-src")) {
+      hljs.highlightElement(block);
+    }
+    if (typeof hljs.lineNumbersBlock === "function") {
+      hljs.lineNumbersBlock(block);
+    }
   });
 }
 

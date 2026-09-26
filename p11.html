@@ -59,7 +59,7 @@
 <a href="#p11-y">Y. Scaling Boundary</a><a href="#p11-z">Z. Failure Scenarios</a><a href="#p11-aa">AA. Bad Designs</a>
 <a href="#p11-ab">AB. Trade-Offs</a><a href="#p11-ac">AC. Interviewer Evaluation</a><a href="#p11-ad">AD. Simulation</a>
 <a href="#p11-ae">AE. Source Comparison</a><a href="#p11-af">AF. Cheat Sheet</a>
-</div>
+</div><div class="jumpbar"><label for="jump-p11">Jump to section:</label><select id="jump-p11" class="jump-select" data-jump-select><option value="p11-a">A. Realistic Interview Prompt</option><option value="p11-b">B. Difficulty</option><option value="p11-c">C. What This Problem Tests</option><option value="p11-d">D. Requirements</option><option value="p11-e">E. Clarifying Questions</option><option value="p11-f">F. Assumptions</option><option value="p11-g">G. Actors</option><option value="p11-h">H. Core Domain Entities</option><option value="p11-i">I. Class Relationships</option><option value="p11-j">J. Class Diagram</option><option value="p11-k">K. Responsibility Mapping</option><option value="p11-l">L. SOLID Analysis</option><option value="p11-m">M. Design Patterns</option><option value="p11-n">N. What Is Likely to Change?</option><option value="p11-o">O. Design Evolution</option><option value="p11-p">P. API / Interface Design</option><option value="p11-q">Q. Pseudocode — Critical Logic</option><option value="p11-r">R. End-to-End Use Case</option><option value="p11-s">S. Data Structures</option><option value="p11-t">T. Complexity Analysis</option><option value="p11-u">U. Testing Strategy</option><option value="p11-v">V. Interviewer Follow-Ups</option><option value="p11-w">W. Concurrency</option><option value="p11-x">X. Persistence</option><option value="p11-y">Y. Scaling Boundary</option><option value="p11-z">Z. Failure Scenarios</option><option value="p11-aa">AA. Common Bad Designs</option><option value="p11-ab">AB. Design Trade-Offs</option><option value="p11-ac">AC. Interviewer Evaluation</option><option value="p11-ad">AD. Interview Simulation</option><option value="p11-ae">AE. Online Solution Comparison</option><option value="p11-af">AF. Interview Cheat Sheet</option></select></div>
 
 <h3 id="p11-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design the control system for a bank of elevators in a building. Support external hall calls (up/down buttons on each floor) and internal car calls (floor buttons inside each cabin), and decide which elevator services which request."</div>
@@ -393,6 +393,7 @@ selectFloor("B", 7) → addStop(7) → doors close → MovingState → arrives 7
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
 <script src="assets/app.js"></script>
 </body>
 </html>
