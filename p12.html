@@ -227,7 +227,8 @@
 <p><strong>What stays stable:</strong> <code>Board</code>'s cell-level API. Generalizing size/win-length/game-family are all additive changes behind existing interfaces.</p>
 
 <h3 id="p12-p">P. API / Interface Design</h3>
-<pre><code>interface WinningStrategy {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface WinningStrategy {
   boolean checkWinner(Board board, Move lastMove);
 }
 
@@ -244,10 +245,85 @@ class GameController {
   void startGame();
   MoveResult makeMove(String playerId, int row, int col);
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface WinningStrategy {
+  boolean checkWinner(Board board, Move lastMove);
+}
+
+interface MoveStrategy {
+  Move decideMove(Board board, Symbol symbol);
+}
+
+abstract class TurnBasedGame {
+  void play();                       // template method
+  protected abstract void setupBoard();
+}
+
+class GameController {
+  void startGame();
+  MoveResult makeMove(String playerId, int row, int col);
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class WinningStrategy {
+public:
+  virtual bool checkWinner(const Board&amp; board, const Move&amp; lastMove) = 0;
+};
+
+class MoveStrategy {
+public:
+  virtual Move decideMove(const Board&amp; board, Symbol symbol) = 0;
+};
+
+class TurnBasedGame {
+public:
+  void play();                       // template method
+protected:
+  virtual void setupBoard() = 0;
+};
+
+class GameController {
+public:
+  void startGame();
+  MoveResult makeMove(const std::string&amp; playerId, int row, int col);
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class WinningStrategy {
+  checkWinner(board, lastMove) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class MoveStrategy {
+  decideMove(board, symbol) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class TurnBasedGame {
+  play() {}                       // template method
+  setupBoard() { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class GameController {
+  startGame() {}
+  makeMove(playerId, row, col) {}
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface WinningStrategy {
+  checkWinner(board: Board, lastMove: Move): boolean;
+}
+
+interface MoveStrategy {
+  decideMove(board: Board, symbol: Symbol): Move;
+}
+
+abstract class TurnBasedGame {
+  play(): void {}                       // template method
+  protected abstract setupBoard(): void;
+}
+
+class GameController {
+  startGame(): void {}
+  makeMove(playerId: string, row: number, col: number): MoveResult {}
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>Board.isValidMove()</code> checks bounds and occupancy before <code>placeMark()</code> ever mutates state; <code>WinningStrategy.checkWinner()</code> is only ever invoked against the cell that was <em>just</em> played, not the whole board, keeping each check O(K) instead of rescanning everything.</p>
 
 <h3 id="p12-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>LineScanWinningStrategy.checkWinner(board, lastMove):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>LineScanWinningStrategy.checkWinner(board, lastMove):
   symbol = board.get(lastMove.row, lastMove.col)
   for each direction in [horizontal, vertical, diagonal, anti-diagonal]:
     count = 1
@@ -265,6 +341,95 @@ TurnBasedGame.play():
     board.placeMark(move, player.symbol)
     if winningStrategy.checkWinner(board, move): declareResult(WINNER, player); return
     if board.isFull(): declareResult(DRAW); return</code></pre>
+<pre data-lang="java" hidden><code class="language-java">boolean checkWinner(Board board, Move lastMove) {
+  Symbol symbol = board.get(lastMove.getRow(), lastMove.getCol());
+  for (Direction direction : new Direction[]{HORIZONTAL, VERTICAL, DIAGONAL, ANTI_DIAGONAL}) {
+    int count = 1;
+    count += countMatching(board, lastMove, direction, symbol);
+    count += countMatching(board, lastMove, oppositeOf(direction), symbol);
+    if (count &gt;= K) return true;
+  }
+  return false;
+}
+
+void play() {
+  setupBoard();
+  while (true) {
+    Player player = nextPlayer();
+    Move move = player.getMove(board);
+    if (!board.isValidMove(move)) continue;   // human retries; AI never produces one
+    board.placeMark(move, player.getSymbol());
+    if (winningStrategy.checkWinner(board, move)) { declareResult(Result.WINNER, player); return; }
+    if (board.isFull()) { declareResult(Result.DRAW); return; }
+  }
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">bool LineScanWinningStrategy::checkWinner(const Board&amp; board, const Move&amp; lastMove) {
+  Symbol symbol = board.get(lastMove.row, lastMove.col);
+  for (auto direction : {HORIZONTAL, VERTICAL, DIAGONAL, ANTI_DIAGONAL}) {
+    int count = 1;
+    count += countMatching(board, lastMove, direction, symbol);
+    count += countMatching(board, lastMove, oppositeOf(direction), symbol);
+    if (count &gt;= K) return true;
+  }
+  return false;
+}
+
+void TurnBasedGame::play() {
+  setupBoard();
+  while (true) {
+    auto player = nextPlayer();
+    Move move = player-&gt;getMove(board);
+    if (!board.isValidMove(move)) continue;   // human retries; AI never produces one
+    board.placeMark(move, player-&gt;symbol);
+    if (winningStrategy-&gt;checkWinner(board, move)) { declareResult(Result::WINNER, player); return; }
+    if (board.isFull()) { declareResult(Result::DRAW); return; }
+  }
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">checkWinner(board, lastMove) {
+  const symbol = board.get(lastMove.row, lastMove.col);
+  for (const direction of [HORIZONTAL, VERTICAL, DIAGONAL, ANTI_DIAGONAL]) {
+    let count = 1;
+    count += countMatching(board, lastMove, direction, symbol);
+    count += countMatching(board, lastMove, oppositeOf(direction), symbol);
+    if (count &gt;= K) return true;
+  }
+  return false;
+}
+
+play() {
+  this.setupBoard();
+  while (true) {
+    const player = this.nextPlayer();
+    const move = player.getMove(this.board);
+    if (!this.board.isValidMove(move)) continue;   // human retries; AI never produces one
+    this.board.placeMark(move, player.symbol);
+    if (this.winningStrategy.checkWinner(this.board, move)) { this.declareResult(Result.WINNER, player); return; }
+    if (this.board.isFull()) { this.declareResult(Result.DRAW); return; }
+  }
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">checkWinner(board: Board, lastMove: Move): boolean {
+  const symbol = board.get(lastMove.row, lastMove.col);
+  for (const direction of [HORIZONTAL, VERTICAL, DIAGONAL, ANTI_DIAGONAL]) {
+    let count = 1;
+    count += countMatching(board, lastMove, direction, symbol);
+    count += countMatching(board, lastMove, oppositeOf(direction), symbol);
+    if (count &gt;= K) return true;
+  }
+  return false;
+}
+
+play(): void {
+  this.setupBoard();
+  while (true) {
+    const player = this.nextPlayer();
+    const move = player.getMove(this.board);
+    if (!this.board.isValidMove(move)) continue;   // human retries; AI never produces one
+    this.board.placeMark(move, player.symbol);
+    if (this.winningStrategy.checkWinner(this.board, move)) { this.declareResult(Result.WINNER, player); return; }
+    if (this.board.isFull()) { this.declareResult(Result.DRAW); return; }
+  }
+}</code></pre>
+</div>
 
 <h3 id="p12-r">R. End-to-End Use Case</h3>
 <pre>

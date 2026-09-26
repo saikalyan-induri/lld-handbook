@@ -238,7 +238,8 @@
 <p><strong>What stays stable:</strong> <code>OrderService</code>'s public place/update API. New states and assignment rules are additive.</p>
 
 <h3 id="p18-p">P. API / Interface Design</h3>
-<pre><code>interface OrderState {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface OrderState {
   OrderState onConfirm();
   OrderState onPrepared();
   OrderState onPickedUp();
@@ -253,10 +254,75 @@ class OrderService {
   Order placeOrder(Customer customer, Restaurant restaurant, Cart cart);
   void updateStatus(String orderId, StatusEvent event);
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface OrderState {
+  OrderState onConfirm();
+  OrderState onPrepared();
+  OrderState onPickedUp();
+  OrderState onDelivered();
+}
+
+interface DeliveryAssignmentStrategy {
+  DeliveryPartner selectPartner(Order order, List&lt;DeliveryPartner&gt; candidates);
+}
+
+class OrderService {
+  Order placeOrder(Customer customer, Restaurant restaurant, Cart cart);
+  void updateStatus(String orderId, StatusEvent event);
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class OrderState {
+public:
+  virtual std::shared_ptr&lt;OrderState&gt; onConfirm() = 0;
+  virtual std::shared_ptr&lt;OrderState&gt; onPrepared() = 0;
+  virtual std::shared_ptr&lt;OrderState&gt; onPickedUp() = 0;
+  virtual std::shared_ptr&lt;OrderState&gt; onDelivered() = 0;
+};
+
+class DeliveryAssignmentStrategy {
+public:
+  virtual std::shared_ptr&lt;DeliveryPartner&gt; selectPartner(std::shared_ptr&lt;Order&gt; order, const std::vector&lt;std::shared_ptr&lt;DeliveryPartner&gt;&gt;&amp; candidates) = 0;
+};
+
+class OrderService {
+public:
+  std::shared_ptr&lt;Order&gt; placeOrder(std::shared_ptr&lt;Customer&gt; customer, std::shared_ptr&lt;Restaurant&gt; restaurant, std::shared_ptr&lt;Cart&gt; cart);
+  void updateStatus(const std::string&amp; orderId, StatusEvent event);
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class OrderState {
+  onConfirm() { throw new Error(&#x27;not implemented&#x27;); }
+  onPrepared() { throw new Error(&#x27;not implemented&#x27;); }
+  onPickedUp() { throw new Error(&#x27;not implemented&#x27;); }
+  onDelivered() { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class DeliveryAssignmentStrategy {
+  selectPartner(order, candidates) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class OrderService {
+  placeOrder(customer, restaurant, cart) {}
+  updateStatus(orderId, event) {}
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface OrderState {
+  onConfirm(): OrderState;
+  onPrepared(): OrderState;
+  onPickedUp(): OrderState;
+  onDelivered(): OrderState;
+}
+
+interface DeliveryAssignmentStrategy {
+  selectPartner(order: Order, candidates: DeliveryPartner[]): DeliveryPartner;
+}
+
+class OrderService {
+  placeOrder(customer: Customer, restaurant: Restaurant, cart: Cart): Order {}
+  updateStatus(orderId: string, event: StatusEvent): void {}
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>updateStatus()</code> delegates to the order's current <code>OrderState</code>, which either returns the next state or rejects the event outright — <code>OrderService</code> itself never decides transition legality, only routes the event.</p>
 
 <h3 id="p18-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>Order.transitionTo(event):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>Order.transitionTo(event):
   nextState = this.state.handle(event)   // OrderState decides legality
   if nextState is REJECTED: reject
   this.state = nextState
@@ -271,6 +337,81 @@ DeliveryDispatcher.assign(order):
     return chosen
   finally:
     unlock(availablePartnersPool)</code></pre>
+<pre data-lang="java" hidden><code class="language-java">void transitionTo(StatusEvent event) {
+  OrderState nextState = this.state.handle(event);   // OrderState decides legality
+  if (nextState == REJECTED) { reject(); }
+  this.state = nextState;
+  orderStatusNotifier.notifyStatusChanged(this);
+}
+
+DeliveryPartner assign(Order order) {
+  lock(availablePartnersPool);
+  try {
+    List&lt;DeliveryPartner&gt; candidates = availablePartnersPool.nearRestaurant(order.getRestaurant());
+    DeliveryPartner chosen = strategy.selectPartner(order, candidates);
+    chosen.setStatus(BUSY);               // claim happens inside the same lock as selection
+    return chosen;
+  } finally {
+    unlock(availablePartnersPool);
+  }
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">void Order::transitionTo(StatusEvent event) {
+  auto nextState = state_-&gt;handle(event);   // OrderState decides legality
+  if (nextState == REJECTED) { reject(); }
+  state_ = nextState;
+  orderStatusNotifier-&gt;notifyStatusChanged(shared_from_this());
+}
+
+std::shared_ptr&lt;DeliveryPartner&gt; DeliveryDispatcher::assign(std::shared_ptr&lt;Order&gt; order) {
+  lock(availablePartnersPool);
+  try {
+    auto candidates = availablePartnersPool.nearRestaurant(order-&gt;restaurant);
+    auto chosen = strategy-&gt;selectPartner(order, candidates);
+    chosen-&gt;status = BUSY;               // claim happens inside the same lock as selection
+    unlock(availablePartnersPool);
+    return chosen;
+  } catch (...) {
+    unlock(availablePartnersPool);
+    throw;
+  }
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">transitionTo(event) {
+  const nextState = this.state.handle(event);   // OrderState decides legality
+  if (nextState === REJECTED) { reject(); }
+  this.state = nextState;
+  orderStatusNotifier.notifyStatusChanged(this);
+}
+
+assign(order) {
+  lock(availablePartnersPool);
+  try {
+    const candidates = availablePartnersPool.nearRestaurant(order.restaurant);
+    const chosen = this.strategy.selectPartner(order, candidates);
+    chosen.status = BUSY;               // claim happens inside the same lock as selection
+    return chosen;
+  } finally {
+    unlock(availablePartnersPool);
+  }
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">transitionTo(event: StatusEvent): void {
+  const nextState = this.state.handle(event);   // OrderState decides legality
+  if (nextState === REJECTED) { reject(); }
+  this.state = nextState;
+  orderStatusNotifier.notifyStatusChanged(this);
+}
+
+assign(order: Order): DeliveryPartner {
+  lock(availablePartnersPool);
+  try {
+    const candidates = availablePartnersPool.nearRestaurant(order.restaurant);
+    const chosen = this.strategy.selectPartner(order, candidates);
+    chosen.status = BUSY;               // claim happens inside the same lock as selection
+    return chosen;
+  } finally {
+    unlock(availablePartnersPool);
+  }
+}</code></pre>
+</div>
 
 <h3 id="p18-r">R. End-to-End Use Case</h3>
 <pre>

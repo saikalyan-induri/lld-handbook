@@ -223,7 +223,8 @@
 <p><strong>What stays stable:</strong> <code>RateLimiter.check()</code>'s signature. V6's biggest change is entirely inside the algorithm implementations' storage layer.</p>
 
 <h3 id="p3-p">P. API / Interface Design</h3>
-<pre><code>interface RateLimitAlgorithm {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface RateLimitAlgorithm {
   RateLimitResult allowRequest(String clientKey, long nowMs);
 }
 
@@ -236,10 +237,68 @@ class RateLimitResult {
   long    remaining;
   long    retryAfterMs;   // 0 if allowed
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface RateLimitAlgorithm {
+  RateLimitResult allowRequest(String clientKey, long nowMs);
+}
+
+class RateLimiter {
+  RateLimitResult check(String clientId, String endpoint, long nowMs) { throw new UnsupportedOperationException(); }
+}
+
+class RateLimitResult {
+  boolean allowed;
+  long remaining;
+  long retryAfterMs;   // 0 if allowed
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class RateLimitAlgorithm {
+public:
+  virtual RateLimitResult allowRequest(const std::string&amp; clientKey, long nowMs) = 0;
+};
+
+class RateLimiter {
+public:
+  RateLimitResult check(const std::string&amp; clientId, const std::string&amp; endpoint, long nowMs);
+};
+
+struct RateLimitResult {
+  bool allowed;
+  long remaining;
+  long retryAfterMs;   // 0 if allowed
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class RateLimitAlgorithm {
+  allowRequest(clientKey, nowMs) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class RateLimiter {
+  check(clientId, endpoint, nowMs) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class RateLimitResult {
+  constructor(allowed, remaining, retryAfterMs) {
+    this.allowed = allowed;
+    this.remaining = remaining;
+    this.retryAfterMs = retryAfterMs;   // 0 if allowed
+  }
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface RateLimitAlgorithm {
+  allowRequest(clientKey: string, nowMs: number): RateLimitResult;
+}
+
+class RateLimiter {
+  check(clientId: string, endpoint: string, nowMs: number): RateLimitResult { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  retryAfterMs: number;   // 0 if allowed
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>nowMs</code> is always supplied by the calling layer (server-side clock), never trusted from client input, and never read internally via a static call — this is what makes every algorithm implementation independently unit-testable with fabricated timestamps.</p>
 
 <h3 id="p3-q">Q. Pseudocode — Token Bucket</h3>
-<pre><code>allowRequest(key, now):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>allowRequest(key, now):
   bucket = store.getOrCreate(key, capacity)
   lock(bucket):
     elapsed = now - bucket.lastRefillTime
@@ -251,6 +310,66 @@ class RateLimitResult {
     else:
       deficit = 1 - bucket.tokens
       return DENY(retryAfterMs = deficit / refillRatePerMs)</code></pre>
+<pre data-lang="java" hidden><code class="language-java">RateLimitResult allowRequest(String key, long now) {
+  Bucket bucket = store.getOrCreate(key, capacity);
+  synchronized (bucket) {
+    long elapsed = now - bucket.lastRefillTime;
+    bucket.tokens = Math.min(capacity, bucket.tokens + elapsed * refillRatePerMs);
+    bucket.lastRefillTime = now;
+    if (bucket.tokens &gt;= 1) {
+      bucket.tokens -= 1;
+      return ALLOW(Math.floor(bucket.tokens));
+    } else {
+      double deficit = 1 - bucket.tokens;
+      return DENY(deficit / refillRatePerMs);
+    }
+  }
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">RateLimitResult allowRequest(const std::string&amp; key, long now) {
+  auto bucket = store.getOrCreate(key, capacity);
+  std::lock_guard&lt;std::mutex&gt; lock(bucket-&gt;mutex);
+  long elapsed = now - bucket-&gt;lastRefillTime;
+  bucket-&gt;tokens = std::min(capacity, bucket-&gt;tokens + elapsed * refillRatePerMs);
+  bucket-&gt;lastRefillTime = now;
+  if (bucket-&gt;tokens &gt;= 1) {
+    bucket-&gt;tokens -= 1;
+    return ALLOW(/* remaining = */ std::floor(bucket-&gt;tokens));
+  } else {
+    double deficit = 1 - bucket-&gt;tokens;
+    return DENY(/* retryAfterMs = */ deficit / refillRatePerMs);
+  }
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">allowRequest(key, now) {
+  const bucket = store.getOrCreate(key, capacity);
+  return withLock(bucket, () =&gt; {
+    const elapsed = now - bucket.lastRefillTime;
+    bucket.tokens = Math.min(capacity, bucket.tokens + elapsed * refillRatePerMs);
+    bucket.lastRefillTime = now;
+    if (bucket.tokens &gt;= 1) {
+      bucket.tokens -= 1;
+      return ALLOW(Math.floor(bucket.tokens));
+    } else {
+      const deficit = 1 - bucket.tokens;
+      return DENY(deficit / refillRatePerMs);
+    }
+  });
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">allowRequest(key: string, now: number): RateLimitResult {
+  const bucket = store.getOrCreate(key, capacity);
+  return withLock(bucket, (): RateLimitResult =&gt; {
+    const elapsed = now - bucket.lastRefillTime;
+    bucket.tokens = Math.min(capacity, bucket.tokens + elapsed * refillRatePerMs);
+    bucket.lastRefillTime = now;
+    if (bucket.tokens &gt;= 1) {
+      bucket.tokens -= 1;
+      return ALLOW(Math.floor(bucket.tokens));
+    } else {
+      const deficit = 1 - bucket.tokens;
+      return DENY(deficit / refillRatePerMs);
+    }
+  });
+}</code></pre>
+</div>
 
 <h3 id="p3-r">R. End-to-End Use Case</h3>
 <pre>

@@ -231,7 +231,8 @@
 <p><strong>What stays stable:</strong> <code>CheckoutService</code>'s public checkout/confirm API. New add-ons and pricing stages are additive.</p>
 
 <h3 id="p19-p">P. API / Interface Design</h3>
-<pre><code>interface PricingStep {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface PricingStep {
   Money apply(Money runningTotal, Cart cart);
 }
 
@@ -239,10 +240,46 @@ class CheckoutService {
   Order checkout(Cart cart, String couponCode);            // reserves inventory, returns PENDING_PAYMENT order
   Order confirmPayment(String orderId, PaymentResult result, String idempotencyKey);
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface PricingStep {
+  Money apply(Money runningTotal, Cart cart);
+}
+
+class CheckoutService {
+  Order checkout(Cart cart, String couponCode);            // reserves inventory, returns PENDING_PAYMENT order
+  Order confirmPayment(String orderId, PaymentResult result, String idempotencyKey);
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class PricingStep {
+public:
+  virtual Money apply(Money runningTotal, std::shared_ptr&lt;Cart&gt; cart) = 0;
+};
+
+class CheckoutService {
+public:
+  std::shared_ptr&lt;Order&gt; checkout(std::shared_ptr&lt;Cart&gt; cart, const std::string&amp; couponCode);            // reserves inventory, returns PENDING_PAYMENT order
+  std::shared_ptr&lt;Order&gt; confirmPayment(const std::string&amp; orderId, PaymentResult result, const std::string&amp; idempotencyKey);
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class PricingStep {
+  apply(runningTotal, cart) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class CheckoutService {
+  checkout(cart, couponCode) {}            // reserves inventory, returns PENDING_PAYMENT order
+  confirmPayment(orderId, result, idempotencyKey) {}
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface PricingStep {
+  apply(runningTotal: Money, cart: Cart): Money;
+}
+
+class CheckoutService {
+  checkout(cart: Cart, couponCode: string): Order {}            // reserves inventory, returns PENDING_PAYMENT order
+  confirmPayment(orderId: string, result: PaymentResult, idempotencyKey: string): Order {}
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>checkout()</code> atomically decrements inventory for every line item before returning (see W for the concurrency detail), and <code>confirmPayment()</code> is idempotency-keyed exactly like Movie Ticket Booking's (Problem 17) payment confirmation, so a retried webhook cannot double-create or double-charge an order.</p>
 
 <h3 id="p19-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>CheckoutService.checkout(cart, couponCode):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>CheckoutService.checkout(cart, couponCode):
   orderedProductIds = sort(cart.items.map(i => i.product.id))   // canonical order, avoids cross-cart deadlock
   reserved = []
   try:
@@ -267,6 +304,141 @@ CheckoutService.confirmPayment(orderId, result, idempotencyKey):
   else: order.transitionTo(CANCELLED); restoreInventory(order)
   recordProcessed(idempotencyKey, order)
   return order</code></pre>
+<pre data-lang="java" hidden><code class="language-java">Order checkout(Cart cart, String couponCode) {
+  List&lt;String&gt; orderedProductIds = sort(cart.getItems().stream().map(i -&gt; i.getProduct().getId()).collect(toList()));   // canonical order, avoids cross-cart deadlock
+  List&lt;String&gt; reserved = new ArrayList&lt;&gt;();
+  try {
+    for (String productId : orderedProductIds) {
+      lock(productId);
+      Product product = productFor(productId);
+      int qty = cart.quantityFor(productId);
+      if (product.getStock() &lt; qty) { rollback(reserved); throw new OutOfStockException(&quot;out of stock&quot;); }
+      product.setStock(product.getStock() - qty);
+      reserved.add(productId);
+    }
+    Money total = cart.subtotal();   // includes decorator-priced add-ons
+    for (PricingStep step : pricingPipeline) { total = step.apply(total, cart); }
+    Order order = new Order(freeze(cart.getItems()), total, /* status = */ PENDING_PAYMENT);
+    return order;
+  } finally {
+    for (String productId : reserved) { unlock(productId); }
+  }
+}
+
+Order confirmPayment(String orderId, PaymentResult result, String idempotencyKey) {
+  if (alreadyProcessed(idempotencyKey)) { return existingOrderFor(idempotencyKey); }
+  Order order = orderFor(orderId);
+  if (result.isSuccess()) {
+    order.transitionTo(PAID);
+  } else {
+    order.transitionTo(CANCELLED);
+    restoreInventory(order);
+  }
+  recordProcessed(idempotencyKey, order);
+  return order;
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">std::shared_ptr&lt;Order&gt; CheckoutService::checkout(std::shared_ptr&lt;Cart&gt; cart, const std::string&amp; couponCode) {
+  auto orderedProductIds = sort(mapToProductIds(cart-&gt;items));   // canonical order, avoids cross-cart deadlock
+  std::vector&lt;std::string&gt; reserved;
+  try {
+    for (auto&amp; productId : orderedProductIds) {
+      lock(productId);
+      auto product = productFor(productId);
+      int qty = cart-&gt;quantityFor(productId);
+      if (product-&gt;stock &lt; qty) { rollback(reserved); throw std::runtime_error(&quot;out of stock&quot;); }
+      product-&gt;stock -= qty;
+      reserved.push_back(productId);
+    }
+    Money total = cart-&gt;subtotal();   // includes decorator-priced add-ons
+    for (auto&amp; step : pricingPipeline) { total = step-&gt;apply(total, cart); }
+    auto order = std::make_shared&lt;Order&gt;(freeze(cart-&gt;items), total, /* status = */ PENDING_PAYMENT);
+    for (auto&amp; productId : reserved) { unlock(productId); }
+    return order;
+  } catch (...) {
+    for (auto&amp; productId : reserved) { unlock(productId); }
+    throw;
+  }
+}
+
+std::shared_ptr&lt;Order&gt; CheckoutService::confirmPayment(const std::string&amp; orderId, PaymentResult result, const std::string&amp; idempotencyKey) {
+  if (alreadyProcessed(idempotencyKey)) { return existingOrderFor(idempotencyKey); }
+  auto order = orderFor(orderId);
+  if (result.success) {
+    order-&gt;transitionTo(PAID);
+  } else {
+    order-&gt;transitionTo(CANCELLED);
+    restoreInventory(order);
+  }
+  recordProcessed(idempotencyKey, order);
+  return order;
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">checkout(cart, couponCode) {
+  const orderedProductIds = sort(cart.items.map(i =&gt; i.product.id));   // canonical order, avoids cross-cart deadlock
+  const reserved = [];
+  try {
+    for (const productId of orderedProductIds) {
+      lock(productId);
+      const product = productFor(productId);
+      const qty = cart.quantityFor(productId);
+      if (product.stock &lt; qty) { rollback(reserved); throw new Error(&quot;out of stock&quot;); }
+      product.stock -= qty;
+      reserved.push(productId);
+    }
+    let total = cart.subtotal();   // includes decorator-priced add-ons
+    for (const step of pricingPipeline) { total = step.apply(total, cart); }
+    const order = new Order(freeze(cart.items), total, /* status = */ PENDING_PAYMENT);
+    return order;
+  } finally {
+    for (const productId of reserved) { unlock(productId); }
+  }
+}
+
+confirmPayment(orderId, result, idempotencyKey) {
+  if (alreadyProcessed(idempotencyKey)) { return existingOrderFor(idempotencyKey); }
+  const order = orderFor(orderId);
+  if (result.success) {
+    order.transitionTo(PAID);
+  } else {
+    order.transitionTo(CANCELLED);
+    restoreInventory(order);
+  }
+  recordProcessed(idempotencyKey, order);
+  return order;
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">checkout(cart: Cart, couponCode: string): Order {
+  const orderedProductIds = sort(cart.items.map(i =&gt; i.product.id));   // canonical order, avoids cross-cart deadlock
+  const reserved: string[] = [];
+  try {
+    for (const productId of orderedProductIds) {
+      lock(productId);
+      const product = productFor(productId);
+      const qty = cart.quantityFor(productId);
+      if (product.stock &lt; qty) { rollback(reserved); throw new Error(&quot;out of stock&quot;); }
+      product.stock -= qty;
+      reserved.push(productId);
+    }
+    let total = cart.subtotal();   // includes decorator-priced add-ons
+    for (const step of pricingPipeline) { total = step.apply(total, cart); }
+    const order = new Order(freeze(cart.items), total, /* status = */ PENDING_PAYMENT);
+    return order;
+  } finally {
+    for (const productId of reserved) { unlock(productId); }
+  }
+}
+
+confirmPayment(orderId: string, result: PaymentResult, idempotencyKey: string): Order {
+  if (alreadyProcessed(idempotencyKey)) { return existingOrderFor(idempotencyKey); }
+  const order = orderFor(orderId);
+  if (result.success) {
+    order.transitionTo(PAID);
+  } else {
+    order.transitionTo(CANCELLED);
+    restoreInventory(order);
+  }
+  recordProcessed(idempotencyKey, order);
+  return order;
+}</code></pre>
+</div>
 
 <h3 id="p19-r">R. End-to-End Use Case</h3>
 <pre>

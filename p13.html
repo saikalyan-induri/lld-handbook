@@ -229,7 +229,8 @@
 <p><strong>What stays stable:</strong> <code>Piece.getValidMoves()</code>'s signature and <code>ChessGame.makeMove()</code>'s public contract. Special moves and network play both layer on without touching the base movement model.</p>
 
 <h3 id="p13-p">P. API / Interface Design</h3>
-<pre><code>abstract class Piece {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>abstract class Piece {
   Color color; Position position;
   abstract List&lt;Position&gt; getValidMoves(Board board);
 }
@@ -245,10 +246,83 @@ class ChessGame {
   boolean isInCheck(Color color);
   boolean isCheckmate(Color color);
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">abstract class Piece {
+  Color color; Position position;
+  abstract List&lt;Position&gt; getValidMoves(Board board);
+}
+
+class Move {
+  void execute(Board board);
+  void undo(Board board);
+}
+
+class ChessGame {
+  MoveResult makeMove(Position from, Position to);
+  void undo();
+  boolean isInCheck(Color color);
+  boolean isCheckmate(Color color);
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class Piece {
+public:
+  Color color; Position position;
+  virtual std::vector&lt;Position&gt; getValidMoves(const Board&amp; board) = 0;
+};
+
+class Move {
+public:
+  void execute(Board&amp; board);
+  void undo(Board&amp; board);
+};
+
+class ChessGame {
+public:
+  MoveResult makeMove(Position from, Position to);
+  void undo();
+  bool isInCheck(Color color);
+  bool isCheckmate(Color color);
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class Piece {
+  constructor(color, position) {
+    this.color = color;
+    this.position = position;
+  }
+  getValidMoves(board) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class Move {
+  execute(board) {}
+  undo(board) {}
+}
+
+class ChessGame {
+  makeMove(from, to) {}
+  undo() {}
+  isInCheck(color) {}
+  isCheckmate(color) {}
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">abstract class Piece {
+  color: Color;
+  position: Position;
+  abstract getValidMoves(board: Board): Position[];
+}
+
+class Move {
+  execute(board: Board): void {}
+  undo(board: Board): void {}
+}
+
+class ChessGame {
+  makeMove(from: Position, to: Position): MoveResult {}
+  undo(): void {}
+  isInCheck(color: Color): boolean {}
+  isCheckmate(color: Color): boolean {}
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>makeMove()</code> first asks the piece at <code>from</code> for its candidate moves, confirms <code>to</code> is among them, then <em>simulates</em> the move on the board, checks <code>isInCheck(movingColor)</code> against the simulated result, and only commits (pushes to <code>MoveHistory</code>) if the simulated position is legal — otherwise it reverts the simulation and rejects the move.</p>
 
 <h3 id="p13-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>ChessGame.makeMove(from, to):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>ChessGame.makeMove(from, to):
   piece = board.getPieceAt(from)
   if piece == null or piece.color != currentTurn: reject
   if to not in piece.getValidMoves(board): reject
@@ -266,6 +340,102 @@ Board.isSquareAttacked(square, byColor):
   for each piece on board where piece.color == byColor:
     if square in piece.getValidMoves(board): return true
   return false</code></pre>
+<pre data-lang="java" hidden><code class="language-java">MoveResult makeMove(Position from, Position to) {
+  Piece piece = board.getPieceAt(from);
+  if (piece == null || piece.getColor() != currentTurn) return MoveResult.REJECT;
+  if (!piece.getValidMoves(board).contains(to)) return MoveResult.REJECT;
+
+  Move move = new Move(from, to, piece, board.getPieceAt(to));
+  move.execute(board);                      // simulate
+  if (isInCheck(currentTurn)) {
+    move.undo(board);                       // illegal — leaves own king in check
+    return MoveResult.REJECT;
+  }
+  history.push(move);                        // commit
+  currentTurn = opponent(currentTurn);
+  if (isCheckmate(currentTurn)) declareWinner(piece.getColor());
+  return MoveResult.OK;
+}
+
+boolean isSquareAttacked(Position square, Color byColor) {
+  for (Piece piece : board.getPieces()) {
+    if (piece.getColor() == byColor &amp;&amp; piece.getValidMoves(board).contains(square)) return true;
+  }
+  return false;
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">MoveResult ChessGame::makeMove(Position from, Position to) {
+  auto piece = board.getPieceAt(from);
+  if (piece == nullptr || piece-&gt;color != currentTurn) return MoveResult::REJECT;
+  auto validMoves = piece-&gt;getValidMoves(board);
+  if (std::find(validMoves.begin(), validMoves.end(), to) == validMoves.end()) return MoveResult::REJECT;
+
+  Move move(from, to, piece, board.getPieceAt(to));
+  move.execute(board);                      // simulate
+  if (isInCheck(currentTurn)) {
+    move.undo(board);                       // illegal — leaves own king in check
+    return MoveResult::REJECT;
+  }
+  history.push(move);                        // commit
+  currentTurn = opponent(currentTurn);
+  if (isCheckmate(currentTurn)) declareWinner(piece-&gt;color);
+  return MoveResult::OK;
+}
+
+bool Board::isSquareAttacked(Position square, Color byColor) {
+  for (auto&amp; piece : pieces) {
+    if (piece-&gt;color != byColor) continue;
+    auto moves = piece-&gt;getValidMoves(*this);
+    if (std::find(moves.begin(), moves.end(), square) != moves.end()) return true;
+  }
+  return false;
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">makeMove(from, to) {
+  const piece = this.board.getPieceAt(from);
+  if (piece === null || piece.color !== this.currentTurn) return MoveResult.REJECT;
+  if (!piece.getValidMoves(this.board).includes(to)) return MoveResult.REJECT;
+
+  const move = new Move(from, to, piece, this.board.getPieceAt(to));
+  move.execute(this.board);                      // simulate
+  if (this.isInCheck(this.currentTurn)) {
+    move.undo(this.board);                       // illegal — leaves own king in check
+    return MoveResult.REJECT;
+  }
+  this.history.push(move);                        // commit
+  this.currentTurn = opponent(this.currentTurn);
+  if (this.isCheckmate(this.currentTurn)) this.declareWinner(piece.color);
+  return MoveResult.OK;
+}
+
+isSquareAttacked(square, byColor) {
+  for (const piece of this.board.getPieces()) {
+    if (piece.color === byColor &amp;&amp; piece.getValidMoves(this.board).includes(square)) return true;
+  }
+  return false;
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">makeMove(from: Position, to: Position): MoveResult {
+  const piece = this.board.getPieceAt(from);
+  if (piece === null || piece.color !== this.currentTurn) return MoveResult.REJECT;
+  if (!piece.getValidMoves(this.board).includes(to)) return MoveResult.REJECT;
+
+  const move = new Move(from, to, piece, this.board.getPieceAt(to));
+  move.execute(this.board);                      // simulate
+  if (this.isInCheck(this.currentTurn)) {
+    move.undo(this.board);                       // illegal — leaves own king in check
+    return MoveResult.REJECT;
+  }
+  this.history.push(move);                        // commit
+  this.currentTurn = opponent(this.currentTurn);
+  if (this.isCheckmate(this.currentTurn)) this.declareWinner(piece.color);
+  return MoveResult.OK;
+}
+
+isSquareAttacked(square: Position, byColor: Color): boolean {
+  for (const piece of this.board.getPieces()) {
+    if (piece.color === byColor &amp;&amp; piece.getValidMoves(this.board).includes(square)) return true;
+  }
+  return false;
+}</code></pre>
+</div>
 
 <h3 id="p13-r">R. End-to-End Use Case</h3>
 <pre>

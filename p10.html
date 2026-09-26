@@ -238,7 +238,8 @@
 <p><strong>What stays stable:</strong> <code>Broker.publish()/subscribe()</code> signatures and the <code>Subscriber.onMessage()</code> contract. Backpressure, retry, and partitioning are all additive layers around <code>Subscription</code>, never changes to the subscriber-facing interface.</p>
 
 <h3 id="p10-p">P. API / Interface Design</h3>
-<pre><code>interface Subscriber {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface Subscriber {
   void onMessage(Message message);
 }
 
@@ -257,10 +258,95 @@ class Subscription {
   void ack(String messageId);
   void nack(String messageId);   // triggers redelivery, up to a retry limit, then dead-letter
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface Subscriber {
+  void onMessage(Message message);
+}
+
+interface OverflowPolicy {
+  void onOverflow(Subscription subscription, Message incoming);
+}
+
+class Broker {
+  Topic createTopic(String name);
+  void publish(String topicName, Message message);
+  Subscription subscribe(String topicName, Subscriber subscriber, OverflowPolicy policy);
+  void unsubscribe(Subscription subscription);
+}
+
+class Subscription {
+  void ack(String messageId);
+  void nack(String messageId);   // triggers redelivery, up to a retry limit, then dead-letter
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class Subscriber {
+public:
+  virtual void onMessage(const Message&amp; message) = 0;
+};
+
+class OverflowPolicy {
+public:
+  virtual void onOverflow(std::shared_ptr&lt;Subscription&gt; subscription, const Message&amp; incoming) = 0;
+};
+
+class Broker {
+public:
+  std::shared_ptr&lt;Topic&gt; createTopic(const std::string&amp; name);
+  void publish(const std::string&amp; topicName, const Message&amp; message);
+  std::shared_ptr&lt;Subscription&gt; subscribe(const std::string&amp; topicName, std::shared_ptr&lt;Subscriber&gt; subscriber,
+                                           std::shared_ptr&lt;OverflowPolicy&gt; policy);
+  void unsubscribe(std::shared_ptr&lt;Subscription&gt; subscription);
+};
+
+class Subscription {
+public:
+  void ack(const std::string&amp; messageId);
+  void nack(const std::string&amp; messageId);   // triggers redelivery, up to a retry limit, then dead-letter
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class Subscriber {
+  onMessage(message) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class OverflowPolicy {
+  onOverflow(subscription, incoming) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class Broker {
+  createTopic(name) {}
+  publish(topicName, message) {}
+  subscribe(topicName, subscriber, policy) {}
+  unsubscribe(subscription) {}
+}
+
+class Subscription {
+  ack(messageId) {}
+  nack(messageId) {}   // triggers redelivery, up to a retry limit, then dead-letter
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface Subscriber {
+  onMessage(message: Message): void;
+}
+
+interface OverflowPolicy {
+  onOverflow(subscription: Subscription, incoming: Message): void;
+}
+
+class Broker {
+  createTopic(name: string): Topic { return null as unknown as Topic; }
+  publish(topicName: string, message: Message): void {}
+  subscribe(topicName: string, subscriber: Subscriber, policy: OverflowPolicy): Subscription {
+    return null as unknown as Subscription;
+  }
+  unsubscribe(subscription: Subscription): void {}
+}
+
+class Subscription {
+  ack(messageId: string): void {}
+  nack(messageId: string): void {}   // triggers redelivery, up to a retry limit, then dead-letter
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>subscribe()</code> returns a <code>Subscription</code> handle rather than requiring the caller to track topic/subscriber pairs manually — acking/nacking flows entirely through that handle, keeping the retry/dead-letter bookkeeping out of the subscriber's own code.</p>
 
 <h3 id="p10-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>Topic.publish(message):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>Topic.publish(message):
   for subscription in this.subscriptions:
     if not subscription.queue.tryEnqueue(message):     // bounded queue full
       subscription.overflowPolicy.onOverflow(subscription, message)
@@ -280,6 +366,119 @@ Subscription.nack(messageId):
     this.deadLetterQueue.add(message, reason="retry exhausted")
   else:
     this.queue.tryEnqueue(message)   // redeliver — subscriber will see this message again</code></pre>
+<pre data-lang="java" hidden><code class="language-java">void publish(Message message) {
+  for (Subscription subscription : this.subscriptions) {
+    if (!subscription.getQueue().tryEnqueue(message)) {      // bounded queue full
+      subscription.getOverflowPolicy().onOverflow(subscription, message);
+    }
+  }
+}
+
+void consumeLoop() {                                          // one per subscriber, background thread
+  while (running) {
+    Message message = this.queue.take();
+    try {
+      this.subscriber.onMessage(message);                     // must be idempotent — may be a redelivery
+      this.ack(message.getId());
+    } catch (Exception e) {
+      this.nack(message.getId());
+    }
+  }
+}
+
+void nack(String messageId) {
+  int attempts = this.retryCount.increment(messageId);
+  if (attempts &gt; MAX_RETRIES) {
+    this.deadLetterQueue.add(message, &quot;retry exhausted&quot;);
+  } else {
+    this.queue.tryEnqueue(message);   // redeliver — subscriber will see this message again
+  }
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">void Topic::publish(const Message&amp; message) {
+  for (auto&amp; subscription : subscriptions_) {
+    if (!subscription-&gt;queue().tryEnqueue(message)) {          // bounded queue full
+      subscription-&gt;overflowPolicy()-&gt;onOverflow(subscription, message);
+    }
+  }
+}
+
+void Subscription::consumeLoop() {                              // one per subscriber, background thread
+  while (running_) {
+    auto message = queue_.take();
+    try {
+      subscriber_-&gt;onMessage(message);                          // must be idempotent — may be a redelivery
+      ack(message.id);
+    } catch (...) {
+      nack(message.id);
+    }
+  }
+}
+
+void Subscription::nack(const std::string&amp; messageId) {
+  int attempts = retryCount_.increment(messageId);
+  if (attempts &gt; MAX_RETRIES) {
+    deadLetterQueue_.add(message, &quot;retry exhausted&quot;);
+  } else {
+    queue_.tryEnqueue(message);   // redeliver — subscriber will see this message again
+  }
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">publish(message) {
+  for (const subscription of this.subscriptions) {
+    if (!subscription.queue.tryEnqueue(message)) {              // bounded queue full
+      subscription.overflowPolicy.onOverflow(subscription, message);
+    }
+  }
+}
+
+async consumeLoop() {                                           // one per subscriber, background thread
+  while (this.running) {
+    const message = await this.queue.take();
+    try {
+      this.subscriber.onMessage(message);                       // must be idempotent — may be a redelivery
+      this.ack(message.id);
+    } catch (e) {
+      this.nack(message.id);
+    }
+  }
+}
+
+nack(messageId) {
+  const attempts = this.retryCount.increment(messageId);
+  if (attempts &gt; MAX_RETRIES) {
+    this.deadLetterQueue.add(message, &quot;retry exhausted&quot;);
+  } else {
+    this.queue.tryEnqueue(message);   // redeliver — subscriber will see this message again
+  }
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">publish(message: Message): void {
+  for (const subscription of this.subscriptions) {
+    if (!subscription.queue.tryEnqueue(message)) {               // bounded queue full
+      subscription.overflowPolicy.onOverflow(subscription, message);
+    }
+  }
+}
+
+async consumeLoop(): Promise&lt;void&gt; {                             // one per subscriber, background thread
+  while (this.running) {
+    const message: Message = await this.queue.take();
+    try {
+      this.subscriber.onMessage(message);                        // must be idempotent — may be a redelivery
+      this.ack(message.id);
+    } catch (e) {
+      this.nack(message.id);
+    }
+  }
+}
+
+nack(messageId: string): void {
+  const attempts = this.retryCount.increment(messageId);
+  if (attempts &gt; MAX_RETRIES) {
+    this.deadLetterQueue.add(message, &quot;retry exhausted&quot;);
+  } else {
+    this.queue.tryEnqueue(message);    // redeliver — subscriber will see this message again
+  }
+}</code></pre>
+</div>
 
 <h3 id="p10-r">R. End-to-End Use Case</h3>
 <pre>

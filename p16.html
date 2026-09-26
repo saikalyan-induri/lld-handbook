@@ -235,7 +235,8 @@
 <p><strong>What stays stable:</strong> <code>Hotel</code>'s public search/book/cancel API. New pricing rules and request fields are additive.</p>
 
 <h3 id="p16-p">P. API / Interface Design</h3>
-<pre><code>interface PricingStrategy {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface PricingStrategy {
   Money calculatePrice(Room room, Date checkIn, Date checkOut);
 }
 
@@ -251,10 +252,79 @@ class Hotel {
   Reservation bookRoom(Guest guest, ReservationRequest request);
   void cancelReservation(String reservationId);
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface PricingStrategy {
+  Money calculatePrice(Room room, Date checkIn, Date checkOut);
+}
+
+class ReservationRequestBuilder {
+  ReservationRequestBuilder withDates(Date checkIn, Date checkOut);
+  ReservationRequestBuilder withRoomType(RoomType type);
+  ReservationRequestBuilder withAddOn(AddOn addOn);
+  ReservationRequest build();
+}
+
+class Hotel {
+  List&lt;Room&gt; searchAvailability(Date checkIn, Date checkOut, RoomType type);
+  Reservation bookRoom(Guest guest, ReservationRequest request);
+  void cancelReservation(String reservationId);
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class PricingStrategy {
+public:
+  virtual Money calculatePrice(std::shared_ptr&lt;Room&gt; room, Date checkIn, Date checkOut) = 0;
+};
+
+class ReservationRequestBuilder {
+public:
+  ReservationRequestBuilder&amp; withDates(Date checkIn, Date checkOut);
+  ReservationRequestBuilder&amp; withRoomType(RoomType type);
+  ReservationRequestBuilder&amp; withAddOn(AddOn addOn);
+  ReservationRequest build();
+};
+
+class Hotel {
+public:
+  std::vector&lt;std::shared_ptr&lt;Room&gt;&gt; searchAvailability(Date checkIn, Date checkOut, RoomType type);
+  std::shared_ptr&lt;Reservation&gt; bookRoom(std::shared_ptr&lt;Guest&gt; guest, ReservationRequest request);
+  void cancelReservation(const std::string&amp; reservationId);
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class PricingStrategy {
+  calculatePrice(room, checkIn, checkOut) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class ReservationRequestBuilder {
+  withDates(checkIn, checkOut) {}
+  withRoomType(type) {}
+  withAddOn(addOn) {}
+  build() {}
+}
+
+class Hotel {
+  searchAvailability(checkIn, checkOut, type) {}
+  bookRoom(guest, request) {}
+  cancelReservation(reservationId) {}
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface PricingStrategy {
+  calculatePrice(room: Room, checkIn: Date, checkOut: Date): Money;
+}
+
+class ReservationRequestBuilder {
+  withDates(checkIn: Date, checkOut: Date): ReservationRequestBuilder {}
+  withRoomType(type: RoomType): ReservationRequestBuilder {}
+  withAddOn(addOn: AddOn): ReservationRequestBuilder {}
+  build(): ReservationRequest {}
+}
+
+class Hotel {
+  searchAvailability(checkIn: Date, checkOut: Date, type: RoomType): Room[] {}
+  bookRoom(guest: Guest, request: ReservationRequest): Reservation {}
+  cancelReservation(reservationId: string): void {}
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>bookRoom()</code> locates a specific <code>Room</code> whose <code>RoomInventory</code> reports the requested range free, atomically reserves that interval, and only then constructs the <code>Reservation</code> and prices it — availability is never assumed to still hold between the search call and the book call.</p>
 
 <h3 id="p16-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>Hotel.bookRoom(guest, request):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>Hotel.bookRoom(guest, request):
   candidateRoom = pickCandidate(request.roomType)
   lock(candidateRoom.inventory)
   try:
@@ -269,6 +339,82 @@ class Hotel {
 
 RoomInventory.isAvailable(range):
   return bookedIntervals.none(existing => existing.overlaps(range))</code></pre>
+<pre data-lang="java" hidden><code class="language-java">Reservation bookRoom(Guest guest, ReservationRequest request) {
+  Room candidateRoom = pickCandidate(request.getRoomType());
+  lock(candidateRoom.getInventory());
+  try {
+    if (!candidateRoom.getInventory().isAvailable(request.getRange())) { reject(); }
+    candidateRoom.getInventory().book(request.getRange());
+    Money price = pricingStrategyFor(candidateRoom).calculatePrice(candidateRoom, request.getRange());
+    Reservation reservation = new Reservation(guest, candidateRoom, request.getRange(), price);
+    bookingNotifier.notifyConfirmed(reservation);
+    return reservation;
+  } finally {
+    unlock(candidateRoom.getInventory());
+  }
+}
+
+boolean isAvailable(DateRange range) {
+  return bookedIntervals.stream().noneMatch(existing -&gt; existing.overlaps(range));
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">std::shared_ptr&lt;Reservation&gt; Hotel::bookRoom(std::shared_ptr&lt;Guest&gt; guest, ReservationRequest request) {
+  auto candidateRoom = pickCandidate(request.roomType);
+  lock(candidateRoom-&gt;inventory);
+  try {
+    if (!candidateRoom-&gt;inventory-&gt;isAvailable(request.range)) { reject(); }
+    candidateRoom-&gt;inventory-&gt;book(request.range);
+    Money price = pricingStrategyFor(candidateRoom)-&gt;calculatePrice(candidateRoom, request.range);
+    auto reservation = std::make_shared&lt;Reservation&gt;(guest, candidateRoom, request.range, price);
+    bookingNotifier-&gt;notifyConfirmed(reservation);
+    unlock(candidateRoom-&gt;inventory);
+    return reservation;
+  } catch (...) {
+    unlock(candidateRoom-&gt;inventory);
+    throw;
+  }
+}
+
+bool RoomInventory::isAvailable(const DateRange&amp; range) {
+  return std::none_of(bookedIntervals.begin(), bookedIntervals.end(),
+    [&amp;](const auto&amp; existing) { return existing.overlaps(range); });
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">bookRoom(guest, request) {
+  const candidateRoom = pickCandidate(request.roomType);
+  lock(candidateRoom.inventory);
+  try {
+    if (!candidateRoom.inventory.isAvailable(request.range)) { reject(); }
+    candidateRoom.inventory.book(request.range);
+    const price = pricingStrategyFor(candidateRoom).calculatePrice(candidateRoom, request.range);
+    const reservation = new Reservation(guest, candidateRoom, request.range, price);
+    bookingNotifier.notifyConfirmed(reservation);
+    return reservation;
+  } finally {
+    unlock(candidateRoom.inventory);
+  }
+}
+
+isAvailable(range) {
+  return this.bookedIntervals.every(existing =&gt; !existing.overlaps(range));
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">bookRoom(guest: Guest, request: ReservationRequest): Reservation {
+  const candidateRoom = pickCandidate(request.roomType);
+  lock(candidateRoom.inventory);
+  try {
+    if (!candidateRoom.inventory.isAvailable(request.range)) { reject(); }
+    candidateRoom.inventory.book(request.range);
+    const price = pricingStrategyFor(candidateRoom).calculatePrice(candidateRoom, request.range);
+    const reservation = new Reservation(guest, candidateRoom, request.range, price);
+    bookingNotifier.notifyConfirmed(reservation);
+    return reservation;
+  } finally {
+    unlock(candidateRoom.inventory);
+  }
+}
+
+isAvailable(range: DateRange): boolean {
+  return this.bookedIntervals.every(existing =&gt; !existing.overlaps(range));
+}</code></pre>
+</div>
 
 <h3 id="p16-r">R. End-to-End Use Case</h3>
 <pre>

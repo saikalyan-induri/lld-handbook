@@ -248,7 +248,8 @@
 <p><strong>What stays stable:</strong> <code>Logger.log()</code>/convenience method signatures. New destinations, formats, and delivery guarantees are all additive via new implementations, not edits to <code>Logger</code>.</p>
 
 <h3 id="p6-p">P. API / Interface Design</h3>
-<pre><code>interface LogFormatter { String format(LogRecord record); }
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface LogFormatter { String format(LogRecord record); }
 interface LogAppender  { void append(LogRecord record); }
 
 class Logger {
@@ -262,10 +263,70 @@ class Logger {
 class LoggerFactory {
   static Logger getLogger(String name);   // process-wide registry
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface LogFormatter { String format(LogRecord record); }
+interface LogAppender  { void append(LogRecord record); }
+
+class Logger {
+  void log(LogLevel level, String message, Map&lt;String,Object&gt; context);
+  void debug(String msg); void info(String msg); void warn(String msg);
+  void error(String msg, Throwable t); void fatal(String msg, Throwable t);
+  void setLevel(LogLevel level);
+  void addAppender(LogAppender appender);
+}
+
+class LoggerFactory {
+  static Logger getLogger(String name);   // process-wide registry
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class LogFormatter { public: virtual std::string format(const LogRecord&amp; record) = 0; };
+class LogAppender  { public: virtual void append(const LogRecord&amp; record) = 0; };
+
+class Logger {
+public:
+  void log(LogLevel level, const std::string&amp; message, const std::map&lt;std::string, std::any&gt;&amp; context);
+  void debug(const std::string&amp; msg); void info(const std::string&amp; msg); void warn(const std::string&amp; msg);
+  void error(const std::string&amp; msg, const std::exception&amp; t); void fatal(const std::string&amp; msg, const std::exception&amp; t);
+  void setLevel(LogLevel level);
+  void addAppender(std::shared_ptr&lt;LogAppender&gt; appender);
+};
+
+class LoggerFactory {
+public:
+  static std::shared_ptr&lt;Logger&gt; getLogger(const std::string&amp; name);   // process-wide registry
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class LogFormatter { format(record) { throw new Error(&#x27;not implemented&#x27;); } }
+class LogAppender  { append(record) { throw new Error(&#x27;not implemented&#x27;); } }
+
+class Logger {
+  log(level, message, context) {}
+  debug(msg) {} info(msg) {} warn(msg) {}
+  error(msg, t) {} fatal(msg, t) {}
+  setLevel(level) {}
+  addAppender(appender) {}
+}
+
+class LoggerFactory {
+  static getLogger(name) {}   // process-wide registry
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface LogFormatter { format(record: LogRecord): string; }
+interface LogAppender  { append(record: LogRecord): void; }
+
+class Logger {
+  log(level: LogLevel, message: string, context: Map&lt;string, unknown&gt;): void {}
+  debug(msg: string): void {} info(msg: string): void {} warn(msg: string): void {}
+  error(msg: string, t: Error): void {} fatal(msg: string, t: Error): void {}
+  setLevel(level: LogLevel): void {}
+  addAppender(appender: LogAppender): void {}
+}
+
+class LoggerFactory {
+  static getLogger(name: string): Logger { return null as unknown as Logger; }   // process-wide registry
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>log()</code> checks the logger's own level threshold before doing <em>any</em> formatting work — cheap early exit for filtered-out records is the whole point of the level check existing before formatting, not after.</p>
 
 <h3 id="p6-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>Logger.log(level, message, context):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>Logger.log(level, message, context):
   if level < this.minLevel: return                 // cheap early exit, no formatting done
   record = LogRecord.create(level, message, context, now(), currentThread())
   for appender in this.appenders:
@@ -281,6 +342,106 @@ AsyncAppenderDecorator.append(record):
     record = queue.take()
     formatted = formatter.format(record)
     wrapped.writeRaw(formatted)                     // the actual, possibly slow, I/O</code></pre>
+<pre data-lang="java" hidden><code class="language-java">void log(LogLevel level, String message, Map&lt;String, Object&gt; context) {
+  if (level.compareTo(this.minLevel) &lt; 0) return;          // cheap early exit, no formatting done
+  LogRecord record = LogRecord.create(level, message, context, now(), Thread.currentThread());
+  for (LogAppender appender : this.appenders) {
+    if (level.compareTo(appender.getMinLevel()) &gt;= 0) {    // per-appender re-check
+      appender.append(record);
+    }
+  }
+}
+
+// AsyncAppenderDecorator
+void append(LogRecord record) {
+  if (!queue.offer(record)) {                               // non-blocking enqueue attempt
+    applyOverflowPolicy(record);                            // e.g. drop-oldest, drop-this, or block briefly
+    return;
+  }
+}
+// background worker thread, separate from callers:
+void run() {
+  while (true) {
+    LogRecord record = queue.take();
+    String formatted = formatter.format(record);
+    wrapped.writeRaw(formatted);                            // the actual, possibly slow, I/O
+  }
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">void Logger::log(LogLevel level, const std::string&amp; message, const std::map&lt;std::string, std::any&gt;&amp; context) {
+  if (level &lt; minLevel_) return;                            // cheap early exit, no formatting done
+  auto record = LogRecord::create(level, message, context, now(), std::this_thread::get_id());
+  for (auto&amp; appender : appenders_) {
+    if (level &gt;= appender-&gt;minLevel()) {                    // per-appender re-check
+      appender-&gt;append(record);
+    }
+  }
+}
+
+void AsyncAppenderDecorator::append(const LogRecord&amp; record) {
+  if (!queue_.offer(record)) {                               // non-blocking enqueue attempt
+    applyOverflowPolicy(record);                             // e.g. drop-oldest, drop-this, or block briefly
+    return;
+  }
+}
+// background worker thread, separate from callers:
+void AsyncAppenderDecorator::run() {
+  while (true) {
+    auto record = queue_.take();
+    auto formatted = formatter_-&gt;format(record);
+    wrapped_-&gt;writeRaw(formatted);                           // the actual, possibly slow, I/O
+  }
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">log(level, message, context) {
+  if (level &lt; this.minLevel) return;                        // cheap early exit, no formatting done
+  const record = LogRecord.create(level, message, context, now(), currentThread());
+  for (const appender of this.appenders) {
+    if (level &gt;= appender.minLevel) {                        // per-appender re-check
+      appender.append(record);
+    }
+  }
+}
+
+// AsyncAppenderDecorator
+append(record) {
+  if (!this.queue.offer(record)) {                            // non-blocking enqueue attempt
+    this.applyOverflowPolicy(record);                         // e.g. drop-oldest, drop-this, or block briefly
+    return;
+  }
+}
+// background worker thread, separate from callers:
+async run() {
+  while (true) {
+    const record = await this.queue.take();
+    const formatted = this.formatter.format(record);
+    this.wrapped.writeRaw(formatted);                          // the actual, possibly slow, I/O
+  }
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">log(level: LogLevel, message: string, context: Map&lt;string, unknown&gt;): void {
+  if (level &lt; this.minLevel) return;                          // cheap early exit, no formatting done
+  const record: LogRecord = LogRecord.create(level, message, context, now(), currentThread());
+  for (const appender of this.appenders) {
+    if (level &gt;= appender.minLevel) {                          // per-appender re-check
+      appender.append(record);
+    }
+  }
+}
+
+// AsyncAppenderDecorator
+append(record: LogRecord): void {
+  if (!this.queue.offer(record)) {                              // non-blocking enqueue attempt
+    this.applyOverflowPolicy(record);                           // e.g. drop-oldest, drop-this, or block briefly
+    return;
+  }
+}
+// background worker thread, separate from callers:
+async run(): Promise&lt;void&gt; {
+  while (true) {
+    const record: LogRecord = await this.queue.take();
+    const formatted: string = this.formatter.format(record);
+    this.wrapped.writeRaw(formatted);                            // the actual, possibly slow, I/O
+  }
+}</code></pre>
+</div>
 
 <h3 id="p6-r">R. End-to-End Use Case</h3>
 <pre>

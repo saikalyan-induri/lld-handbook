@@ -231,7 +231,8 @@
 <p><strong>What stays stable:</strong> <code>ChatService</code>'s public send/reconnect API. New conversation and content types are additive.</p>
 
 <h3 id="p20-p">P. API / Interface Design</h3>
-<pre><code>interface MessageStatus {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface MessageStatus {
   MessageStatus onDelivered();
   MessageStatus onRead();
 }
@@ -240,10 +241,50 @@ class ChatService {
   Message sendMessage(User sender, Conversation conversation, String content);
   List&lt;Message&gt; reconnect(User user, long lastSeenSequence);   // exactly-once replay
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface MessageStatus {
+  MessageStatus onDelivered();
+  MessageStatus onRead();
+}
+
+class ChatService {
+  Message sendMessage(User sender, Conversation conversation, String content);
+  List&lt;Message&gt; reconnect(User user, long lastSeenSequence);   // exactly-once replay
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class MessageStatus {
+public:
+  virtual std::shared_ptr&lt;MessageStatus&gt; onDelivered() = 0;
+  virtual std::shared_ptr&lt;MessageStatus&gt; onRead() = 0;
+};
+
+class ChatService {
+public:
+  std::shared_ptr&lt;Message&gt; sendMessage(std::shared_ptr&lt;User&gt; sender, std::shared_ptr&lt;Conversation&gt; conversation, const std::string&amp; content);
+  std::vector&lt;std::shared_ptr&lt;Message&gt;&gt; reconnect(std::shared_ptr&lt;User&gt; user, long lastSeenSequence);   // exactly-once replay
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class MessageStatus {
+  onDelivered() { throw new Error(&#x27;not implemented&#x27;); }
+  onRead() { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class ChatService {
+  sendMessage(sender, conversation, content) {}
+  reconnect(user, lastSeenSequence) {}   // exactly-once replay
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface MessageStatus {
+  onDelivered(): MessageStatus;
+  onRead(): MessageStatus;
+}
+
+class ChatService {
+  sendMessage(sender: User, conversation: Conversation, content: string): Message {}
+  reconnect(user: User, lastSeenSequence: number): Message[] {}   // exactly-once replay
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>sendMessage()</code> assigns the message's <code>sequenceNo</code> from the target <code>Conversation</code>'s own monotonic counter — never from the client's clock — and <code>reconnect()</code> returns only messages strictly after <code>lastSeenSequence</code>, making replay naturally idempotent: calling it twice with the same cursor returns the same (or an empty) result, never a duplicate delivery.</p>
 
 <h3 id="p20-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>Conversation.send(sender, content):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>Conversation.send(sender, content):
   lock(this.sequenceCounter)
   try:
     seq = ++this.nextSequence      // server-assigned, monotonic per conversation
@@ -262,6 +303,109 @@ ChatService.reconnect(user, lastSeenSequence):
   missed = offlineQueueFor(user).allAfter(lastSeenSequence)   // idempotent: same cursor -> same result
   offlineQueueFor(user).clearUpTo(lastSeenSequence + missed.size)
   return missed</code></pre>
+<pre data-lang="java" hidden><code class="language-java">Message send(User sender, String content) {
+  Message message;
+  lock(this.sequenceCounter);
+  try {
+    long seq = ++this.nextSequence;      // server-assigned, monotonic per conversation
+    message = new Message(sender, content, seq);
+  } finally {
+    unlock(this.sequenceCounter);
+  }
+  this.messages.add(message);
+  for (User participant : this.participants) {      // Observer fan-out
+    if (presenceTracker.isOnline(participant)) {
+      deliver(participant, message);
+    } else {
+      offlineQueueFor(participant).enqueue(message);
+    }
+  }
+  return message;
+}
+
+List&lt;Message&gt; reconnect(User user, long lastSeenSequence) {
+  List&lt;Message&gt; missed = offlineQueueFor(user).allAfter(lastSeenSequence);   // idempotent: same cursor -&gt; same result
+  offlineQueueFor(user).clearUpTo(lastSeenSequence + missed.size());
+  return missed;
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">std::shared_ptr&lt;Message&gt; Conversation::send(std::shared_ptr&lt;User&gt; sender, const std::string&amp; content) {
+  std::shared_ptr&lt;Message&gt; message;
+  lock(sequenceCounter_);
+  try {
+    long seq = ++nextSequence_;      // server-assigned, monotonic per conversation
+    message = std::make_shared&lt;Message&gt;(sender, content, seq);
+  } catch (...) {
+    unlock(sequenceCounter_);
+    throw;
+  }
+  unlock(sequenceCounter_);
+  messages_.push_back(message);
+  for (auto&amp; participant : participants_) {      // Observer fan-out
+    if (presenceTracker-&gt;isOnline(participant)) {
+      deliver(participant, message);
+    } else {
+      offlineQueueFor(participant)-&gt;enqueue(message);
+    }
+  }
+  return message;
+}
+
+std::vector&lt;std::shared_ptr&lt;Message&gt;&gt; ChatService::reconnect(std::shared_ptr&lt;User&gt; user, long lastSeenSequence) {
+  auto missed = offlineQueueFor(user)-&gt;allAfter(lastSeenSequence);   // idempotent: same cursor -&gt; same result
+  offlineQueueFor(user)-&gt;clearUpTo(lastSeenSequence + missed.size());
+  return missed;
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">send(sender, content) {
+  let message;
+  lock(this.sequenceCounter);
+  try {
+    const seq = ++this.nextSequence;      // server-assigned, monotonic per conversation
+    message = new Message(sender, content, seq);
+  } finally {
+    unlock(this.sequenceCounter);
+  }
+  this.messages.push(message);
+  for (const participant of this.participants) {      // Observer fan-out
+    if (presenceTracker.isOnline(participant)) {
+      deliver(participant, message);
+    } else {
+      offlineQueueFor(participant).enqueue(message);
+    }
+  }
+  return message;
+}
+
+reconnect(user, lastSeenSequence) {
+  const missed = offlineQueueFor(user).allAfter(lastSeenSequence);   // idempotent: same cursor -&gt; same result
+  offlineQueueFor(user).clearUpTo(lastSeenSequence + missed.length);
+  return missed;
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">send(sender: User, content: string): Message {
+  let message: Message;
+  lock(this.sequenceCounter);
+  try {
+    const seq = ++this.nextSequence;      // server-assigned, monotonic per conversation
+    message = new Message(sender, content, seq);
+  } finally {
+    unlock(this.sequenceCounter);
+  }
+  this.messages.push(message);
+  for (const participant of this.participants) {      // Observer fan-out
+    if (presenceTracker.isOnline(participant)) {
+      deliver(participant, message);
+    } else {
+      offlineQueueFor(participant).enqueue(message);
+    }
+  }
+  return message;
+}
+
+reconnect(user: User, lastSeenSequence: number): Message[] {
+  const missed = offlineQueueFor(user).allAfter(lastSeenSequence);   // idempotent: same cursor -&gt; same result
+  offlineQueueFor(user).clearUpTo(lastSeenSequence + missed.length);
+  return missed;
+}</code></pre>
+</div>
 
 <h3 id="p20-r">R. End-to-End Use Case</h3>
 <pre>

@@ -228,7 +228,8 @@
 <p><strong>What stays stable:</strong> <code>Library</code>'s public checkout/return/hold API. New categories and fine rules are additive.</p>
 
 <h3 id="p15-p">P. API / Interface Design</h3>
-<pre><code>interface FineStrategy {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface FineStrategy {
   Money calculateFine(Loan loan);
 }
 
@@ -238,10 +239,54 @@ class Library {
   void returnItem(String barcode);
   void placeHold(Member member, Book book);
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface FineStrategy {
+  Money calculateFine(Loan loan);
+}
+
+class Library {
+  List&lt;Book&gt; search(String query);
+  Loan checkout(Member member, String barcode);
+  void returnItem(String barcode);
+  void placeHold(Member member, Book book);
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class FineStrategy {
+public:
+  virtual Money calculateFine(const Loan&amp; loan) = 0;
+};
+
+class Library {
+public:
+  std::vector&lt;std::shared_ptr&lt;Book&gt;&gt; search(const std::string&amp; query);
+  std::shared_ptr&lt;Loan&gt; checkout(std::shared_ptr&lt;Member&gt; member, const std::string&amp; barcode);
+  void returnItem(const std::string&amp; barcode);
+  void placeHold(std::shared_ptr&lt;Member&gt; member, std::shared_ptr&lt;Book&gt; book);
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class FineStrategy {
+  calculateFine(loan) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class Library {
+  search(query) {}
+  checkout(member, barcode) {}
+  returnItem(barcode) {}
+  placeHold(member, book) {}
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface FineStrategy {
+  calculateFine(loan: Loan): Money;
+}
+
+class Library {
+  search(query: string): Book[] {}
+  checkout(member: Member, barcode: string): Loan {}
+  returnItem(barcode: string): void {}
+  placeHold(member: Member, book: Book): void {}
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>checkout()</code> locates a specific <code>BookItem</code> with status <code>AVAILABLE</code> for the requested title, atomically transitions it to <code>CHECKED_OUT</code>, and creates the <code>Loan</code> — it never operates on the <code>Book</code> title level directly, since "available" is a copy-level fact.</p>
 
 <h3 id="p15-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>Library.checkout(member, barcode):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>Library.checkout(member, barcode):
   lock(bookItemFor(barcode))
   try:
     item = bookItemFor(barcode)
@@ -259,6 +304,101 @@ BookItem.returnItem():
     nextHold = holdQueue.popNext()
     this.status = ON_HOLD          // reserved for the notified member, not generally available
     notify(nextHold.member, this)</code></pre>
+<pre data-lang="java" hidden><code class="language-java">Loan checkout(Member member, String barcode) {
+  BookItem item = bookItemFor(barcode);
+  lock(item);
+  try {
+    item = bookItemFor(barcode);
+    if (item.getStatus() != Status.AVAILABLE) return null;   // reject
+    item.setStatus(Status.CHECKED_OUT);
+    Loan loan = new Loan(member, item, now().plus(loanPeriod(item.getBook().getCategory())));
+    return loan;
+  } finally {
+    unlock(item);
+  }
+}
+
+void returnItem() {
+  this.status = Status.AVAILABLE;
+  HoldQueue holdQueue = holdQueueFor(this.book);
+  if (holdQueue.hasWaiting()) {
+    Hold nextHold = holdQueue.popNext();
+    this.status = Status.ON_HOLD;          // reserved for the notified member, not generally available
+    notify(nextHold.getMember(), this);
+  }
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">std::shared_ptr&lt;Loan&gt; Library::checkout(std::shared_ptr&lt;Member&gt; member, const std::string&amp; barcode) {
+  auto item = bookItemFor(barcode);
+  lock(item);
+  try {
+    item = bookItemFor(barcode);
+    if (item-&gt;status != Status::AVAILABLE) return nullptr;   // reject
+    item-&gt;status = Status::CHECKED_OUT;
+    auto loan = std::make_shared&lt;Loan&gt;(member, item, now() + loanPeriod(item-&gt;book-&gt;category));
+    unlock(item);
+    return loan;
+  } catch (...) {
+    unlock(item);
+    throw;
+  }
+}
+
+void BookItem::returnItem() {
+  this-&gt;status = Status::AVAILABLE;
+  auto holdQueue = holdQueueFor(this-&gt;book);
+  if (holdQueue-&gt;hasWaiting()) {
+    auto nextHold = holdQueue-&gt;popNext();
+    this-&gt;status = Status::ON_HOLD;          // reserved for the notified member, not generally available
+    notify(nextHold-&gt;member, shared_from_this());
+  }
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">checkout(member, barcode) {
+  let item = this.bookItemFor(barcode);
+  lock(item);
+  try {
+    item = this.bookItemFor(barcode);
+    if (item.status !== Status.AVAILABLE) return null;   // reject
+    item.status = Status.CHECKED_OUT;
+    const loan = new Loan(member, item, addDuration(now(), loanPeriod(item.book.category)));
+    return loan;
+  } finally {
+    unlock(item);
+  }
+}
+
+returnItem() {
+  this.status = Status.AVAILABLE;
+  const holdQueue = holdQueueFor(this.book);
+  if (holdQueue.hasWaiting()) {
+    const nextHold = holdQueue.popNext();
+    this.status = Status.ON_HOLD;          // reserved for the notified member, not generally available
+    notify(nextHold.member, this);
+  }
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">checkout(member: Member, barcode: string): Loan | null {
+  let item = this.bookItemFor(barcode);
+  lock(item);
+  try {
+    item = this.bookItemFor(barcode);
+    if (item.status !== Status.AVAILABLE) return null;   // reject
+    item.status = Status.CHECKED_OUT;
+    const loan = new Loan(member, item, addDuration(now(), loanPeriod(item.book.category)));
+    return loan;
+  } finally {
+    unlock(item);
+  }
+}
+
+returnItem(): void {
+  this.status = Status.AVAILABLE;
+  const holdQueue = holdQueueFor(this.book);
+  if (holdQueue.hasWaiting()) {
+    const nextHold = holdQueue.popNext();
+    this.status = Status.ON_HOLD;          // reserved for the notified member, not generally available
+    notify(nextHold.member, this);
+  }
+}</code></pre>
+</div>
 
 <h3 id="p15-r">R. End-to-End Use Case</h3>
 <pre>

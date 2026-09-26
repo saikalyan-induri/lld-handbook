@@ -213,7 +213,8 @@
 <p><strong>What stays stable:</strong> the two-method public API (<code>get</code>/<code>put</code>). Internal locking granularity and eviction bookkeeping evolve underneath it without callers noticing.</p>
 
 <h3 id="p2-p">P. API / Interface Design</h3>
-<pre><code>interface Cache&lt;K, V&gt; {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface Cache&lt;K, V&gt; {
   Optional&lt;V&gt; get(K key);
   void        put(K key, V value);
 }
@@ -223,10 +224,56 @@ class LRUCache&lt;K, V&gt; implements Cache&lt;K, V&gt; {
   Optional&lt;V&gt; get(K key);           // O(1); updates recency
   void        put(K key, V value);   // O(1); may trigger eviction
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface Cache&lt;K, V&gt; {
+  Optional&lt;V&gt; get(K key);
+  void put(K key, V value);
+}
+
+class LRUCache&lt;K, V&gt; implements Cache&lt;K, V&gt; {
+  LRUCache(int capacity) { }   // throws IllegalArgumentException if capacity &lt;= 0
+  public Optional&lt;V&gt; get(K key) { throw new UnsupportedOperationException(); }        // O(1); updates recency
+  public void put(K key, V value) { throw new UnsupportedOperationException(); }      // O(1); may trigger eviction
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">template &lt;typename K, typename V&gt;
+class Cache {
+public:
+  virtual std::optional&lt;V&gt; get(const K&amp; key) = 0;
+  virtual void put(const K&amp; key, const V&amp; value) = 0;
+};
+
+template &lt;typename K, typename V&gt;
+class LRUCache : public Cache&lt;K, V&gt; {
+public:
+  explicit LRUCache(int capacity);          // throws std::invalid_argument if capacity &lt;= 0
+  std::optional&lt;V&gt; get(const K&amp; key);       // O(1); updates recency
+  void put(const K&amp; key, const V&amp; value);   // O(1); may trigger eviction
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class Cache {
+  get(key) { throw new Error(&#x27;not implemented&#x27;); }
+  put(key, value) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class LRUCache extends Cache {
+  constructor(capacity) { super(); }   // throws Error if capacity &lt;= 0
+  get(key) { throw new Error(&#x27;not implemented&#x27;); }         // O(1); updates recency
+  put(key, value) { throw new Error(&#x27;not implemented&#x27;); }  // O(1); may trigger eviction
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface Cache&lt;K, V&gt; {
+  get(key: K): V | null;
+  put(key: K, value: V): void;
+}
+
+class LRUCache&lt;K, V&gt; implements Cache&lt;K, V&gt; {
+  constructor(capacity: number) { }   // throws Error if capacity &lt;= 0
+  get(key: K): V | null { throw new Error(&#x27;not implemented&#x27;); }         // O(1); updates recency
+  put(key: K, value: V): void { throw new Error(&#x27;not implemented&#x27;); }   // O(1); may trigger eviction
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> returning <code>Optional&lt;V&gt;</code> (or a language-appropriate nullable/sentinel) avoids ambiguity between "missing key" and "value is actually null." Capacity is validated once, at construction, not on every operation.</p>
 
 <h3 id="p2-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>get(key):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>get(key):
   node = map.get(key)
   if node is null: return MISS
   moveToHead(node)
@@ -245,6 +292,99 @@ put(key, value):
     lru = tail.prev
     removeNode(lru)
     map.remove(lru.key)</code></pre>
+<pre data-lang="java" hidden><code class="language-java">public Optional&lt;V&gt; get(K key) {
+  Node&lt;K, V&gt; node = map.get(key);
+  if (node == null) return Optional.empty();   // MISS
+  moveToHead(node);
+  return Optional.of(node.value);
+}
+
+public void put(K key, V value) {
+  Node&lt;K, V&gt; node = map.get(key);
+  if (node != null) {
+    node.value = value;
+    moveToHead(node);
+    return;
+  }
+  Node&lt;K, V&gt; newNode = new Node&lt;&gt;(key, value);
+  map.put(key, newNode);
+  addToHead(newNode);
+  if (map.size() &gt; capacity) {
+    Node&lt;K, V&gt; lru = tail.prev;
+    removeNode(lru);
+    map.remove(lru.key);
+  }
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">std::optional&lt;V&gt; get(const K&amp; key) {
+  auto it = map.find(key);
+  if (it == map.end()) return std::nullopt;   // MISS
+  moveToHead(it-&gt;second);
+  return it-&gt;second-&gt;value;
+}
+
+void put(const K&amp; key, const V&amp; value) {
+  auto it = map.find(key);
+  if (it != map.end()) {
+    it-&gt;second-&gt;value = value;
+    moveToHead(it-&gt;second);
+    return;
+  }
+  auto newNode = std::make_shared&lt;Node&gt;(key, value);
+  map[key] = newNode;
+  addToHead(newNode);
+  if (map.size() &gt; capacity) {
+    auto lru = tail-&gt;prev;
+    removeNode(lru);
+    map.erase(lru-&gt;key);
+  }
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">get(key) {
+  const node = this.map.get(key);
+  if (node === undefined) return MISS;
+  this.moveToHead(node);
+  return node.value;
+}
+
+put(key, value) {
+  const node = this.map.get(key);
+  if (node !== undefined) {
+    node.value = value;
+    this.moveToHead(node);
+    return;
+  }
+  const newNode = new Node(key, value);
+  this.map.set(key, newNode);
+  this.addToHead(newNode);
+  if (this.map.size &gt; this.capacity) {
+    const lru = this.tail.prev;
+    this.removeNode(lru);
+    this.map.delete(lru.key);
+  }
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">get(key: K): V | typeof MISS {
+  const node = this.map.get(key);
+  if (node === undefined) return MISS;
+  this.moveToHead(node);
+  return node.value;
+}
+
+put(key: K, value: V): void {
+  const node = this.map.get(key);
+  if (node !== undefined) {
+    node.value = value;
+    this.moveToHead(node);
+    return;
+  }
+  const newNode = new Node&lt;K, V&gt;(key, value);
+  this.map.set(key, newNode);
+  this.addToHead(newNode);
+  if (this.map.size &gt; this.capacity) {
+    const lru = this.tail.prev;
+    this.removeNode(lru);
+    this.map.delete(lru.key);
+  }
+}</code></pre>
+</div>
 
 <h3 id="p2-r">R. End-to-End Use Case</h3>
 <pre>

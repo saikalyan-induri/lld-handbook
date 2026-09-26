@@ -242,7 +242,8 @@
 <p><strong>What stays stable:</strong> <code>NotificationService.notify()</code>'s signature. New channels, new preference granularity, and new retry policies are all additive.</p>
 
 <h3 id="p7-p">P. API / Interface Design</h3>
-<pre><code>interface NotificationChannel {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface NotificationChannel {
   DeliveryResult send(RenderedContent content, String recipientAddress);
 }
 
@@ -250,10 +251,46 @@ class NotificationService {
   void notify(String userId, Category category, String templateId,
               Map&lt;String,Object&gt; params, List&lt;ChannelType&gt; channels, String idempotencyKey);
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface NotificationChannel {
+  DeliveryResult send(RenderedContent content, String recipientAddress);
+}
+
+class NotificationService {
+  void notify(String userId, Category category, String templateId,
+              Map&lt;String,Object&gt; params, List&lt;ChannelType&gt; channels, String idempotencyKey);
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class NotificationChannel {
+public:
+  virtual DeliveryResult send(const RenderedContent&amp; content, const std::string&amp; recipientAddress) = 0;
+};
+
+class NotificationService {
+public:
+  void notify(const std::string&amp; userId, Category category, const std::string&amp; templateId,
+              const std::map&lt;std::string, std::any&gt;&amp; params, const std::vector&lt;ChannelType&gt;&amp; channels,
+              const std::string&amp; idempotencyKey);
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class NotificationChannel {
+  send(content, recipientAddress) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class NotificationService {
+  notify(userId, category, templateId, params, channels, idempotencyKey) {}
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface NotificationChannel {
+  send(content: RenderedContent, recipientAddress: string): DeliveryResult;
+}
+
+class NotificationService {
+  notify(userId: string, category: Category, templateId: string,
+         params: Map&lt;string, unknown&gt;, channels: ChannelType[], idempotencyKey: string): void {}
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>notify()</code> runs preference → rate-limit checks per requested channel <em>before</em> rendering or sending anything on that channel — an opted-out or rate-limited channel is skipped cheaply, never rendered. The <code>idempotencyKey</code> is mandatory, not optional, given the at-least-once assumption in F.</p>
 
 <h3 id="p7-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>notify(userId, category, templateId, params, channels, idemKey):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>notify(userId, category, templateId, params, channels, idemKey):
   if dedupeCache.seen(idemKey): return                 // idempotent replay guard
   for channel in channels:
     if not userPreference.isAllowed(userId, channel, category): continue
@@ -271,6 +308,107 @@ RetryScheduler.onRetryDue(notification, attempt):
       deadLetterQueue.record(notification, result.error)
     else:
       scheduleRetry(notification, attempt + 1, delay=backoff(attempt))</code></pre>
+<pre data-lang="java" hidden><code class="language-java">void notify(String userId, Category category, String templateId,
+            Map&lt;String, Object&gt; params, List&lt;ChannelType&gt; channels, String idemKey) {
+  if (dedupeCache.seen(idemKey)) return;                        // idempotent replay guard
+  for (ChannelType channel : channels) {
+    if (!userPreference.isAllowed(userId, channel, category)) continue;
+    if (!rateLimiter.tryAcquire(userId, channel)) continue;
+    RenderedContent content = template.render(templateId, channel, params);
+    DeliveryResult result = channelImpl(channel).send(content, resolveAddress(userId, channel));
+    if (result.failed()) {
+      retryScheduler.scheduleRetry(notification, 1);
+    }
+  }
+  dedupeCache.record(idemKey);
+}
+
+void onRetryDue(Notification notification, int attempt) {
+  DeliveryResult result = channelImpl(notification.getChannel()).send(/* ... */);
+  if (result.failed()) {
+    if (attempt &gt;= MAX_ATTEMPTS) {
+      deadLetterQueue.record(notification, result.getError());
+    } else {
+      scheduleRetry(notification, attempt + 1, backoff(attempt));
+    }
+  }
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">void NotificationService::notify(const std::string&amp; userId, Category category, const std::string&amp; templateId,
+                                  const std::map&lt;std::string, std::any&gt;&amp; params,
+                                  const std::vector&lt;ChannelType&gt;&amp; channels, const std::string&amp; idemKey) {
+  if (dedupeCache.seen(idemKey)) return;                          // idempotent replay guard
+  for (auto&amp; channel : channels) {
+    if (!userPreference.isAllowed(userId, channel, category)) continue;
+    if (!rateLimiter.tryAcquire({userId, channel})) continue;
+    auto content = templateEngine.render(templateId, channel, params);
+    auto result = channelImpl(channel)-&gt;send(content, resolveAddress(userId, channel));
+    if (result.failed) {
+      retryScheduler.scheduleRetry(notification, 1);
+    }
+  }
+  dedupeCache.record(idemKey);
+}
+
+void RetryScheduler::onRetryDue(Notification&amp; notification, int attempt) {
+  auto result = channelImpl(notification.channel)-&gt;send(/* ... */);
+  if (result.failed) {
+    if (attempt &gt;= MAX_ATTEMPTS) {
+      deadLetterQueue.record(notification, result.error);
+    } else {
+      scheduleRetry(notification, attempt + 1, backoff(attempt));
+    }
+  }
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">notify(userId, category, templateId, params, channels, idemKey) {
+  if (this.dedupeCache.seen(idemKey)) return;                    // idempotent replay guard
+  for (const channel of channels) {
+    if (!this.userPreference.isAllowed(userId, channel, category)) continue;
+    if (!this.rateLimiter.tryAcquire({ userId, channel })) continue;
+    const content = this.template.render(templateId, channel, params);
+    const result = this.channelImpl(channel).send(content, this.resolveAddress(userId, channel));
+    if (result.failed) {
+      this.retryScheduler.scheduleRetry(notification, 1);
+    }
+  }
+  this.dedupeCache.record(idemKey);
+}
+
+onRetryDue(notification, attempt) {
+  const result = this.channelImpl(notification.channel).send(/* ... */);
+  if (result.failed) {
+    if (attempt &gt;= MAX_ATTEMPTS) {
+      this.deadLetterQueue.record(notification, result.error);
+    } else {
+      this.scheduleRetry(notification, attempt + 1, backoff(attempt));
+    }
+  }
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">notify(userId: string, category: Category, templateId: string,
+       params: Map&lt;string, unknown&gt;, channels: ChannelType[], idemKey: string): void {
+  if (this.dedupeCache.seen(idemKey)) return;                     // idempotent replay guard
+  for (const channel of channels) {
+    if (!this.userPreference.isAllowed(userId, channel, category)) continue;
+    if (!this.rateLimiter.tryAcquire({ userId, channel })) continue;
+    const content: RenderedContent = this.template.render(templateId, channel, params);
+    const result: DeliveryResult = this.channelImpl(channel).send(content, this.resolveAddress(userId, channel));
+    if (result.failed) {
+      this.retryScheduler.scheduleRetry(notification, 1);
+    }
+  }
+  this.dedupeCache.record(idemKey);
+}
+
+onRetryDue(notification: Notification, attempt: number): void {
+  const result: DeliveryResult = this.channelImpl(notification.channel).send(/* ... */);
+  if (result.failed) {
+    if (attempt &gt;= MAX_ATTEMPTS) {
+      this.deadLetterQueue.record(notification, result.error);
+    } else {
+      this.scheduleRetry(notification, attempt + 1, backoff(attempt));
+    }
+  }
+}</code></pre>
+</div>
 
 <h3 id="p7-r">R. End-to-End Use Case</h3>
 <pre>

@@ -233,7 +233,8 @@
 <p><strong>What stays stable:</strong> <code>FileSystem</code>'s top-level API signatures. New aggregate operations are pure additions (new visitor classes); persistence and permissions slot in behind existing interfaces without touching <code>File</code>/<code>Directory</code>.</p>
 
 <h3 id="p9-p">P. API / Interface Design</h3>
-<pre><code>interface NodeVisitor {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface NodeVisitor {
   void visitFile(File f);
   void visitDirectory(Directory d);
 }
@@ -255,10 +256,105 @@ class FileSystem {
   List&lt;Path&gt; search(Path root, SearchCriteria criteria);
   long diskUsage(Path root);
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface NodeVisitor {
+  void visitFile(File f);
+  void visitDirectory(Directory d);
+}
+
+abstract class FileSystemNode {
+  String name;
+  Directory parent;
+  abstract void accept(NodeVisitor v);
+}
+
+class FileSystem {
+  void createFile(Path path);
+  void createDirectory(Path path);
+  void delete(Path path, boolean recursive);
+  void move(Path source, Path destination);
+  byte[] read(Path path);
+  void write(Path path, byte[] data);
+  List&lt;String&gt; list(Path directoryPath);
+  List&lt;Path&gt; search(Path root, SearchCriteria criteria);
+  long diskUsage(Path root);
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class NodeVisitor {
+public:
+  virtual void visitFile(const File&amp; f) = 0;
+  virtual void visitDirectory(const Directory&amp; d) = 0;
+};
+
+class FileSystemNode {
+public:
+  std::string name;
+  std::shared_ptr&lt;Directory&gt; parent;
+  virtual void accept(NodeVisitor&amp; v) = 0;
+};
+
+class FileSystem {
+public:
+  void createFile(const Path&amp; path);
+  void createDirectory(const Path&amp; path);
+  void deleteNode(const Path&amp; path, bool recursive);
+  void move(const Path&amp; source, const Path&amp; destination);
+  std::vector&lt;uint8_t&gt; read(const Path&amp; path);
+  void write(const Path&amp; path, const std::vector&lt;uint8_t&gt;&amp; data);
+  std::vector&lt;std::string&gt; list(const Path&amp; directoryPath);
+  std::vector&lt;Path&gt; search(const Path&amp; root, const SearchCriteria&amp; criteria);
+  long diskUsage(const Path&amp; root);
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class NodeVisitor {
+  visitFile(f) { throw new Error(&#x27;not implemented&#x27;); }
+  visitDirectory(d) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class FileSystemNode {
+  constructor() {
+    this.name = null;
+    this.parent = null;
+  }
+  accept(v) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class FileSystem {
+  createFile(path) {}
+  createDirectory(path) {}
+  delete(path, recursive) {}
+  move(source, destination) {}
+  read(path) {}
+  write(path, data) {}
+  list(directoryPath) {}
+  search(root, criteria) {}
+  diskUsage(root) {}
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface NodeVisitor {
+  visitFile(f: File): void;
+  visitDirectory(d: Directory): void;
+}
+
+abstract class FileSystemNode {
+  name: string;
+  parent: Directory | null;
+  abstract accept(v: NodeVisitor): void;
+}
+
+class FileSystem {
+  createFile(path: Path): void {}
+  createDirectory(path: Path): void {}
+  delete(path: Path, recursive: boolean): void {}
+  move(source: Path, destination: Path): void {}
+  read(path: Path): Uint8Array { return new Uint8Array(); }
+  write(path: Path, data: Uint8Array): void {}
+  list(directoryPath: Path): string[] { return []; }
+  search(root: Path, criteria: SearchCriteria): Path[] { return []; }
+  diskUsage(root: Path): number { return 0; }
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>move()</code> resolves both the source and destination parent directories, verifies the destination is not a descendant of the source (cycle check), then acquires both parents' locks in canonical-path order before mutating either — never partially detach a node without knowing the reattachment will succeed.</p>
 
 <h3 id="p9-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>FileSystem.move(source, destination):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>FileSystem.move(source, destination):
   srcParent = resolveParent(source)
   destParent = resolveParent(destination)
   node = srcParent.getChild(source.lastSegment)
@@ -283,6 +379,130 @@ DiskUsageVisitor.visitDirectory(d):
     child.accept(this)          // recurses; visitFile adds file.size directly
     total += this.lastSize
   this.lastSize = total</code></pre>
+<pre data-lang="java" hidden><code class="language-java">void move(Path source, Path destination) throws IllegalMoveException {
+  Directory srcParent = resolveParent(source);
+  Directory destParent = resolveParent(destination);
+  FileSystemNode node = srcParent.getChild(source.lastSegment());
+
+  if (node instanceof Directory &amp;&amp; destination.isDescendantOf(source)) {
+    throw new IllegalMoveException(&quot;cannot move a directory into its own subtree&quot;);
+  }
+
+  // lock ordering: always acquire in canonical-path order to prevent
+  // an ABBA deadlock against a concurrent move() going the other direction
+  Directory[] ordered = orderByCanonicalPath(srcParent, destParent);
+  Directory first = ordered[0], second = ordered[1];
+  lock(first); lock(second);
+  try {
+    srcParent.removeChild(node.getName());
+    node.setParent(destParent);
+    destParent.addChild(node);
+  } finally {
+    unlock(second); unlock(first);
+  }
+}
+
+void visitDirectory(Directory d) {
+  long total = 0;
+  for (FileSystemNode child : d.getChildren().values()) {
+    child.accept(this);              // recurses; visitFile adds file.size directly
+    total += this.lastSize;
+  }
+  this.lastSize = total;
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">void FileSystem::move(const Path&amp; source, const Path&amp; destination) {
+  auto srcParent = resolveParent(source);
+  auto destParent = resolveParent(destination);
+  auto node = srcParent-&gt;getChild(source.lastSegment());
+
+  if (std::dynamic_pointer_cast&lt;Directory&gt;(node) &amp;&amp; destination.isDescendantOf(source)) {
+    throw IllegalMoveException(&quot;cannot move a directory into its own subtree&quot;);   // throws IllegalMoveException
+  }
+
+  // lock ordering: always acquire in canonical-path order to prevent
+  // an ABBA deadlock against a concurrent move() going the other direction
+  auto [first, second] = orderByCanonicalPath(srcParent, destParent);
+  lock(first); lock(second);
+  try {
+    srcParent-&gt;removeChild(node-&gt;name);
+    node-&gt;parent = destParent;
+    destParent-&gt;addChild(node);
+  } catch (...) {
+    unlock(second); unlock(first);
+    throw;
+  }
+  unlock(second); unlock(first);
+}
+
+void DiskUsageVisitor::visitDirectory(const Directory&amp; d) {
+  long total = 0;
+  for (auto&amp; [name, child] : d.children()) {
+    child-&gt;accept(*this);              // recurses; visitFile adds file.size directly
+    total += lastSize_;
+  }
+  lastSize_ = total;
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">move(source, destination) {
+  const srcParent = this.resolveParent(source);
+  const destParent = this.resolveParent(destination);
+  const node = srcParent.getChild(source.lastSegment);
+
+  if (node instanceof Directory &amp;&amp; destination.isDescendantOf(source)) {
+    throw new Error(&quot;cannot move a directory into its own subtree&quot;);   // IllegalMoveException
+  }
+
+  // lock ordering: always acquire in canonical-path order to prevent
+  // an ABBA deadlock against a concurrent move() going the other direction
+  const [first, second] = orderByCanonicalPath(srcParent, destParent);
+  lock(first); lock(second);
+  try {
+    srcParent.removeChild(node.name);
+    node.parent = destParent;
+    destParent.addChild(node);
+  } finally {
+    unlock(second); unlock(first);
+  }
+}
+
+visitDirectory(d) {
+  let total = 0;
+  for (const child of d.children.values()) {
+    child.accept(this);              // recurses; visitFile adds file.size directly
+    total += this.lastSize;
+  }
+  this.lastSize = total;
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">move(source: Path, destination: Path): void {
+  const srcParent: Directory = this.resolveParent(source);
+  const destParent: Directory = this.resolveParent(destination);
+  const node: FileSystemNode = srcParent.getChild(source.lastSegment);
+
+  if (node instanceof Directory &amp;&amp; destination.isDescendantOf(source)) {
+    throw new Error(&quot;cannot move a directory into its own subtree&quot;);    // IllegalMoveException
+  }
+
+  // lock ordering: always acquire in canonical-path order to prevent
+  // an ABBA deadlock against a concurrent move() going the other direction
+  const [first, second] = orderByCanonicalPath(srcParent, destParent);
+  lock(first); lock(second);
+  try {
+    srcParent.removeChild(node.name);
+    node.parent = destParent;
+    destParent.addChild(node);
+  } finally {
+    unlock(second); unlock(first);
+  }
+}
+
+visitDirectory(d: Directory): void {
+  let total = 0;
+  for (const child of d.children.values()) {
+    child.accept(this);               // recurses; visitFile adds file.size directly
+    total += this.lastSize;
+  }
+  this.lastSize = total;
+}</code></pre>
+</div>
 
 <h3 id="p9-r">R. End-to-End Use Case</h3>
 <pre>

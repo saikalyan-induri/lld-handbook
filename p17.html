@@ -237,7 +237,8 @@
 <p><strong>What stays stable:</strong> <code>BookingService</code>'s public hold/confirm/cancel API. New states and pricing rules are additive.</p>
 
 <h3 id="p17-p">P. API / Interface Design</h3>
-<pre><code>interface PricingStrategy {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface PricingStrategy {
   Money calculatePrice(Seat seat, Show show);
 }
 
@@ -246,10 +247,50 @@ class BookingService {
   Booking confirmBooking(String lockId, PaymentResult result);  // idempotency-keyed
   void cancelBooking(String bookingId);
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface PricingStrategy {
+  Money calculatePrice(Seat seat, Show show);
+}
+
+class BookingService {
+  SeatLock holdSeats(User user, Show show, List&lt;SeatId&gt; seatIds);
+  Booking confirmBooking(String lockId, PaymentResult result);  // idempotency-keyed
+  void cancelBooking(String bookingId);
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class PricingStrategy {
+public:
+  virtual Money calculatePrice(std::shared_ptr&lt;Seat&gt; seat, std::shared_ptr&lt;Show&gt; show) = 0;
+};
+
+class BookingService {
+public:
+  std::shared_ptr&lt;SeatLock&gt; holdSeats(std::shared_ptr&lt;User&gt; user, std::shared_ptr&lt;Show&gt; show, const std::vector&lt;SeatId&gt;&amp; seatIds);
+  std::shared_ptr&lt;Booking&gt; confirmBooking(const std::string&amp; lockId, PaymentResult result);  // idempotency-keyed
+  void cancelBooking(const std::string&amp; bookingId);
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class PricingStrategy {
+  calculatePrice(seat, show) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class BookingService {
+  holdSeats(user, show, seatIds) {}
+  confirmBooking(lockId, result) {}  // idempotency-keyed
+  cancelBooking(bookingId) {}
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface PricingStrategy {
+  calculatePrice(seat: Seat, show: Show): Money;
+}
+
+class BookingService {
+  holdSeats(user: User, show: Show, seatIds: SeatId[]): SeatLock {}
+  confirmBooking(lockId: string, result: PaymentResult): Booking {}  // idempotency-keyed
+  cancelBooking(bookingId: string): void {}
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>holdSeats()</code> acquires locks on every requested <code>ShowSeat</code> in one atomic step (all-or-nothing — see W for lock ordering), and <code>confirmBooking()</code> is keyed by an idempotency key derived from the payment provider's transaction id, so a retried webhook call cannot double-confirm or double-charge.</p>
 
 <h3 id="p17-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>BookingService.holdSeats(user, show, seatIds):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>BookingService.holdSeats(user, show, seatIds):
   orderedIds = sort(seatIds)          // canonical order — see W
   locks = []
   try:
@@ -275,6 +316,137 @@ BookingService.confirmBooking(lockId, paymentResult, idempotencyKey):
     waitlistNotifier.notifyWaiting(seatLock.seats)
   recordProcessed(idempotencyKey, booking)
   return booking</code></pre>
+<pre data-lang="java" hidden><code class="language-java">SeatLock holdSeats(User user, Show show, List&lt;SeatId&gt; seatIds) {
+  List&lt;SeatId&gt; orderedIds = sort(seatIds);          // canonical order — see W
+  List&lt;ShowSeat&gt; locks = new ArrayList&lt;&gt;();
+  try {
+    for (SeatId id : orderedIds) {
+      lock(showSeatFor(id));
+      locks.add(showSeatFor(id));
+      if (showSeatFor(id).getStatus() != AVAILABLE) { rollback(locks); reject(); }
+    }
+    for (ShowSeat seat : locks) { seat.setStatus(LOCKED); }
+    SeatLock seatLock = new SeatLock(user, locks, /* expiresAt = */ now().plus(HOLD_TTL));
+    return seatLock;
+  } finally {
+    for (ShowSeat seat : locks) { unlock(seat); }
+  }
+}
+
+Booking confirmBooking(String lockId, PaymentResult paymentResult, String idempotencyKey) {
+  if (alreadyProcessed(idempotencyKey)) { return existingBookingFor(idempotencyKey); }  // idempotent retry
+  SeatLock seatLock = lockFor(lockId);
+  if (seatLock.isExpired()) { reject(); }
+  Booking booking;
+  if (paymentResult.isSuccess()) {
+    for (ShowSeat seat : seatLock.getSeats()) { seat.setStatus(BOOKED); }
+    booking = new Booking(seatLock, CONFIRMED);
+  } else {
+    for (ShowSeat seat : seatLock.getSeats()) { seat.setStatus(AVAILABLE); }
+    waitlistNotifier.notifyWaiting(seatLock.getSeats());
+  }
+  recordProcessed(idempotencyKey, booking);
+  return booking;
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">std::shared_ptr&lt;SeatLock&gt; BookingService::holdSeats(std::shared_ptr&lt;User&gt; user, std::shared_ptr&lt;Show&gt; show, const std::vector&lt;SeatId&gt;&amp; seatIds) {
+  auto orderedIds = sort(seatIds);          // canonical order — see W
+  std::vector&lt;std::shared_ptr&lt;ShowSeat&gt;&gt; locks;
+  try {
+    for (auto&amp; id : orderedIds) {
+      lock(showSeatFor(id));
+      locks.push_back(showSeatFor(id));
+      if (showSeatFor(id)-&gt;status != AVAILABLE) { rollback(locks); reject(); }
+    }
+    for (auto&amp; seat : locks) { seat-&gt;status = LOCKED; }
+    auto seatLock = std::make_shared&lt;SeatLock&gt;(user, locks, /* expiresAt = */ now() + HOLD_TTL);
+    for (auto&amp; seat : locks) { unlock(seat); }
+    return seatLock;
+  } catch (...) {
+    for (auto&amp; seat : locks) { unlock(seat); }
+    throw;
+  }
+}
+
+std::shared_ptr&lt;Booking&gt; BookingService::confirmBooking(const std::string&amp; lockId, PaymentResult paymentResult, const std::string&amp; idempotencyKey) {
+  if (alreadyProcessed(idempotencyKey)) { return existingBookingFor(idempotencyKey); }  // idempotent retry
+  auto seatLock = lockFor(lockId);
+  if (seatLock-&gt;isExpired()) { reject(); }
+  std::shared_ptr&lt;Booking&gt; booking;
+  if (paymentResult.success) {
+    for (auto&amp; seat : seatLock-&gt;seats) { seat-&gt;status = BOOKED; }
+    booking = std::make_shared&lt;Booking&gt;(seatLock, CONFIRMED);
+  } else {
+    for (auto&amp; seat : seatLock-&gt;seats) { seat-&gt;status = AVAILABLE; }
+    waitlistNotifier-&gt;notifyWaiting(seatLock-&gt;seats);
+  }
+  recordProcessed(idempotencyKey, booking);
+  return booking;
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">holdSeats(user, show, seatIds) {
+  const orderedIds = sort(seatIds);          // canonical order — see W
+  const locks = [];
+  try {
+    for (const id of orderedIds) {
+      lock(showSeatFor(id));
+      locks.push(showSeatFor(id));
+      if (showSeatFor(id).status !== AVAILABLE) { rollback(locks); reject(); }
+    }
+    for (const seat of locks) { seat.status = LOCKED; }
+    const seatLock = new SeatLock(user, locks, /* expiresAt = */ now() + HOLD_TTL);
+    return seatLock;
+  } finally {
+    for (const seat of locks) { unlock(seat); }
+  }
+}
+
+confirmBooking(lockId, paymentResult, idempotencyKey) {
+  if (alreadyProcessed(idempotencyKey)) { return existingBookingFor(idempotencyKey); }  // idempotent retry
+  const seatLock = lockFor(lockId);
+  if (seatLock.isExpired()) { reject(); }
+  let booking;
+  if (paymentResult.success) {
+    for (const seat of seatLock.seats) { seat.status = BOOKED; }
+    booking = new Booking(seatLock, CONFIRMED);
+  } else {
+    for (const seat of seatLock.seats) { seat.status = AVAILABLE; }
+    waitlistNotifier.notifyWaiting(seatLock.seats);
+  }
+  recordProcessed(idempotencyKey, booking);
+  return booking;
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">holdSeats(user: User, show: Show, seatIds: SeatId[]): SeatLock {
+  const orderedIds = sort(seatIds);          // canonical order — see W
+  const locks: ShowSeat[] = [];
+  try {
+    for (const id of orderedIds) {
+      lock(showSeatFor(id));
+      locks.push(showSeatFor(id));
+      if (showSeatFor(id).status !== AVAILABLE) { rollback(locks); reject(); }
+    }
+    for (const seat of locks) { seat.status = LOCKED; }
+    const seatLock = new SeatLock(user, locks, /* expiresAt = */ now() + HOLD_TTL);
+    return seatLock;
+  } finally {
+    for (const seat of locks) { unlock(seat); }
+  }
+}
+
+confirmBooking(lockId: string, paymentResult: PaymentResult, idempotencyKey: string): Booking {
+  if (alreadyProcessed(idempotencyKey)) { return existingBookingFor(idempotencyKey); }  // idempotent retry
+  const seatLock = lockFor(lockId);
+  if (seatLock.isExpired()) { reject(); }
+  let booking: Booking;
+  if (paymentResult.success) {
+    for (const seat of seatLock.seats) { seat.status = BOOKED; }
+    booking = new Booking(seatLock, CONFIRMED);
+  } else {
+    for (const seat of seatLock.seats) { seat.status = AVAILABLE; }
+    waitlistNotifier.notifyWaiting(seatLock.seats);
+  }
+  recordProcessed(idempotencyKey, booking);
+  return booking;
+}</code></pre>
+</div>
 
 <h3 id="p17-r">R. End-to-End Use Case</h3>
 <pre>

@@ -9,10 +9,21 @@ Writes: index.html, p1.html..p20.html, synthesis.html, search-index.json,
 """
 import re
 import json
+import html as html_lib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 SRC = HERE.parent / "lld-handbook.html"
+
+# ---------------------------------------------------------------------------
+# 0. Language-tab translations for the two real code blocks per problem
+#    ("P. API / Interface Design" and "Q. Pseudocode"). Keyed by heading id
+#    (e.g. "p1-p", "p1-q") -> {"java": "...", "cpp": "...", "javascript": "...",
+#    "typescript": "..."}. The mermaid classDiagram source and the ASCII
+#    end-to-end flow <pre> blocks are not real code, so they're untouched.
+# ---------------------------------------------------------------------------
+CODE_TRANSLATIONS = json.loads((HERE / "code_translations.json").read_text(encoding="utf-8"))
+LANG_TABS = [("java", "Java"), ("cpp", "C++"), ("javascript", "JavaScript"), ("typescript", "TypeScript")]
 
 src = SRC.read_text(encoding="utf-8")
 
@@ -163,11 +174,39 @@ def with_jumpbar(p):
     return SECTOC_RE.sub(lambda m: m.group(1) + jumpbar, p["inner"], count=1)
 
 
+def with_lang_tabs(main_html, sid):
+    """For the two real code blocks in this problem (heading ids "{sid}-p"
+    and "{sid}-q"), add sibling Java/C++/JavaScript/TypeScript <pre> panels
+    next to the original pseudocode block and mark the group with
+    class="code-tabs" so assets/app.js can render a tab bar to switch
+    between them. Blocks without a translation entry (mermaid diagram
+    source, ASCII flow diagrams) are left untouched."""
+    for letter in ("p", "q"):
+        hid = f"{sid}-{letter}"
+        if hid not in CODE_TRANSLATIONS:
+            continue
+        trans = CODE_TRANSLATIONS[hid]
+        pattern = re.compile(
+            r'(<h3 id="' + re.escape(hid) + r'">.*?</h3>\s*)<pre><code>(.*?)</code></pre>', re.S)
+
+        def repl(m, trans=trans):
+            heading, original = m.group(1), m.group(2)
+            panels = [f'<pre data-lang="pseudo"><code>{original}</code></pre>']
+            for lang_key, _ in LANG_TABS:
+                escaped = html_lib.escape(trans[lang_key])
+                panels.append(
+                    f'<pre data-lang="{lang_key}" hidden><code class="language-{lang_key}">{escaped}</code></pre>')
+            return heading + '<div class="code-tabs">\n' + "\n".join(panels) + "\n</div>"
+
+        main_html = pattern.sub(repl, main_html, count=1)
+    return main_html
+
+
 generated_files = set()
 
 for idx, p in enumerate(problems):
     title = f'{p["num"]}. {p["name"]}' if p["num"] else p["name"]
-    main_html = with_jumpbar(p) + prevnext(idx, seq)
+    main_html = with_lang_tabs(with_jumpbar(p), p["sid"]) + prevnext(idx, seq)
     page = render_page(title, main_html)
     fname = f'{p["sid"]}.html'
     (HERE / fname).write_text(page, encoding="utf-8")
@@ -328,6 +367,11 @@ html[data-theme="dark"] .jump-select{background:#0f172a; color:#e2e8f0;}
 .code-window .copy-btn{margin-left:auto; position:static; font-size:10.5px; padding:2px 9px; border-radius:4px; border:1px solid #334155; background:#0f172a; color:#e2e8f0; cursor:pointer; opacity:.85;}
 .code-window .copy-btn:hover{opacity:1;}
 .mermaid-src .code-window{margin:6px 0 0;}
+.code-tab-bar{display:flex; gap:3px; margin-left:10px; overflow-x:auto;}
+.code-tab-btn{background:none; border:none; color:#94a3b8; font-size:10.5px; padding:3px 10px; border-radius:4px 4px 0 0; cursor:pointer; white-space:nowrap;}
+.code-tab-btn:hover{color:#e2e8f0;}
+.code-tab-btn.active{background:#0f172a; color:#e2e8f0; font-weight:600;}
+.code-window pre[hidden]{display:none;}
 
 /* highlightjs-line-numbers.js gutter */
 .hljs-ln{border-collapse:collapse; width:100%;}
@@ -418,10 +462,64 @@ function initJumpSelect() {
   });
 }
 
+var LANG_TAB_LABELS = {
+  pseudo: "Pseudocode", java: "Java", cpp: "C++",
+  javascript: "JavaScript", typescript: "TypeScript"
+};
+
 function initCodeChrome() {
-  // Wrap every <pre> in a small read-only "editor window": a title bar
-  // (traffic-light dots + Copy button) on top of the existing dark <pre>.
-  // No execution affordance -- this is display-only chrome.
+  // Wrap every <pre> (or every <pre> group inside a .code-tabs container)
+  // in a small read-only "editor window": a title bar (traffic-light dots
+  // + optional language tabs + Copy button) on top of the existing dark
+  // <pre>. No execution affordance -- this is display-only chrome.
+  document.querySelectorAll(".code-tabs").forEach(function (group) {
+    var pres = Array.prototype.slice.call(group.querySelectorAll("pre"));
+    if (!pres.length) return;
+    var wrapper = document.createElement("div");
+    wrapper.className = "code-window";
+
+    var bar = document.createElement("div");
+    bar.className = "code-window-bar";
+    bar.innerHTML =
+      '<span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>';
+
+    var tabs = document.createElement("div");
+    tabs.className = "code-tab-bar";
+    pres.forEach(function (pre) {
+      var lang = pre.getAttribute("data-lang");
+      var tabBtn = document.createElement("button");
+      tabBtn.className = "code-tab-btn" + (pre.hidden ? "" : " active");
+      tabBtn.textContent = LANG_TAB_LABELS[lang] || lang;
+      tabBtn.addEventListener("click", function () {
+        pres.forEach(function (p) { p.hidden = true; });
+        pre.hidden = false;
+        tabs.querySelectorAll(".code-tab-btn").forEach(function (b) { b.classList.remove("active"); });
+        tabBtn.classList.add("active");
+      });
+      tabs.appendChild(tabBtn);
+    });
+    bar.appendChild(tabs);
+
+    var btn = document.createElement("button");
+    btn.className = "copy-btn";
+    btn.textContent = "Copy";
+    btn.addEventListener("click", function () {
+      var visible = pres.filter(function (p) { return !p.hidden; })[0] || pres[0];
+      var codeEl = visible.querySelector("code");
+      var text = (codeEl || visible).innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = "Copied!";
+        setTimeout(function () { btn.textContent = "Copy"; }, 1500);
+      });
+    });
+    bar.appendChild(btn);
+
+    group.parentNode.insertBefore(wrapper, group);
+    wrapper.appendChild(bar);
+    pres.forEach(function (pre) { wrapper.appendChild(pre); });
+    group.parentNode.removeChild(group);
+  });
+
   document.querySelectorAll("pre").forEach(function (pre) {
     if (pre.parentElement.classList.contains("code-window")) return;
     var wrapper = document.createElement("div");

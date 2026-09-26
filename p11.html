@@ -230,7 +230,8 @@
 <p><strong>What stays stable:</strong> <code>ElevatorController</code>'s public API. New dispatch algorithms are pure additions; fleet size changes don't touch <code>Elevator</code> or state classes at all.</p>
 
 <h3 id="p11-p">P. API / Interface Design</h3>
-<pre><code>interface ElevatorState {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface ElevatorState {
   void handleArrival(Elevator e);
   boolean canOpenDoor();
 }
@@ -245,10 +246,75 @@ class ElevatorController {
   void setOutOfService(String elevatorId);
   ElevatorStatus getStatus(String elevatorId);
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface ElevatorState {
+  void handleArrival(Elevator e);
+  boolean canOpenDoor();
+}
+
+interface DispatchStrategy {
+  Elevator selectElevator(HallCall call, List&lt;Elevator&gt; elevators);
+}
+
+class ElevatorController {
+  void requestElevator(int floor, Direction dir);   // hall call
+  void selectFloor(String elevatorId, int floor);   // car call
+  void setOutOfService(String elevatorId);
+  ElevatorStatus getStatus(String elevatorId);
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class ElevatorState {
+public:
+  virtual void handleArrival(std::shared_ptr&lt;Elevator&gt; e) = 0;
+  virtual bool canOpenDoor() = 0;
+};
+
+class DispatchStrategy {
+public:
+  virtual std::shared_ptr&lt;Elevator&gt; selectElevator(const HallCall&amp; call, const std::vector&lt;std::shared_ptr&lt;Elevator&gt;&gt;&amp; elevators) = 0;
+};
+
+class ElevatorController {
+public:
+  void requestElevator(int floor, Direction dir);   // hall call
+  void selectFloor(const std::string&amp; elevatorId, int floor);   // car call
+  void setOutOfService(const std::string&amp; elevatorId);
+  ElevatorStatus getStatus(const std::string&amp; elevatorId);
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class ElevatorState {
+  handleArrival(e) { throw new Error(&#x27;not implemented&#x27;); }
+  canOpenDoor() { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class DispatchStrategy {
+  selectElevator(call, elevators) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class ElevatorController {
+  requestElevator(floor, dir) {}   // hall call
+  selectFloor(elevatorId, floor) {}   // car call
+  setOutOfService(elevatorId) {}
+  getStatus(elevatorId) {}
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface ElevatorState {
+  handleArrival(e: Elevator): void;
+  canOpenDoor(): boolean;
+}
+
+interface DispatchStrategy {
+  selectElevator(call: HallCall, elevators: Elevator[]): Elevator | null;
+}
+
+class ElevatorController {
+  requestElevator(floor: number, dir: Direction): void {}   // hall call
+  selectFloor(elevatorId: string, floor: number): void {}   // car call
+  setOutOfService(elevatorId: string): void {}
+  getStatus(elevatorId: string): ElevatorStatus {}
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>requestElevator()</code> constructs a <code>HallCall</code> and hands it to the <code>Dispatcher</code>, which selects a candidate via the active strategy and then atomically claims that call on the candidate's stop queue — if the claim fails (e.g. the candidate went out of service in the interim), it retries selection rather than dropping the call.</p>
 
 <h3 id="p11-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>Dispatcher.dispatch(hallCall):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>Dispatcher.dispatch(hallCall):
   loop:
     candidate = strategy.selectElevator(hallCall, activeElevators)
     if candidate is null: queue call for retry; return
@@ -269,6 +335,121 @@ NearestCarStrategy.selectElevator(call, elevators):
       d = abs(e.currentFloor - call.floor)
       if d < bestDistance: best = e; bestDistance = d
   return best</code></pre>
+<pre data-lang="java" hidden><code class="language-java">void dispatch(HallCall hallCall) {
+  while (true) {
+    Elevator candidate = strategy.selectElevator(hallCall, activeElevators);
+    if (candidate == null) { queueForRetry(hallCall); return; }
+    lock(candidate);
+    try {
+      if (candidate.isInService() &amp;&amp; !candidate.isFull()) {
+        candidate.addStop(hallCall.getFloor());
+        return;   // claimed
+      }
+    } finally {
+      unlock(candidate);
+    }
+    // candidate became unavailable between selection and claim — retry with remaining elevators
+  }
+}
+
+Elevator selectElevator(HallCall call, List&lt;Elevator&gt; elevators) {
+  Elevator best = null;
+  double bestDistance = Double.POSITIVE_INFINITY;
+  for (Elevator e : elevators) {
+    if (!e.isInService()) continue;
+    if (e.getDirection() == call.getDirection() || e.getDirection() == Direction.IDLE) {
+      double d = Math.abs(e.getCurrentFloor() - call.getFloor());
+      if (d &lt; bestDistance) { best = e; bestDistance = d; }
+    }
+  }
+  return best;
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">void Dispatcher::dispatch(const HallCall&amp; hallCall) {
+  while (true) {
+    auto candidate = strategy-&gt;selectElevator(hallCall, activeElevators);
+    if (candidate == nullptr) { queueForRetry(hallCall); return; }
+    lock(candidate);
+    if (candidate-&gt;isInService() &amp;&amp; !candidate-&gt;isFull()) {
+      candidate-&gt;addStop(hallCall.floor);
+      unlock(candidate);
+      return;   // claimed
+    }
+    unlock(candidate);
+    // candidate became unavailable between selection and claim — retry with remaining elevators
+  }
+}
+
+std::shared_ptr&lt;Elevator&gt; NearestCarStrategy::selectElevator(const HallCall&amp; call, const std::vector&lt;std::shared_ptr&lt;Elevator&gt;&gt;&amp; elevators) {
+  std::shared_ptr&lt;Elevator&gt; best = nullptr;
+  double bestDistance = std::numeric_limits&lt;double&gt;::infinity();
+  for (auto&amp; e : elevators) {
+    if (!e-&gt;isInService()) continue;
+    if (e-&gt;direction == call.direction || e-&gt;direction == Direction::IDLE) {
+      double d = std::abs(e-&gt;currentFloor - call.floor);
+      if (d &lt; bestDistance) { best = e; bestDistance = d; }
+    }
+  }
+  return best;
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">dispatch(hallCall) {
+  while (true) {
+    const candidate = this.strategy.selectElevator(hallCall, this.activeElevators);
+    if (candidate === null) { this.queueForRetry(hallCall); return; }
+    lock(candidate);
+    try {
+      if (candidate.isInService() &amp;&amp; !candidate.isFull()) {
+        candidate.addStop(hallCall.floor);
+        return;   // claimed
+      }
+    } finally {
+      unlock(candidate);
+    }
+    // candidate became unavailable between selection and claim — retry with remaining elevators
+  }
+}
+
+selectElevator(call, elevators) {
+  let best = null;
+  let bestDistance = Infinity;
+  for (const e of elevators) {
+    if (!e.isInService()) continue;
+    if (e.direction === call.direction || e.direction === Direction.IDLE) {
+      const d = Math.abs(e.currentFloor - call.floor);
+      if (d &lt; bestDistance) { best = e; bestDistance = d; }
+    }
+  }
+  return best;
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">dispatch(hallCall: HallCall): void {
+  while (true) {
+    const candidate = this.strategy.selectElevator(hallCall, this.activeElevators);
+    if (candidate === null) { this.queueForRetry(hallCall); return; }
+    lock(candidate);
+    try {
+      if (candidate.isInService() &amp;&amp; !candidate.isFull()) {
+        candidate.addStop(hallCall.floor);
+        return;   // claimed
+      }
+    } finally {
+      unlock(candidate);
+    }
+    // candidate became unavailable between selection and claim — retry with remaining elevators
+  }
+}
+
+selectElevator(call: HallCall, elevators: Elevator[]): Elevator | null {
+  let best: Elevator | null = null;
+  let bestDistance = Infinity;
+  for (const e of elevators) {
+    if (!e.isInService()) continue;
+    if (e.direction === call.direction || e.direction === Direction.IDLE) {
+      const d = Math.abs(e.currentFloor - call.floor);
+      if (d &lt; bestDistance) { best = e; bestDistance = d; }
+    }
+  }
+  return best;
+}</code></pre>
+</div>
 
 <h3 id="p11-r">R. End-to-End Use Case</h3>
 <pre>

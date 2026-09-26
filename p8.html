@@ -239,7 +239,8 @@
 <p><strong>What stays stable:</strong> <code>CoffeeMachine.select()/pay()/dispense()</code> signatures. New beverages are pure data additions; new payment methods and alerting are additive via existing interfaces.</p>
 
 <h3 id="p8-p">P. API / Interface Design</h3>
-<pre><code>interface CoffeeMachineState {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface CoffeeMachineState {
   void selectBeverage(CoffeeMachine ctx, Beverage b);
   void insertPayment(CoffeeMachine ctx, PaymentStrategy method, Money amount);
   void dispense(CoffeeMachine ctx);
@@ -253,10 +254,70 @@ class CoffeeMachine {
   void cancel();                // Selecting -> Idle, refunds if already paid
   void refill(Ingredient ing, int qty);  // technician action, any state
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface CoffeeMachineState {
+  void selectBeverage(CoffeeMachine ctx, Beverage b);
+  void insertPayment(CoffeeMachine ctx, PaymentStrategy method, Money amount);
+  void dispense(CoffeeMachine ctx);
+  void cancel(CoffeeMachine ctx);
+}
+
+class CoffeeMachine {
+  void select(Beverage b);      // Idle -&gt; Selecting, or rejects if not Idle
+  void pay(PaymentStrategy method, Money amount);  // Selecting -&gt; Dispensing
+  void dispenseNow();           // Dispensing -&gt; Idle (or -&gt; OutOfStock)
+  void cancel();                // Selecting -&gt; Idle, refunds if already paid
+  void refill(Ingredient ing, int qty);  // technician action, any state
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class CoffeeMachineState {
+public:
+  virtual void selectBeverage(CoffeeMachine&amp; ctx, const Beverage&amp; b) = 0;
+  virtual void insertPayment(CoffeeMachine&amp; ctx, std::shared_ptr&lt;PaymentStrategy&gt; method, Money amount) = 0;
+  virtual void dispense(CoffeeMachine&amp; ctx) = 0;
+  virtual void cancel(CoffeeMachine&amp; ctx) = 0;
+};
+
+class CoffeeMachine {
+public:
+  void select(const Beverage&amp; b);                                    // Idle -&gt; Selecting, or rejects if not Idle
+  void pay(std::shared_ptr&lt;PaymentStrategy&gt; method, Money amount);    // Selecting -&gt; Dispensing
+  void dispenseNow();                                                  // Dispensing -&gt; Idle (or -&gt; OutOfStock)
+  void cancel();                                                       // Selecting -&gt; Idle, refunds if already paid
+  void refill(std::shared_ptr&lt;Ingredient&gt; ing, int qty);              // technician action, any state
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class CoffeeMachineState {
+  selectBeverage(ctx, b) { throw new Error(&#x27;not implemented&#x27;); }
+  insertPayment(ctx, method, amount) { throw new Error(&#x27;not implemented&#x27;); }
+  dispense(ctx) { throw new Error(&#x27;not implemented&#x27;); }
+  cancel(ctx) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class CoffeeMachine {
+  select(b) {}                    // Idle -&gt; Selecting, or rejects if not Idle
+  pay(method, amount) {}          // Selecting -&gt; Dispensing
+  dispenseNow() {}                // Dispensing -&gt; Idle (or -&gt; OutOfStock)
+  cancel() {}                     // Selecting -&gt; Idle, refunds if already paid
+  refill(ing, qty) {}             // technician action, any state
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface CoffeeMachineState {
+  selectBeverage(ctx: CoffeeMachine, b: Beverage): void;
+  insertPayment(ctx: CoffeeMachine, method: PaymentStrategy, amount: Money): void;
+  dispense(ctx: CoffeeMachine): void;
+  cancel(ctx: CoffeeMachine): void;
+}
+
+class CoffeeMachine {
+  select(b: Beverage): void {}                            // Idle -&gt; Selecting, or rejects if not Idle
+  pay(method: PaymentStrategy, amount: Money): void {}    // Selecting -&gt; Dispensing
+  dispenseNow(): void {}                                   // Dispensing -&gt; Idle (or -&gt; OutOfStock)
+  cancel(): void {}                                        // Selecting -&gt; Idle, refunds if already paid
+  refill(ing: Ingredient, qty: number): void {}            // technician action, any state
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>dispenseNow()</code> reserves all required ingredients atomically <em>before</em> physically dispensing anything — if reservation fails partway (one ingredient insufficient), nothing is reserved and the machine transitions to <code>OutOfStockState</code> with a refund, never a partial drink.</p>
 
 <h3 id="p8-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>CoffeeMachine.dispenseNow():
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>CoffeeMachine.dispenseNow():
   recipe = this.selectedBeverage.recipe
   reserved = []
   for (ingredient, qty) in recipe.requirements:
@@ -269,6 +330,73 @@ class CoffeeMachine {
   // all ingredients reserved successfully — safe to physically dispense
   dispenser.pour(recipe)
   this.state = IdleState</code></pre>
+<pre data-lang="java" hidden><code class="language-java">void dispenseNow() {
+  Recipe recipe = this.selectedBeverage.getRecipe();
+  List&lt;Reservation&gt; reserved = new ArrayList&lt;&gt;();
+  for (Map.Entry&lt;Ingredient, Integer&gt; entry : recipe.getRequirements().entrySet()) {
+    Ingredient ingredient = entry.getKey();
+    int qty = entry.getValue();
+    if (!ingredient.tryReserve(qty)) {                    // atomic check-and-decrement
+      for (Reservation r : reserved) r.getIngredient().release(r.getQty());   // roll back partial reservation
+      this.paymentMethod.refund(recipe.getPrice());
+      this.state = new OutOfStockState();
+      return;
+    }
+    reserved.add(new Reservation(ingredient, qty));
+  }
+  // all ingredients reserved successfully — safe to physically dispense
+  dispenser.pour(recipe);
+  this.state = new IdleState();
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">void CoffeeMachine::dispenseNow() {
+  Recipe recipe = selectedBeverage_-&gt;recipe();
+  std::vector&lt;Reservation&gt; reserved;
+  for (auto&amp; [ingredient, qty] : recipe.requirements()) {
+    if (!ingredient-&gt;tryReserve(qty)) {                    // atomic check-and-decrement
+      for (auto&amp; r : reserved) r.ingredient-&gt;release(r.qty);   // roll back partial reservation
+      paymentMethod_-&gt;refund(recipe.price());
+      state_ = std::make_shared&lt;OutOfStockState&gt;();
+      return;
+    }
+    reserved.push_back({ingredient, qty});
+  }
+  // all ingredients reserved successfully — safe to physically dispense
+  dispenser_-&gt;pour(recipe);
+  state_ = std::make_shared&lt;IdleState&gt;();
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">dispenseNow() {
+  const recipe = this.selectedBeverage.recipe;
+  const reserved = [];
+  for (const [ingredient, qty] of recipe.requirements) {
+    if (!ingredient.tryReserve(qty)) {                     // atomic check-and-decrement
+      for (const r of reserved) r.ingredient.release(r.qty);   // roll back partial reservation
+      this.paymentMethod.refund(recipe.price);
+      this.state = new OutOfStockState();
+      return;
+    }
+    reserved.push({ ingredient, qty });
+  }
+  // all ingredients reserved successfully — safe to physically dispense
+  this.dispenser.pour(recipe);
+  this.state = new IdleState();
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">dispenseNow(): void {
+  const recipe: Recipe = this.selectedBeverage.recipe;
+  const reserved: { ingredient: Ingredient; qty: number }[] = [];
+  for (const [ingredient, qty] of recipe.requirements) {
+    if (!ingredient.tryReserve(qty)) {                      // atomic check-and-decrement
+      for (const r of reserved) r.ingredient.release(r.qty);   // roll back partial reservation
+      this.paymentMethod.refund(recipe.price);
+      this.state = new OutOfStockState();
+      return;
+    }
+    reserved.push({ ingredient, qty });
+  }
+  // all ingredients reserved successfully — safe to physically dispense
+  this.dispenser.pour(recipe);
+  this.state = new IdleState();
+}</code></pre>
+</div>
 
 <h3 id="p8-r">R. End-to-End Use Case</h3>
 <pre>

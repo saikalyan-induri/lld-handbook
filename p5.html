@@ -291,7 +291,8 @@
 <p><strong>What stays stable:</strong> <code>RideService.requestRide()/acceptRide()/completeRide()</code> signatures. Matching heuristics, fare modifiers, and the index implementation are all additive.</p>
 
 <h3 id="p5-p">P. API / Interface Design</h3>
-<pre><code>interface MatchingStrategy {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface MatchingStrategy {
   Optional&lt;Driver&gt; match(Ride ride, List&lt;Driver&gt; candidates);
 }
 
@@ -307,10 +308,79 @@ class RideService {
   Ride completeRide(String rideId);                  // computes + charges fare
   void cancelRide(String rideId, Actor by);
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface MatchingStrategy {
+  Optional&lt;Driver&gt; match(Ride ride, List&lt;Driver&gt; candidates);
+}
+
+interface FareStrategy {
+  Money calculate(Ride ride);
+}
+
+class RideService {
+  Ride requestRide(Rider rider, Location pickup, Location dropoff) { throw new UnsupportedOperationException(); }
+  void acceptRide(String rideId, Driver driver) { throw new UnsupportedOperationException(); }
+  void rejectRide(String rideId, Driver driver) { throw new UnsupportedOperationException(); }   // triggers re-match
+  void startRide(String rideId) { throw new UnsupportedOperationException(); }                    // ARRIVED -&gt; IN_PROGRESS
+  Ride completeRide(String rideId) { throw new UnsupportedOperationException(); }                  // computes + charges fare
+  void cancelRide(String rideId, Actor by) { throw new UnsupportedOperationException(); }
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class MatchingStrategy {
+public:
+  virtual std::optional&lt;Driver&gt; match(Ride ride, const std::vector&lt;Driver&gt;&amp; candidates) = 0;
+};
+
+class FareStrategy {
+public:
+  virtual Money calculate(Ride ride) = 0;
+};
+
+class RideService {
+public:
+  Ride requestRide(std::shared_ptr&lt;Rider&gt; rider, Location pickup, Location dropoff);
+  void acceptRide(const std::string&amp; rideId, std::shared_ptr&lt;Driver&gt; driver);
+  void rejectRide(const std::string&amp; rideId, std::shared_ptr&lt;Driver&gt; driver);   // triggers re-match
+  void startRide(const std::string&amp; rideId);                                   // ARRIVED -&gt; IN_PROGRESS
+  Ride completeRide(const std::string&amp; rideId);                                 // computes + charges fare
+  void cancelRide(const std::string&amp; rideId, std::shared_ptr&lt;Actor&gt; by);
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class MatchingStrategy {
+  match(ride, candidates) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class FareStrategy {
+  calculate(ride) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class RideService {
+  requestRide(rider, pickup, dropoff) { throw new Error(&#x27;not implemented&#x27;); }
+  acceptRide(rideId, driver) { throw new Error(&#x27;not implemented&#x27;); }
+  rejectRide(rideId, driver) { throw new Error(&#x27;not implemented&#x27;); }   // triggers re-match
+  startRide(rideId) { throw new Error(&#x27;not implemented&#x27;); }            // ARRIVED -&gt; IN_PROGRESS
+  completeRide(rideId) { throw new Error(&#x27;not implemented&#x27;); }         // computes + charges fare
+  cancelRide(rideId, by) { throw new Error(&#x27;not implemented&#x27;); }
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface MatchingStrategy {
+  match(ride: Ride, candidates: Driver[]): Driver | null;
+}
+
+interface FareStrategy {
+  calculate(ride: Ride): Money;
+}
+
+class RideService {
+  requestRide(rider: Rider, pickup: Location, dropoff: Location): Ride { throw new Error(&#x27;not implemented&#x27;); }
+  acceptRide(rideId: string, driver: Driver): void { throw new Error(&#x27;not implemented&#x27;); }
+  rejectRide(rideId: string, driver: Driver): void { throw new Error(&#x27;not implemented&#x27;); }   // triggers re-match
+  startRide(rideId: string): void { throw new Error(&#x27;not implemented&#x27;); }                    // ARRIVED -&gt; IN_PROGRESS
+  completeRide(rideId: string): Ride { throw new Error(&#x27;not implemented&#x27;); }                  // computes + charges fare
+  cancelRide(rideId: string, by: Actor): void { throw new Error(&#x27;not implemented&#x27;); }
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>acceptRide</code> only succeeds if the driver's status atomically transitions <code>AVAILABLE → RESERVED</code> — see W for why this must be a single atomic operation rather than a check-then-set. <code>completeRide</code> is the only place a fare is finalized and charged, keeping "trip happened" and "money moved" as one guarded step.</p>
 
 <h3 id="p5-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>requestRide(rider, pickup, dropoff):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>requestRide(rider, pickup, dropoff):
   ride = Ride.create(rider, pickup, dropoff, status=REQUESTED)
   candidates = geoIndex.findNearby(pickup, radius=DEFAULT_RADIUS)
   while candidates not empty:
@@ -333,6 +403,115 @@ completeRide(rideId):
   driver.release()                    // RESERVED/ON_TRIP -> AVAILABLE
   notificationService.onRideStatusChanged(ride)
   return ride</code></pre>
+<pre data-lang="java" hidden><code class="language-java">Ride requestRide(Rider rider, Location pickup, Location dropoff) {
+  Ride ride = Ride.create(rider, pickup, dropoff, REQUESTED);
+  List&lt;Driver&gt; candidates = geoIndex.findNearby(pickup, DEFAULT_RADIUS);
+  while (!candidates.isEmpty()) {
+    Optional&lt;Driver&gt; driver = matchingStrategy.match(ride, candidates);
+    if (driver.isEmpty()) break;
+    if (driver.get().tryReserve()) {          // atomic CAS: AVAILABLE -&gt; RESERVED
+      ride.transitionTo(MATCHED, driver.get());
+      notificationService.onRideStatusChanged(ride);
+      return ride;
+    }
+    candidates.remove(driver.get());   // someone else grabbed it first, retry
+  }
+  ride.transitionTo(NO_DRIVER_FOUND);
+  return ride;
+}
+
+Ride completeRide(String rideId) {
+  Ride ride = rides.get(rideId);
+  ride.transitionTo(COMPLETED);        // throws if not currently IN_PROGRESS
+  Money baseFare = fareStrategy.calculate(ride);   // may itself be a decorator chain
+  ride.fare = baseFare;
+  paymentGateway.charge(ride.rider, baseFare);
+  driver.release();                    // RESERVED/ON_TRIP -&gt; AVAILABLE
+  notificationService.onRideStatusChanged(ride);
+  return ride;
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">Ride requestRide(std::shared_ptr&lt;Rider&gt; rider, Location pickup, Location dropoff) {
+  Ride ride = Ride::create(rider, pickup, dropoff, REQUESTED);
+  auto candidates = geoIndex.findNearby(pickup, DEFAULT_RADIUS);
+  while (!candidates.empty()) {
+    auto driver = matchingStrategy.match(ride, candidates);
+    if (!driver.has_value()) break;
+    if (driver-&gt;tryReserve()) {          // atomic CAS: AVAILABLE -&gt; RESERVED
+      ride.transitionTo(MATCHED, *driver);
+      notificationService.onRideStatusChanged(ride);
+      return ride;
+    }
+    candidates.erase(std::remove(candidates.begin(), candidates.end(), *driver), candidates.end());   // someone else grabbed it first, retry
+  }
+  ride.transitionTo(NO_DRIVER_FOUND);
+  return ride;
+}
+
+Ride completeRide(const std::string&amp; rideId) {
+  Ride ride = rides.get(rideId);
+  ride.transitionTo(COMPLETED);        // throws if not currently IN_PROGRESS
+  Money baseFare = fareStrategy.calculate(ride);   // may itself be a decorator chain
+  ride.fare = baseFare;
+  paymentGateway.charge(ride.rider, baseFare);
+  driver-&gt;release();                   // RESERVED/ON_TRIP -&gt; AVAILABLE
+  notificationService.onRideStatusChanged(ride);
+  return ride;
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">function requestRide(rider, pickup, dropoff) {
+  const ride = Ride.create(rider, pickup, dropoff, REQUESTED);
+  let candidates = geoIndex.findNearby(pickup, DEFAULT_RADIUS);
+  while (candidates.length &gt; 0) {
+    const driver = matchingStrategy.match(ride, candidates);
+    if (driver === null) break;
+    if (driver.tryReserve()) {          // atomic CAS: AVAILABLE -&gt; RESERVED
+      ride.transitionTo(MATCHED, driver);
+      notificationService.onRideStatusChanged(ride);
+      return ride;
+    }
+    candidates = candidates.filter(d =&gt; d !== driver);   // someone else grabbed it first, retry
+  }
+  ride.transitionTo(NO_DRIVER_FOUND);
+  return ride;
+}
+
+function completeRide(rideId) {
+  const ride = rides.get(rideId);
+  ride.transitionTo(COMPLETED);        // throws if not currently IN_PROGRESS
+  const baseFare = fareStrategy.calculate(ride);   // may itself be a decorator chain
+  ride.fare = baseFare;
+  paymentGateway.charge(ride.rider, baseFare);
+  driver.release();                    // RESERVED/ON_TRIP -&gt; AVAILABLE
+  notificationService.onRideStatusChanged(ride);
+  return ride;
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">function requestRide(rider: Rider, pickup: Location, dropoff: Location): Ride {
+  const ride: Ride = Ride.create(rider, pickup, dropoff, REQUESTED);
+  let candidates: Driver[] = geoIndex.findNearby(pickup, DEFAULT_RADIUS);
+  while (candidates.length &gt; 0) {
+    const driver: Driver | null = matchingStrategy.match(ride, candidates);
+    if (driver === null) break;
+    if (driver.tryReserve()) {          // atomic CAS: AVAILABLE -&gt; RESERVED
+      ride.transitionTo(MATCHED, driver);
+      notificationService.onRideStatusChanged(ride);
+      return ride;
+    }
+    candidates = candidates.filter(d =&gt; d !== driver);   // someone else grabbed it first, retry
+  }
+  ride.transitionTo(NO_DRIVER_FOUND);
+  return ride;
+}
+
+function completeRide(rideId: string): Ride {
+  const ride: Ride = rides.get(rideId);
+  ride.transitionTo(COMPLETED);        // throws if not currently IN_PROGRESS
+  const baseFare: Money = fareStrategy.calculate(ride);   // may itself be a decorator chain
+  ride.fare = baseFare;
+  paymentGateway.charge(ride.rider, baseFare);
+  driver.release();                    // RESERVED/ON_TRIP -&gt; AVAILABLE
+  notificationService.onRideStatusChanged(ride);
+  return ride;
+}</code></pre>
+</div>
 
 <h3 id="p5-r">R. End-to-End Use Case</h3>
 <pre>

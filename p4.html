@@ -246,7 +246,8 @@
 <p><strong>What stays stable:</strong> <code>ExpenseService.addExpense()/settleUp()</code> signatures. The ledger's internal storage and the debt-simplification feature are additive, not disruptive.</p>
 
 <h3 id="p4-p">P. API / Interface Design</h3>
-<pre><code>interface SplitStrategy {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface SplitStrategy {
   List&lt;Split&gt; compute(Money total, List&lt;User&gt; participants, Map&lt;String,Object&gt; params);
 }
 
@@ -257,10 +258,58 @@ class ExpenseService {
   Money   getBalance(User a, User b);
   Map&lt;User, Money&gt; getNetBalances(Group group);
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface SplitStrategy {
+  List&lt;Split&gt; compute(Money total, List&lt;User&gt; participants, Map&lt;String, Object&gt; params);
+}
+
+class ExpenseService {
+  Expense addExpense(Money total, User paidBy, List&lt;User&gt; participants, SplitType type,
+                      Map&lt;String, Object&gt; params, Optional&lt;Group&gt; group) { throw new UnsupportedOperationException(); }
+  Payment settleUp(User from, User to, Money amount, String idempotencyKey) { throw new UnsupportedOperationException(); }
+  Money getBalance(User a, User b) { throw new UnsupportedOperationException(); }
+  Map&lt;User, Money&gt; getNetBalances(Group group) { throw new UnsupportedOperationException(); }
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class SplitStrategy {
+public:
+  virtual std::vector&lt;Split&gt; compute(Money total, const std::vector&lt;std::shared_ptr&lt;User&gt;&gt;&amp; participants,
+                                      const std::map&lt;std::string, std::any&gt;&amp; params) = 0;
+};
+
+class ExpenseService {
+public:
+  Expense addExpense(Money total, std::shared_ptr&lt;User&gt; paidBy, const std::vector&lt;std::shared_ptr&lt;User&gt;&gt;&amp; participants,
+                      SplitType type, const std::map&lt;std::string, std::any&gt;&amp; params, std::optional&lt;Group&gt; group);
+  Payment settleUp(std::shared_ptr&lt;User&gt; from, std::shared_ptr&lt;User&gt; to, Money amount, const std::string&amp; idempotencyKey);
+  Money getBalance(std::shared_ptr&lt;User&gt; a, std::shared_ptr&lt;User&gt; b);
+  std::map&lt;std::shared_ptr&lt;User&gt;, Money&gt; getNetBalances(Group group);
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class SplitStrategy {
+  compute(total, participants, params) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class ExpenseService {
+  addExpense(total, paidBy, participants, type, params, group) { throw new Error(&#x27;not implemented&#x27;); }
+  settleUp(from, to, amount, idempotencyKey) { throw new Error(&#x27;not implemented&#x27;); }
+  getBalance(a, b) { throw new Error(&#x27;not implemented&#x27;); }
+  getNetBalances(group) { throw new Error(&#x27;not implemented&#x27;); }
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface SplitStrategy {
+  compute(total: Money, participants: User[], params: Record&lt;string, unknown&gt;): Split[];
+}
+
+class ExpenseService {
+  addExpense(total: Money, paidBy: User, participants: User[], type: SplitType,
+             params: Record&lt;string, unknown&gt;, group: Group | null): Expense { throw new Error(&#x27;not implemented&#x27;); }
+  settleUp(from: User, to: User, amount: Money, idempotencyKey: string): Payment { throw new Error(&#x27;not implemented&#x27;); }
+  getBalance(a: User, b: User): Money { throw new Error(&#x27;not implemented&#x27;); }
+  getNetBalances(group: Group): Map&lt;User, Money&gt; { throw new Error(&#x27;not implemented&#x27;); }
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>addExpense</code> validates that computed splits sum exactly to <code>total</code> before persisting anything — rejecting the whole operation rather than silently drifting the sum-to-zero invariant. <code>settleUp</code> takes an idempotency key so a client retry after a timeout can't double-adjust the balance.</p>
 
 <h3 id="p4-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>addExpense(total, payer, participants, type, params):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>addExpense(total, payer, participants, type, params):
   strategy = strategyFactory.get(type)
   splits = strategy.compute(total, participants, params)
   assert sum(s.amount for s in splits) == total   // reject if strategy is buggy
@@ -276,6 +325,89 @@ settleUp(from, to, amount, idemKey):
   payment = Payment.create(from, to, amount)
   paymentLog.record(idemKey, payment)
   return payment</code></pre>
+<pre data-lang="java" hidden><code class="language-java">Expense addExpense(Money total, User payer, List&lt;User&gt; participants,
+                    SplitType type, Map&lt;String, Object&gt; params) {
+  SplitStrategy strategy = strategyFactory.get(type);
+  List&lt;Split&gt; splits = strategy.compute(total, participants, params);
+  if (!sum(splits, s -&gt; s.amount).equals(total)) throw new IllegalStateException(&quot;AssertionError&quot;);   // reject if strategy is buggy
+  Expense expense = Expense.create(total, payer, splits);
+  for (Split split : splits) {
+    if (!split.user.equals(payer)) {
+      balanceSheet.adjust(split.user, payer, split.amount);   // split.user owes payer
+    }
+  }
+  return expense;
+}
+
+Payment settleUp(User from, User to, Money amount, String idemKey) {
+  if (paymentLog.seen(idemKey)) return paymentLog.get(idemKey);   // idempotent replay
+  balanceSheet.adjust(from, to, amount.negate());
+  Payment payment = Payment.create(from, to, amount);
+  paymentLog.record(idemKey, payment);
+  return payment;
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">Expense addExpense(Money total, User payer, std::vector&lt;User&gt; participants,
+                    SplitType type, std::map&lt;std::string, std::any&gt; params) {
+  auto strategy = strategyFactory.get(type);
+  auto splits = strategy-&gt;compute(total, participants, params);
+  assert(sum(splits, [](const Split&amp; s) { return s.amount; }) == total);   // reject if strategy is buggy
+  Expense expense = Expense::create(total, payer, splits);
+  for (const auto&amp; split : splits) {
+    if (split.user != payer) {
+      balanceSheet.adjust(split.user, payer, +split.amount);   // split.user owes payer
+    }
+  }
+  return expense;
+}
+
+Payment settleUp(User from, User to, Money amount, const std::string&amp; idemKey) {
+  if (paymentLog.seen(idemKey)) return paymentLog.get(idemKey);   // idempotent replay
+  balanceSheet.adjust(from, to, -amount);
+  Payment payment = Payment::create(from, to, amount);
+  paymentLog.record(idemKey, payment);
+  return payment;
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">addExpense(total, payer, participants, type, params) {
+  const strategy = strategyFactory.get(type);
+  const splits = strategy.compute(total, participants, params);
+  if (sum(splits.map(s =&gt; s.amount)) !== total) throw new Error(&#x27;AssertionError&#x27;);   // reject if strategy is buggy
+  const expense = Expense.create(total, payer, splits);
+  for (const split of splits) {
+    if (split.user !== payer) {
+      balanceSheet.adjust(split.user, payer, +split.amount);   // split.user owes payer
+    }
+  }
+  return expense;
+}
+
+settleUp(from, to, amount, idemKey) {
+  if (paymentLog.seen(idemKey)) return paymentLog.get(idemKey);   // idempotent replay
+  balanceSheet.adjust(from, to, -amount);
+  const payment = Payment.create(from, to, amount);
+  paymentLog.record(idemKey, payment);
+  return payment;
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">addExpense(total: Money, payer: User, participants: User[], type: SplitType, params: Record&lt;string, unknown&gt;): Expense {
+  const strategy = strategyFactory.get(type);
+  const splits = strategy.compute(total, participants, params);
+  if (sum(splits.map(s =&gt; s.amount)) !== total) throw new Error(&#x27;AssertionError&#x27;);   // reject if strategy is buggy
+  const expense = Expense.create(total, payer, splits);
+  for (const split of splits) {
+    if (split.user !== payer) {
+      balanceSheet.adjust(split.user, payer, +split.amount);   // split.user owes payer
+    }
+  }
+  return expense;
+}
+
+settleUp(from: User, to: User, amount: Money, idemKey: string): Payment {
+  if (paymentLog.seen(idemKey)) return paymentLog.get(idemKey);   // idempotent replay
+  balanceSheet.adjust(from, to, -amount);
+  const payment = Payment.create(from, to, amount);
+  paymentLog.record(idemKey, payment);
+  return payment;
+}</code></pre>
+</div>
 
 <h3 id="p4-r">R. End-to-End Use Case</h3>
 <pre>

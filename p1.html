@@ -261,7 +261,8 @@
 <p><strong>What stays stable across all versions:</strong> the <code>ParkingLot.parkVehicle()/unparkVehicle()</code> facade signature. That stability is the payoff of extracting <code>SpotAllocator</code> and <code>FeeStrategy</code> early — callers never notice the internal evolution.</p>
 
 <h3 id="p1-p">P. API / Interface Design</h3>
-<pre><code>class ParkingLot {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>class ParkingLot {
   Ticket parkVehicle(Vehicle vehicle);          // throws NoAvailableSpotException
   Fee    unparkVehicle(Ticket ticket);          // throws InvalidTicketException
 }
@@ -279,10 +280,88 @@ class ParkingSpot {
   void    occupy(Vehicle vehicle);              // throws IllegalStateException if already occupied
   void    vacate();
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">class ParkingLot {
+  Ticket parkVehicle(Vehicle vehicle) throws NoAvailableSpotException { throw new UnsupportedOperationException(); }
+  Fee unparkVehicle(Ticket ticket) throws InvalidTicketException { throw new UnsupportedOperationException(); }
+}
+
+interface SpotAllocator {
+  Optional&lt;ParkingSpot&gt; allocate(VehicleSize size);   // returns Optional.empty() / throws if none available
+}
+
+interface FeeStrategy {
+  Money calculate(Ticket closedTicket);
+}
+
+class ParkingSpot {
+  boolean canFit(VehicleSize size) { throw new UnsupportedOperationException(); }
+  void occupy(Vehicle vehicle) { throw new UnsupportedOperationException(); }   // throws IllegalStateException if already occupied
+  void vacate() { throw new UnsupportedOperationException(); }
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class ParkingLot {
+public:
+  std::shared_ptr&lt;Ticket&gt; parkVehicle(std::shared_ptr&lt;Vehicle&gt; vehicle);   // throws NoAvailableSpotException
+  Fee unparkVehicle(std::shared_ptr&lt;Ticket&gt; ticket);                       // throws InvalidTicketException
+};
+
+class SpotAllocator {
+public:
+  virtual std::optional&lt;ParkingSpot&gt; allocate(VehicleSize size) = 0;   // returns nullopt / throws if none available
+};
+
+class FeeStrategy {
+public:
+  virtual Money calculate(std::shared_ptr&lt;Ticket&gt; closedTicket) = 0;
+};
+
+class ParkingSpot {
+public:
+  bool canFit(VehicleSize size);
+  void occupy(std::shared_ptr&lt;Vehicle&gt; vehicle);   // throws std::logic_error if already occupied
+  void vacate();
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class ParkingLot {
+  parkVehicle(vehicle) { throw new Error(&#x27;not implemented&#x27;); }   // throws NoAvailableSpotException
+  unparkVehicle(ticket) { throw new Error(&#x27;not implemented&#x27;); }  // throws InvalidTicketException
+}
+
+class SpotAllocator {
+  allocate(size) { throw new Error(&#x27;not implemented&#x27;); }   // returns null / throws if none available
+}
+
+class FeeStrategy {
+  calculate(closedTicket) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class ParkingSpot {
+  canFit(size) { throw new Error(&#x27;not implemented&#x27;); }
+  occupy(vehicle) { throw new Error(&#x27;not implemented&#x27;); }   // throws Error if already occupied
+  vacate() { throw new Error(&#x27;not implemented&#x27;); }
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">class ParkingLot {
+  parkVehicle(vehicle: Vehicle): Ticket { throw new Error(&#x27;not implemented&#x27;); }   // throws NoAvailableSpotException
+  unparkVehicle(ticket: Ticket): Fee { throw new Error(&#x27;not implemented&#x27;); }      // throws InvalidTicketException
+}
+
+interface SpotAllocator {
+  allocate(size: VehicleSize): ParkingSpot | null;   // returns null / throws if none available
+}
+
+interface FeeStrategy {
+  calculate(closedTicket: Ticket): Money;
+}
+
+class ParkingSpot {
+  canFit(size: VehicleSize): boolean { throw new Error(&#x27;not implemented&#x27;); }
+  occupy(vehicle: Vehicle): void { throw new Error(&#x27;not implemented&#x27;); }   // throws Error if already occupied
+  vacate(): void { throw new Error(&#x27;not implemented&#x27;); }
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>parkVehicle</code> owns spot-reservation atomicity — the caller never sees a half-reserved spot. <code>unparkVehicle</code> must validate ticket status (reject already-closed or unknown tickets) before computing a fee — this is the boundary where most "duplicate exit" bugs occur if skipped.</p>
 
 <h3 id="p1-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>park(vehicle):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>park(vehicle):
   size = vehicle.getSize()
   spot = allocator.allocate(size)          // must be atomic — see W. Concurrency
   if spot is null: raise NoAvailableSpotException
@@ -296,6 +375,71 @@ unpark(ticket):
   fee = feeStrategy.calculate(ticket)
   ticket.spot.vacate()
   return fee</code></pre>
+<pre data-lang="java" hidden><code class="language-java">Ticket park(Vehicle vehicle) throws NoAvailableSpotException {   // custom checked exception
+  VehicleSize size = vehicle.getSize();
+  Optional&lt;ParkingSpot&gt; spot = allocator.allocate(size);   // must be atomic — see W. Concurrency
+  if (spot.isEmpty()) throw new NoAvailableSpotException();
+  spot.get().occupy(vehicle);
+  Ticket ticket = Ticket.create(vehicle, spot.get(), now());
+  return ticket;
+}
+
+Fee unpark(Ticket ticket) throws InvalidTicketException {   // custom checked exception
+  if (ticket.status != ACTIVE) throw new InvalidTicketException();
+  ticket.close(now());
+  Fee fee = feeStrategy.calculate(ticket);
+  ticket.spot.vacate();
+  return fee;
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">std::shared_ptr&lt;Ticket&gt; park(std::shared_ptr&lt;Vehicle&gt; vehicle) {
+  VehicleSize size = vehicle-&gt;getSize();
+  std::optional&lt;ParkingSpot&gt; spot = allocator.allocate(size);   // must be atomic — see W. Concurrency
+  if (!spot.has_value()) throw NoAvailableSpotException();
+  spot-&gt;occupy(vehicle);
+  auto ticket = Ticket::create(vehicle, *spot, now());
+  return ticket;
+}
+
+Fee unpark(std::shared_ptr&lt;Ticket&gt; ticket) {
+  if (ticket-&gt;status != ACTIVE) throw InvalidTicketException();
+  ticket-&gt;close(now());
+  Fee fee = feeStrategy.calculate(ticket);
+  ticket-&gt;spot.vacate();
+  return fee;
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">function park(vehicle) {
+  const size = vehicle.getSize();
+  const spot = allocator.allocate(size);        // must be atomic — see W. Concurrency
+  if (spot === null) throw new Error(&#x27;NoAvailableSpotException&#x27;);
+  spot.occupy(vehicle);
+  const ticket = Ticket.create(vehicle, spot, now());
+  return ticket;
+}
+
+function unpark(ticket) {
+  if (ticket.status !== ACTIVE) throw new Error(&#x27;InvalidTicketException&#x27;);
+  ticket.close(now());
+  const fee = feeStrategy.calculate(ticket);
+  ticket.spot.vacate();
+  return fee;
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">function park(vehicle: Vehicle): Ticket {
+  const size: VehicleSize = vehicle.getSize();
+  const spot: ParkingSpot | null = allocator.allocate(size);   // must be atomic — see W. Concurrency
+  if (spot === null) throw new Error(&#x27;NoAvailableSpotException&#x27;);
+  spot.occupy(vehicle);
+  const ticket: Ticket = Ticket.create(vehicle, spot, now());
+  return ticket;
+}
+
+function unpark(ticket: Ticket): Fee {
+  if (ticket.status !== ACTIVE) throw new Error(&#x27;InvalidTicketException&#x27;);
+  ticket.close(now());
+  const fee: Fee = feeStrategy.calculate(ticket);
+  ticket.spot.vacate();
+  return fee;
+}</code></pre>
+</div>
 
 <h3 id="p1-r">R. End-to-End Use Case</h3>
 <pre>

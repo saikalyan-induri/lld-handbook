@@ -234,7 +234,8 @@
 <p><strong>What stays stable:</strong> the <code>ATMController</code>'s session API. New denominations and transaction types are pure additions.</p>
 
 <h3 id="p14-p">P. API / Interface Design</h3>
-<pre><code>interface ATMState {
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>interface ATMState {
   void insertCard(Card card);
   void enterPin(String pin);
   void selectTransaction(Transaction t);
@@ -254,10 +255,96 @@ class BankServer {
   DebitResult debit(Account account, int amount);   // must be atomic at the bank
   void credit(Account account, int amount);
 }</code></pre>
+<pre data-lang="java" hidden><code class="language-java">interface ATMState {
+  void insertCard(Card card);
+  void enterPin(String pin);
+  void selectTransaction(Transaction t);
+}
+
+interface Transaction {
+  TransactionResult execute(Account account, BankServer bank);
+}
+
+class ATM {
+  void dispense(int amount);            // delegates to CashDispenser chain
+  void setState(ATMState state);
+}
+
+class BankServer {
+  AuthResult authenticate(Card card, String pin);
+  DebitResult debit(Account account, int amount);   // must be atomic at the bank
+  void credit(Account account, int amount);
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class ATMState {
+public:
+  virtual void insertCard(std::shared_ptr&lt;Card&gt; card) = 0;
+  virtual void enterPin(const std::string&amp; pin) = 0;
+  virtual void selectTransaction(std::shared_ptr&lt;Transaction&gt; t) = 0;
+};
+
+class Transaction {
+public:
+  virtual TransactionResult execute(Account&amp; account, BankServer&amp; bank) = 0;
+};
+
+class ATM {
+public:
+  void dispense(int amount);            // delegates to CashDispenser chain
+  void setState(std::shared_ptr&lt;ATMState&gt; state);
+};
+
+class BankServer {
+public:
+  AuthResult authenticate(const Card&amp; card, const std::string&amp; pin);
+  DebitResult debit(Account&amp; account, int amount);   // must be atomic at the bank
+  void credit(Account&amp; account, int amount);
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class ATMState {
+  insertCard(card) { throw new Error(&#x27;not implemented&#x27;); }
+  enterPin(pin) { throw new Error(&#x27;not implemented&#x27;); }
+  selectTransaction(t) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class Transaction {
+  execute(account, bank) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class ATM {
+  dispense(amount) {}            // delegates to CashDispenser chain
+  setState(state) {}
+}
+
+class BankServer {
+  authenticate(card, pin) {}
+  debit(account, amount) {}   // must be atomic at the bank
+  credit(account, amount) {}
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">interface ATMState {
+  insertCard(card: Card): void;
+  enterPin(pin: string): void;
+  selectTransaction(t: Transaction): void;
+}
+
+interface Transaction {
+  execute(account: Account, bank: BankServer): TransactionResult;
+}
+
+class ATM {
+  dispense(amount: number): void {}            // delegates to CashDispenser chain
+  setState(state: ATMState): void {}
+}
+
+class BankServer {
+  authenticate(card: Card, pin: string): AuthResult {}
+  debit(account: Account, amount: number): DebitResult {}   // must be atomic at the bank
+  credit(account: Account, amount: number): void {}
+}</code></pre>
+</div>
 <p><strong>Ownership/validation notes:</strong> <code>WithdrawTransaction.execute()</code> calls <code>bank.debit()</code> <em>first</em> and only calls <code>atm.dispense()</code> if the debit succeeds — never the reverse order, so a dispensing failure after a successful debit is a recoverable "credit back" case, while a dispensing-before-debit order would risk giving out cash with no guaranteed recovery if the debit then failed.</p>
 
 <h3 id="p14-q">Q. Pseudocode — Critical Logic</h3>
-<pre><code>WithdrawTransaction.execute(account, bank):
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>WithdrawTransaction.execute(account, bank):
   result = bank.debit(account, amount)     // atomic at the bank: check-and-deduct as one op
   if not result.success: return INSUFFICIENT_FUNDS
   try:
@@ -273,6 +360,83 @@ DenominationHandler.handle(amount):
   remainder = amount - (count * this.value)
   if remainder > 0 and next != null: next.handle(remainder)
   else if remainder > 0: throw InsufficientCashException</code></pre>
+<pre data-lang="java" hidden><code class="language-java">TransactionResult execute(Account account, BankServer bank) {
+  DebitResult result = bank.debit(account, amount);     // atomic at the bank: check-and-deduct as one op
+  if (!result.isSuccess()) return TransactionResult.INSUFFICIENT_FUNDS;
+  try {
+    atm.dispense(amount);
+  } catch (DispenseFailureException e) {
+    bank.credit(account, amount);           // compensating action — never leave a debit stranded
+    return TransactionResult.DISPENSE_FAILED;
+  }
+  return TransactionResult.SUCCESS;
+}
+
+void handle(int amount) throws InsufficientCashException {
+  int count = Math.min(amount / this.value, this.availableCount);
+  dispense(count, this.value);
+  int remainder = amount - (count * this.value);
+  if (remainder &gt; 0 &amp;&amp; next != null) next.handle(remainder);
+  else if (remainder &gt; 0) throw new InsufficientCashException();
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">TransactionResult WithdrawTransaction::execute(Account&amp; account, BankServer&amp; bank) {
+  DebitResult result = bank.debit(account, amount);     // atomic at the bank: check-and-deduct as one op
+  if (!result.success) return TransactionResult::INSUFFICIENT_FUNDS;
+  try {
+    atm.dispense(amount);
+  } catch (const DispenseFailure&amp;) {
+    bank.credit(account, amount);           // compensating action — never leave a debit stranded
+    return TransactionResult::DISPENSE_FAILED;
+  }
+  return TransactionResult::SUCCESS;
+}
+
+void DenominationHandler::handle(int amount) {
+  int count = std::min(amount / this-&gt;value, this-&gt;availableCount);
+  dispense(count, this-&gt;value);
+  int remainder = amount - (count * this-&gt;value);
+  if (remainder &gt; 0 &amp;&amp; next != nullptr) next-&gt;handle(remainder);
+  else if (remainder &gt; 0) throw InsufficientCashException();   // throws InsufficientCashException
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">execute(account, bank) {
+  const result = bank.debit(account, this.amount);     // atomic at the bank: check-and-deduct as one op
+  if (!result.success) return TransactionResult.INSUFFICIENT_FUNDS;
+  try {
+    atm.dispense(this.amount);
+  } catch (e) {
+    bank.credit(account, this.amount);           // compensating action — never leave a debit stranded
+    return TransactionResult.DISPENSE_FAILED;
+  }
+  return TransactionResult.SUCCESS;
+}
+
+handle(amount) {
+  const count = Math.min(Math.floor(amount / this.value), this.availableCount);
+  dispense(count, this.value);
+  const remainder = amount - (count * this.value);
+  if (remainder &gt; 0 &amp;&amp; this.next != null) this.next.handle(remainder);
+  else if (remainder &gt; 0) throw new Error(&#x27;InsufficientCashException&#x27;);
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">execute(account: Account, bank: BankServer): TransactionResult {
+  const result = bank.debit(account, this.amount);     // atomic at the bank: check-and-deduct as one op
+  if (!result.success) return TransactionResult.INSUFFICIENT_FUNDS;
+  try {
+    atm.dispense(this.amount);
+  } catch (e) {
+    bank.credit(account, this.amount);           // compensating action — never leave a debit stranded
+    return TransactionResult.DISPENSE_FAILED;
+  }
+  return TransactionResult.SUCCESS;
+}
+
+handle(amount: number): void {
+  const count = Math.min(Math.floor(amount / this.value), this.availableCount);
+  dispense(count, this.value);
+  const remainder = amount - (count * this.value);
+  if (remainder &gt; 0 &amp;&amp; this.next != null) this.next.handle(remainder);
+  else if (remainder &gt; 0) throw new Error(&#x27;InsufficientCashException&#x27;);
+}</code></pre>
+</div>
 
 <h3 id="p14-r">R. End-to-End Use Case</h3>
 <pre>

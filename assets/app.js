@@ -49,10 +49,64 @@ function initJumpSelect() {
   });
 }
 
+var LANG_TAB_LABELS = {
+  pseudo: "Pseudocode", java: "Java", cpp: "C++",
+  javascript: "JavaScript", typescript: "TypeScript"
+};
+
 function initCodeChrome() {
-  // Wrap every <pre> in a small read-only "editor window": a title bar
-  // (traffic-light dots + Copy button) on top of the existing dark <pre>.
-  // No execution affordance -- this is display-only chrome.
+  // Wrap every <pre> (or every <pre> group inside a .code-tabs container)
+  // in a small read-only "editor window": a title bar (traffic-light dots
+  // + optional language tabs + Copy button) on top of the existing dark
+  // <pre>. No execution affordance -- this is display-only chrome.
+  document.querySelectorAll(".code-tabs").forEach(function (group) {
+    var pres = Array.prototype.slice.call(group.querySelectorAll("pre"));
+    if (!pres.length) return;
+    var wrapper = document.createElement("div");
+    wrapper.className = "code-window";
+
+    var bar = document.createElement("div");
+    bar.className = "code-window-bar";
+    bar.innerHTML =
+      '<span class="dot dot-red"></span><span class="dot dot-yellow"></span><span class="dot dot-green"></span>';
+
+    var tabs = document.createElement("div");
+    tabs.className = "code-tab-bar";
+    pres.forEach(function (pre) {
+      var lang = pre.getAttribute("data-lang");
+      var tabBtn = document.createElement("button");
+      tabBtn.className = "code-tab-btn" + (pre.hidden ? "" : " active");
+      tabBtn.textContent = LANG_TAB_LABELS[lang] || lang;
+      tabBtn.addEventListener("click", function () {
+        pres.forEach(function (p) { p.hidden = true; });
+        pre.hidden = false;
+        tabs.querySelectorAll(".code-tab-btn").forEach(function (b) { b.classList.remove("active"); });
+        tabBtn.classList.add("active");
+      });
+      tabs.appendChild(tabBtn);
+    });
+    bar.appendChild(tabs);
+
+    var btn = document.createElement("button");
+    btn.className = "copy-btn";
+    btn.textContent = "Copy";
+    btn.addEventListener("click", function () {
+      var visible = pres.filter(function (p) { return !p.hidden; })[0] || pres[0];
+      var codeEl = visible.querySelector("code");
+      var text = (codeEl || visible).innerText;
+      navigator.clipboard.writeText(text).then(function () {
+        btn.textContent = "Copied!";
+        setTimeout(function () { btn.textContent = "Copy"; }, 1500);
+      });
+    });
+    bar.appendChild(btn);
+
+    group.parentNode.insertBefore(wrapper, group);
+    wrapper.appendChild(bar);
+    pres.forEach(function (pre) { wrapper.appendChild(pre); });
+    group.parentNode.removeChild(group);
+  });
+
   document.querySelectorAll("pre").forEach(function (pre) {
     if (pre.parentElement.classList.contains("code-window")) return;
     var wrapper = document.createElement("div");
