@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('lld-theme') || 'light');</script>
+<title>15. Library Management System — LLD Handbook</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+</head>
+<body>
+<button id="menu-toggle" aria-label="Toggle menu">&#9776;</button>
+<nav id="sidebar">
+  <div class="sidebar-top">
+    <a class="brand" href="index.html">LLD Handbook</a>
+    <button id="theme-toggle" aria-label="Toggle dark mode">&#127769;</button>
+  </div>
+  <div class="search-wrap">
+    <input id="search-box" type="text" placeholder="Search problems &amp; sections...">
+    <div id="search-results"></div>
+  </div>
+  <ul class="nav-list">
+    <li><a href="index.html" data-page="index.html">Home</a></li>
+    <li><a href="p1.html" data-page="p1.html">1. Parking Lot</a></li>
+    <li><a href="p2.html" data-page="p2.html">2. LRU Cache</a></li>
+    <li><a href="p3.html" data-page="p3.html">3. Rate Limiter</a></li>
+    <li><a href="p4.html" data-page="p4.html">4. Splitwise (Expense Sharing)</a></li>
+    <li><a href="p5.html" data-page="p5.html">5. Ride-Sharing Service (Uber/Lyft)</a></li>
+    <li><a href="p6.html" data-page="p6.html">6. Logging Framework</a></li>
+    <li><a href="p7.html" data-page="p7.html">7. Notification System</a></li>
+    <li><a href="p8.html" data-page="p8.html">8. Coffee Vending Machine</a></li>
+    <li><a href="p9.html" data-page="p9.html">9. File System</a></li>
+    <li><a href="p10.html" data-page="p10.html">10. Pub-Sub / Message Queue</a></li>
+    <li><a href="p11.html" data-page="p11.html">11. Elevator System</a></li>
+    <li><a href="p12.html" data-page="p12.html">12. Tic-Tac-Toe / Board Game Engine</a></li>
+    <li><a href="p13.html" data-page="p13.html">13. Chess Game</a></li>
+    <li><a href="p14.html" data-page="p14.html">14. ATM Machine</a></li>
+    <li><a href="p15.html" data-page="p15.html">15. Library Management System</a></li>
+    <li><a href="p16.html" data-page="p16.html">16. Hotel Reservation System</a></li>
+    <li><a href="p17.html" data-page="p17.html">17. Movie Ticket Booking System</a></li>
+    <li><a href="p18.html" data-page="p18.html">18. Restaurant / Food Delivery System</a></li>
+    <li><a href="p19.html" data-page="p19.html">19. E-commerce Shopping Cart &amp; Checkout</a></li>
+    <li><a href="p20.html" data-page="p20.html">20. Chat Application (WhatsApp-style)</a></li>
+    <li><a href="synthesis.html" data-page="synthesis.html">Cross-Problem Synthesis</a></li>
+  </ul>
+</nav>
+<main id="content">
+<h1 class="problem-title">15. Library Management System <span class="badge">Intermediate</span></h1>
+
+<div class="section-toc">
+<a href="#p15-a">A. Interview Prompt</a><a href="#p15-b">B. Difficulty</a><a href="#p15-c">C. What It Tests</a>
+<a href="#p15-d">D. Requirements</a><a href="#p15-e">E. Clarifying Questions</a><a href="#p15-f">F. Assumptions</a>
+<a href="#p15-g">G. Actors</a><a href="#p15-h">H. Core Entities</a><a href="#p15-i">I. Relationships</a>
+<a href="#p15-j">J. Class Diagram</a><a href="#p15-k">K. Responsibility Map</a><a href="#p15-l">L. SOLID Analysis</a>
+<a href="#p15-m">M. Design Patterns</a><a href="#p15-n">N. What Changes?</a><a href="#p15-o">O. Design Evolution</a>
+<a href="#p15-p">P. API Design</a><a href="#p15-q">Q. Pseudocode</a><a href="#p15-r">R. End-to-End Flow</a>
+<a href="#p15-s">S. Data Structures</a><a href="#p15-t">T. Complexity</a><a href="#p15-u">U. Testing Strategy</a>
+<a href="#p15-v">V. Interviewer Follow-Ups</a><a href="#p15-w">W. Concurrency</a><a href="#p15-x">X. Persistence</a>
+<a href="#p15-y">Y. Scaling Boundary</a><a href="#p15-z">Z. Failure Scenarios</a><a href="#p15-aa">AA. Bad Designs</a>
+<a href="#p15-ab">AB. Trade-Offs</a><a href="#p15-ac">AC. Interviewer Evaluation</a><a href="#p15-ad">AD. Simulation</a>
+<a href="#p15-ae">AE. Source Comparison</a><a href="#p15-af">AF. Cheat Sheet</a>
+</div>
+
+<h3 id="p15-a">A. Realistic Interview Prompt</h3>
+<div class="prompt">"Design a library management system. Members can search the catalog, check out and return items, place holds on items that are currently unavailable, and are charged a fine for overdue returns."</div>
+
+<h3 id="p15-b">B. Difficulty</h3>
+<p><strong>Intermediate.</strong> Every individual operation is simple; the risk is entirely in ending up with one <code>Library</code> god-class handling catalog search, checkout, holds, and fines all inline, instead of a clean split along genuinely different concerns.</p>
+
+<h3 id="p15-c">C. What This Problem Tests</h3>
+<ul>
+<li>The Book/BookItem distinction — catalog metadata (a title) versus a specific lendable physical copy (a barcode with its own status) — and why collapsing them causes real bugs</li>
+<li>Fine calculation as a Strategy that varies by member type and item category, not a hardcoded formula</li>
+<li>Observer for hold notifications — decoupling "a copy became available" from "who is waiting for it"</li>
+<li>The same check-then-act race, now on "checking out the last available copy of a title"</li>
+</ul>
+
+<h3 id="p15-d">D. Requirements</h3>
+<p><strong>Functional</strong></p>
+<ol>
+<li>Search the catalog by title, author, or category</li>
+<li>Check out and return an item, tracking due dates</li>
+<li>Place a hold on an item with zero available copies; notify the next member in line when a copy is returned</li>
+<li>Calculate an overdue fine based on member type and item category</li>
+<li>Support multiple physical copies of the same title</li>
+</ol>
+<p><strong>Non-Functional</strong></p>
+<ul>
+<li>Two members checking out what they each believe is "the last available copy" of a title must not both succeed</li>
+<li>Adding a new item category (e.g. DVDs alongside books) must not require changes to checkout/return/hold logic</li>
+</ul>
+
+<h3 id="p15-e">E. Clarifying Questions</h3>
+<table>
+<tr><th>#</th><th>Question</th><th>Why It Matters</th><th>Design Decision Affected</th></tr>
+<tr><td>1</td><td>Does the fine formula vary by member type (student/faculty/regular) and/or item category?</td><td>Determines whether fine calculation needs to be a Strategy or can be one constant rate</td><td>Design of <code>FineStrategy</code></td></tr>
+<tr><td>2</td><td>How many physical copies can one title have, and are they distinguishable (different condition/location)?</td><td>Confirms the Book/BookItem split is necessary rather than one merged entity</td><td>Presence of <code>BookItem</code> as distinct from <code>Book</code></td></tr>
+<tr><td>3</td><td>Are holds served strictly FIFO, or can priority (e.g. faculty) jump the queue?</td><td>Affects the hold-queue data structure and notification order</td><td>Design of <code>HoldQueue</code></td></tr>
+<tr><td>4</td><td>Should overdue items eventually be treated as lost, with a replacement charge?</td><td>Adds a lifecycle state beyond simple checked-out/returned</td><td>Scope of <code>BookItem</code> status enum</td></tr>
+</table>
+
+<h3 id="p15-f">F. Assumptions</h3>
+<ul>
+<li><strong>Confirmed:</strong> catalog search, checkout/return, holds with notification, member-type-and-category-aware fines, multiple copies per title.</li>
+<li><strong>Assumption:</strong> holds are served strictly FIFO per title unless asked otherwise.</li>
+<li><strong>Assumption:</strong> item categories beyond books (DVDs, magazines) are in scope structurally, via a small type hierarchy, even if books are the primary worked example.</li>
+</ul>
+
+<h3 id="p15-g">G. Actors</h3>
+<table>
+<tr><th>Actor</th><th>Responsibility</th></tr>
+<tr><td>Member</td><td>Searches, checks out, returns, places holds</td></tr>
+<tr><td>Librarian</td><td>Manages catalog entries, resolves lost/damaged items</td></tr>
+<tr><td>Library (facade)</td><td>Top-level API coordinating catalog, checkout, and holds</td></tr>
+</table>
+
+<h3 id="p15-h">H. Core Domain Entities</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Key Attributes</th><th>Key Methods</th><th>Does NOT Handle</th></tr>
+<tr><td><code>Book</code> (catalog metadata)</td><td>Title-level information shared by every physical copy</td><td>title, author, ISBN, category</td><td>—</td><td>Anything about a specific copy's status or location</td></tr>
+<tr><td><code>BookItem</code> (physical copy)</td><td>One lendable copy and its own lifecycle status</td><td>barcode, status, dueDate</td><td><code>checkout()</code>, <code>returnItem()</code></td><td>Title-level metadata — delegates to its <code>Book</code> reference</td></tr>
+<tr><td><code>Member</code></td><td>A patron and their active loans/holds</td><td>id, membershipType</td><td>—</td><td>Fine calculation logic itself</td></tr>
+<tr><td><code>Loan</code></td><td>One active checkout record</td><td>member, bookItem, dueDate</td><td><code>isOverdue()</code></td><td>—</td></tr>
+<tr><td><code>Hold</code></td><td>One member's place in a title's wait queue</td><td>member, book, timestamp</td><td>—</td><td>—</td></tr>
+<tr><td><code>HoldQueue</code></td><td>FIFO queue of holds per title, and the Observer subject for availability</td><td>—</td><td><code>addHold()</code>, <code>notifyNext(bookItem)</code></td><td>Deciding checkout eligibility itself</td></tr>
+<tr><td><code>FineStrategy</code> (interface)</td><td>One fine-calculation rule</td><td>—</td><td><code>calculateFine(loan)</code></td><td>—</td></tr>
+<tr><td><code>Catalog</code></td><td>Search index over <code>Book</code> entries</td><td>—</td><td><code>search(query)</code></td><td>Copy-level availability — a search result still needs a live <code>BookItem</code> lookup</td></tr>
+<tr><td><code>Library</code> (facade)</td><td>Top-level orchestration</td><td>catalog, holdQueues</td><td><code>checkout()</code>, <code>returnItem()</code>, <code>placeHold()</code></td><td>—</td></tr>
+</table>
+
+<h3 id="p15-i">I. Class Relationships</h3>
+<ul>
+<li><strong>Book vs. BookItem is the central modeling decision:</strong> a title's metadata (author, ISBN) is shared and immutable across every physical copy, while a copy's status (available, checked out, on hold, lost) is per-instance and constantly changing. Merging them into one entity is the single most common mistake in this problem — it either duplicates title metadata across every copy row or makes "how many copies of this title exist" an awkward query instead of a natural <code>List&lt;BookItem&gt;</code>.</li>
+<li><strong>Observer for holds:</strong> a <code>HoldQueue</code> is the subject; when a <code>BookItem.returnItem()</code> transitions a copy back to available, it notifies the <code>HoldQueue</code> for that title, which pops the next <code>Hold</code> in FIFO order and notifies that member — the same decouple-the-trigger-from-the-reaction shape as Ride-Sharing's and Notification System's hooks, at a comparably small scope (not the foundational architecture Pub-Sub generalized it into, just another instance of the hook use).</li>
+<li><strong>Strategy for fines:</strong> a fine depends on both member type and item category, and libraries change these rates far more often than they change checkout logic — isolating this behind <code>FineStrategy.calculateFine(loan)</code> means a rate change is a configuration/strategy swap, not a code change to <code>Loan</code> or <code>Library</code>.</li>
+<li><strong>Factory for catalog item types:</strong> constructing the right <code>Book</code>/<code>DVD</code>/<code>Magazine</code> subtype (each with its own default loan duration) from raw catalog-ingest data is a small Factory, keeping <code>Catalog</code> itself ignorant of which concrete type it's holding.</li>
+</ul>
+
+<h3 id="p15-j">J. Class Diagram</h3>
+<div class="diagram-card">
+<svg id="diagram-p15" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="classDiagram" style="max-width: 624.766px; background-color: white;" viewBox="4 4 624.765625 606" role="graphics-document document" aria-roledescription="classDiagram"><style>#diagram-p15{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;fill:#1a1f26;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#diagram-p15 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#diagram-p15 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#diagram-p15 .error-icon{fill:#fff7e6;}#diagram-p15 .error-text{fill:#000819;stroke:#000819;}#diagram-p15 .edge-thickness-normal{stroke-width:1px;}#diagram-p15 .edge-thickness-thick{stroke-width:3.5px;}#diagram-p15 .edge-pattern-solid{stroke-dasharray:0;}#diagram-p15 .edge-thickness-invisible{stroke-width:0;fill:none;}#diagram-p15 .edge-pattern-dashed{stroke-dasharray:3;}#diagram-p15 .edge-pattern-dotted{stroke-dasharray:2;}#diagram-p15 .marker{fill:#334155;stroke:#334155;}#diagram-p15 .marker.cross{stroke:#334155;}#diagram-p15 svg{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;}#diagram-p15 p{margin:0;}#diagram-p15 g.classGroup text{fill:#2563eb;stroke:none;font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:10px;}#diagram-p15 g.classGroup text .title{font-weight:bolder;}#diagram-p15 .cluster-label text{fill:#000819;}#diagram-p15 .cluster-label span{color:#000819;}#diagram-p15 .cluster-label span p{background-color:transparent;}#diagram-p15 .cluster rect{fill:#f4f6f8;stroke:#d8dee5;stroke-width:1px;}#diagram-p15 .cluster text{fill:#000819;}#diagram-p15 .cluster span{color:#000819;}#diagram-p15 .nodeLabel,#diagram-p15 .edgeLabel{color:#0f2540;}#diagram-p15 .noteLabel .nodeLabel,#diagram-p15 .noteLabel .edgeLabel{color:#333;}#diagram-p15 .edgeLabel .label rect{fill:#eef6ff;}#diagram-p15 .label text{fill:#0f2540;}#diagram-p15 .labelBkg{background:#eef6ff;}#diagram-p15 .edgeLabel .label span{background:#eef6ff;}#diagram-p15 .classTitle{font-weight:bolder;}#diagram-p15 .node rect,#diagram-p15 .node circle,#diagram-p15 .node ellipse,#diagram-p15 .node polygon,#diagram-p15 .node path{fill:#eef6ff;stroke:#2563eb;stroke-width:1;}#diagram-p15 .divider{stroke:#2563eb;stroke-width:1;}#diagram-p15 g.clickable{cursor:pointer;}#diagram-p15 g.classGroup rect{fill:#eef6ff;stroke:#2563eb;}#diagram-p15 g.classGroup line{stroke:#2563eb;stroke-width:1;}#diagram-p15 .classLabel .box{stroke:none;stroke-width:0;fill:#eef6ff;opacity:0.5;}#diagram-p15 .classLabel .label{fill:#2563eb;font-size:10px;}#diagram-p15 .relation{stroke:#334155;stroke-width:1;fill:none;}#diagram-p15 .dashed-line{stroke-dasharray:3;}#diagram-p15 .dotted-line{stroke-dasharray:1 2;}#diagram-p15 [id$="-compositionStart"],#diagram-p15 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p15 [id$="-compositionEnd"],#diagram-p15 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p15 [id$="-dependencyStart"],#diagram-p15 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p15 [id$="-dependencyEnd"],#diagram-p15 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p15 [id$="-extensionStart"],#diagram-p15 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p15 [id$="-extensionEnd"],#diagram-p15 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p15 [id$="-aggregationStart"],#diagram-p15 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p15 [id$="-aggregationEnd"],#diagram-p15 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p15 [id$="-lollipopStart"],#diagram-p15 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p15 [id$="-lollipopEnd"],#diagram-p15 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p15 .edgeTerminals{font-size:11px;line-height:initial;}#diagram-p15 .classTitleText{text-anchor:middle;font-size:18px;fill:#1a1f26;}#diagram-p15 .edgeLabel[data-look="neo"]{background-color:#ffffff;text-align:center;}#diagram-p15 .edgeLabel[data-look="neo"] p{background-color:#ffffff;}#diagram-p15 .edgeLabel[data-look="neo"] rect{opacity:0.5;background-color:#ffffff;fill:#ffffff;}#diagram-p15 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#diagram-p15 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#diagram-p15 .node .neo-node{stroke:#2563eb;}#diagram-p15 [data-look="neo"].node rect,#diagram-p15 [data-look="neo"].cluster rect,#diagram-p15 [data-look="neo"].node polygon{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p15 [data-look="neo"].swimlane.cluster rect{filter:none;}#diagram-p15 [data-look="neo"].node path{stroke:#2563eb;stroke-width:1px;}#diagram-p15 [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p15 [data-look="neo"].node .neo-line path{stroke:#2563eb;filter:none;}#diagram-p15 [data-look="neo"].node circle{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p15 [data-look="neo"].node circle .state-start{fill:#000000;}#diagram-p15 [data-look="neo"].icon-shape .icon{fill:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p15 [data-look="neo"].icon-shape .icon-neo path{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p15 .classGroup text{font-size:14px!important;}#diagram-p15 .classGroup .title{font-size:16px!important;font-weight:700;}#diagram-p15 .classLabel .label{font-size:14px!important;}#diagram-p15 .edgeLabel,#diagram-p15 .edgeLabel .label{font-size:13px!important;}#diagram-p15 .relationshipLabelBox{font-size:13px!important;}#diagram-p15 .nodeLabel,#diagram-p15 .cluster-label{font-size:14px!important;}#diagram-p15 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><defs><marker id="diagram-p15_classDiagram-aggregationStart" class="marker aggregation classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p15_classDiagram-aggregationEnd" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p15_classDiagram-aggregationStart-margin" class="marker aggregation classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p15_classDiagram-aggregationEnd-margin" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p15_classDiagram-extensionStart" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,7 L18,13 V 1 Z"/></marker></defs><defs><marker id="diagram-p15_classDiagram-extensionEnd" class="marker extension classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,1 V 13 L18,7 Z"/></marker></defs><marker id="diagram-p15_classDiagram-extensionStart-margin" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,7 18,13 18,1" style="stroke-width: 2; stroke-dasharray: 0;"/></marker><defs><marker id="diagram-p15_classDiagram-extensionEnd-margin" class="marker extension classDiagram" refX="9" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,1 10,13 18,7" style="stroke-width: 2; stroke-dasharray: 0;"/></marker></defs><defs><marker id="diagram-p15_classDiagram-compositionStart" class="marker composition classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p15_classDiagram-compositionEnd" class="marker composition classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p15_classDiagram-compositionStart-margin" class="marker composition classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path viewBox="0 0 15 15" d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p15_classDiagram-compositionEnd-margin" class="marker composition classDiagram" refX="3.5" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p15_classDiagram-dependencyStart" class="marker dependency classDiagram" refX="6" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p15_classDiagram-dependencyEnd" class="marker dependency classDiagram" refX="13" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p15_classDiagram-dependencyStart-margin" class="marker dependency classDiagram" refX="4" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p15_classDiagram-dependencyEnd-margin" class="marker dependency classDiagram" refX="16" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p15_classDiagram-lollipopStart" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p15_classDiagram-lollipopEnd" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p15_classDiagram-lollipopStart-margin" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><defs><marker id="diagram-p15_classDiagram-lollipopEnd-margin" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><g class="root"><g class="clusters"/><g class="edges edgePaths"><path d="M80.60546875,189L80.60546875,223" id="diagram-p15-id_Book_BookItem_1" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 34 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Book_BookItem_1" data-points="W3sieCI6ODAuNjA1NDY4NzUsInkiOjE4OX0seyJ4Ijo4MC42MDU0Njg3NSwieSI6MjI5fV0=" data-look="neo" marker-end="url(#diagram-p15_classDiagram-dependencyEnd-margin)"/><path d="M80.60546875,427L80.60546875,461" id="diagram-p15-id_BookItem_Loan_2" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 34 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_BookItem_Loan_2" data-points="W3sieCI6ODAuNjA1NDY4NzUsInkiOjQyN30seyJ4Ijo4MC42MDU0Njg3NSwieSI6NDY3fV0=" data-look="neo" marker-end="url(#diagram-p15_classDiagram-dependencyEnd-margin)"/><path d="M288.55078125,398.5L288.55078125,461" id="diagram-p15-id_HoldQueue_Hold_3" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 62.5 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_HoldQueue_Hold_3" data-points="W3sieCI6Mjg4LjU1MDc4MTI1LCJ5IjozOTguNX0seyJ4IjoyODguNTUwNzgxMjUsInkiOjQ2N31d" data-look="neo" marker-end="url(#diagram-p15_classDiagram-dependencyEnd-margin)"/><path d="M388.2649739583333,189L388.2649739583333,201.92893218813452Q388.2649739583333,209 381.19390614646784,209L295.6218490618655,209Q288.55078125,209 288.55078125,216.07106781186548L288.55078125,251.5" id="diagram-p15-id_Library_HoldQueue_4" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 156.88592529296875 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Library_HoldQueue_4" data-points="W3sieCI6Mzg4LjI2NDk3Mzk1ODMzMzMsInkiOjE4OX0seyJ4IjozODguMjY0OTczOTU4MzMzMywieSI6MjA5fSx7IngiOjI4OC41NTA3ODEyNSwieSI6MjA5fSx7IngiOjI4OC41NTA3ODEyNSwieSI6MjU3LjV9XQ==" data-look="neo" marker-end="url(#diagram-p15_classDiagram-dependencyEnd-margin)"/><path d="M424.61393229166663,189L424.61393229166663,201.92893218813452Q424.61393229166663,209 431.6850001035321,209L517.328125,209Q524.328125,209 524.328125,216L524.328125,223" id="diagram-p15-id_Library_FineStrategy_5" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 128.4127197265625 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Library_FineStrategy_5" data-points="W3sieCI6NDI0LjYxMzkzMjI5MTY2NjYzLCJ5IjoxODl9LHsieCI6NDI0LjYxMzkzMjI5MTY2NjYzLCJ5IjoyMDl9LHsieCI6NTI0LjMyODEyNSwieSI6MjA5fSx7IngiOjUyNC4zMjgxMjUsInkiOjIyOX1d" data-look="neo" marker-end="url(#diagram-p15_classDiagram-dependencyEnd-margin)"/></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="id_Book_BookItem_1" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeTerminals" transform="translate(65.60546937500001, 206.5000005357143)"><g class="inner" transform="translate(-3.6171875, -9.75)"><foreignObject width="7.234375" height="19.5" style="width: 9px; height: 12px;"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="edgeLabel"><p>1</p></span></div></foreignObject></g></g><g class="edgeTerminals" transform="translate(90.60546937499998, 206.5000005357143)"><g class="inner" transform="translate(-2.53125, -9.75)"/><foreignObject width="5.0625" height="19.5" style="width: 9px; height: 12px;"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="edgeLabel"><p>*</p></span></div></foreignObject></g><g class="edgeLabel"><g class="label" data-id="id_HoldQueue_Hold_3" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeTerminals" transform="translate(298.550780625, 444.4999994642857)"><g class="inner" transform="translate(-2.53125, -9.75)"/><foreignObject width="5.0625" height="19.5" style="width: 9px; height: 12px;"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="edgeLabel"><p>*</p></span></div></foreignObject></g></g><g class="nodes"><g class="node default" id="diagram-p15-classId-Book-0" data-look="neo" transform="translate(80.60546875, 100.5)"><g class="basic label-container outer-path"><path d="M-47.6015625 -88.5 L47.6015625 -88.5 L47.6015625 88.5 L-47.6015625 88.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-47.6015625 -88.5 C-12.106099191827042 -88.5, 23.389364116345916 -88.5, 47.6015625 -88.5 M-47.6015625 -88.5 C-19.25407735786869 -88.5, 9.093407784262617 -88.5, 47.6015625 -88.5 M47.6015625 -88.5 C47.6015625 -19.612312444754167, 47.6015625 49.275375110491666, 47.6015625 88.5 M47.6015625 -88.5 C47.6015625 -41.02203528544012, 47.6015625 6.455929429119763, 47.6015625 88.5 M47.6015625 88.5 C10.686603146145657 88.5, -26.228356207708686 88.5, -47.6015625 88.5 M47.6015625 88.5 C27.334163746607512 88.5, 7.066764993215024 88.5, -47.6015625 88.5 M-47.6015625 88.5 C-47.6015625 37.98659900339146, -47.6015625 -12.526801993217077, -47.6015625 -88.5 M-47.6015625 88.5 C-47.6015625 51.74359791371536, -47.6015625 14.987195827430725, -47.6015625 -88.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -64.5)"/><g class="label-group text" transform="translate(-17.5, -64.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="35" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 85px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Book</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-35.6015625, -19.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="21.796875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 75px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>title</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="39.703125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 91px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>author</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="25.6875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 77px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>isbn</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,52.5)"><foreignObject width="53.703125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 105px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>category</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-35.6015625, 88.5)"/><g class="divider neo-line" style=""><path d="M-47.6015625 -43.5 C-15.36317397864697 -43.49966137258077, 16.87521454270606 -43.49932274516154, 47.6015625 -43.499 M-47.6015625 -43.5 C-19.579879373098088 -43.49970566425076, 8.441803753803825 -43.49941132850152, 47.6015625 -43.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-47.6015625 64.5 C-16.10907436999379 64.50033079258827, 15.383413760012417 64.50066158517654, 47.6015625 64.501 M-47.6015625 64.5 C-21.22956278708021 64.50027700771075, 5.142436925839583 64.50055401542151, 47.6015625 64.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p15-classId-BookItem-1" data-look="neo" transform="translate(80.60546875, 328)"><g class="basic label-container outer-path"><path d="M-68.60546875 -99 L68.60546875 -99 L68.60546875 99 L-68.60546875 99" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-68.60546875 -99 C-40.83235865497387 -99, -13.05924855994774 -99, 68.60546875 -99 M-68.60546875 -99 C-31.12031800304004 -99, 6.364832743919919 -99, 68.60546875 -99 M68.60546875 -99 C68.60546875 -56.500098121941924, 68.60546875 -14.000196243883849, 68.60546875 99 M68.60546875 -99 C68.60546875 -29.38645322678606, 68.60546875 40.22709354642788, 68.60546875 99 M68.60546875 99 C35.79436921641396 99, 2.983269682827924 99, -68.60546875 99 M68.60546875 99 C16.881945194513605 99, -34.84157836097279 99, -68.60546875 99 M-68.60546875 99 C-68.60546875 27.960274593501353, -68.60546875 -43.079450812997294, -68.60546875 -99 M-68.60546875 99 C-68.60546875 55.96779403535531, -68.60546875 12.935588070710622, -68.60546875 -99" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -75)"/><g class="label-group text" transform="translate(-31.8984375, -75)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="63.796875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 114px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>BookItem</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-56.60546875, -30)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="50.59375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 101px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>barcode</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="37.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 86px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>status</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="52.9375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 103px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>dueDate</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-56.60546875, 57)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="73.546875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 132px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+checkout()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="81.3125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 142px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+returnItem()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-68.60546875 -54 C-33.206062162407896 -53.99974200739946, 2.1933444251842076 -53.99948401479893, 68.60546875 -53.999 M-68.60546875 -54 C-17.59484688641617 -53.999628232101664, 33.41577497716766 -53.99925646420332, 68.60546875 -53.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-68.60546875 33 C-36.886596657599355 33.00023116868575, -5.167724565198711 33.0004623373715, 68.60546875 33.001 M-68.60546875 33 C-15.123058377477918 33.000389782413464, 38.359351995044165 33.00077956482693, 68.60546875 33.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p15-classId-Loan-2" data-look="neo" transform="translate(80.60546875, 534.5)"><g class="basic label-container outer-path"><path d="M-61.01953125 -67.5 L61.01953125 -67.5 L61.01953125 67.5 L-61.01953125 67.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-61.01953125 -67.5 C-32.32623422934522 -67.5, -3.632937208690443 -67.5, 61.01953125 -67.5 M-61.01953125 -67.5 C-28.555299335514704 -67.5, 3.9089325789705924 -67.5, 61.01953125 -67.5 M61.01953125 -67.5 C61.01953125 -23.595292447282908, 61.01953125 20.309415105434184, 61.01953125 67.5 M61.01953125 -67.5 C61.01953125 -23.639867950594784, 61.01953125 20.220264098810432, 61.01953125 67.5 M61.01953125 67.5 C21.129684401267852 67.5, -18.760162447464296 67.5, -61.01953125 67.5 M61.01953125 67.5 C31.740443904400912 67.5, 2.4613565588018247 67.5, -61.01953125 67.5 M-61.01953125 67.5 C-61.01953125 32.31698751580012, -61.01953125 -2.8660249683997563, -61.01953125 -67.5 M-61.01953125 67.5 C-61.01953125 13.9471695302596, -61.01953125 -39.6056609394808, -61.01953125 -67.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -43.5)"/><g class="label-group text" transform="translate(-16.7265625, -43.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="33.453125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 83px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Loan</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-49.01953125, 1.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="52.9375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 103px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>dueDate</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-49.01953125, 46.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="81.3125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 140px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+isOverdue()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-61.01953125 -22.5 C-33.347601001862685 -22.499773253500305, -5.67567075372537 -22.499546507000606, 61.01953125 -22.499 M-61.01953125 -22.5 C-25.817489430834257 -22.49971155103048, 9.384552388331485 -22.499423102060963, 61.01953125 -22.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-61.01953125 22.5 C-22.511919178047933 22.500315535135087, 15.995692893904135 22.500631070270178, 61.01953125 22.501 M-61.01953125 22.5 C-15.256755610596066 22.50037498465411, 30.506020028807868 22.50074996930822, 61.01953125 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p15-classId-HoldQueue-3" data-look="neo" transform="translate(288.55078125, 328)"><g class="basic label-container outer-path"><path d="M-99.33984375 -70.5 L99.33984375 -70.5 L99.33984375 70.5 L-99.33984375 70.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-99.33984375 -70.5 C-27.028420601665403 -70.5, 45.283002546669195 -70.5, 99.33984375 -70.5 M-99.33984375 -70.5 C-43.63741472787703 -70.5, 12.065014294245941 -70.5, 99.33984375 -70.5 M99.33984375 -70.5 C99.33984375 -39.35932202960769, 99.33984375 -8.218644059215379, 99.33984375 70.5 M99.33984375 -70.5 C99.33984375 -37.95307100324576, 99.33984375 -5.406142006491521, 99.33984375 70.5 M99.33984375 70.5 C42.41879121208835 70.5, -14.502261325823298 70.5, -99.33984375 70.5 M99.33984375 70.5 C34.901278518784196 70.5, -29.53728671243161 70.5, -99.33984375 70.5 M-99.33984375 70.5 C-99.33984375 36.616939016723585, -99.33984375 2.7338780334471693, -99.33984375 -70.5 M-99.33984375 70.5 C-99.33984375 17.78399887698432, -99.33984375 -34.93200224603136, -99.33984375 -70.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -46.5)"/><g class="label-group text" transform="translate(-37.3359375, -46.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="74.671875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 124px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>HoldQueue</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-87.33984375, -1.5)"/><g class="methods-group text" transform="translate(-87.33984375, 28.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="69.65625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 129px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+addHold()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="137.34375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 205px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+notifyNext(bookItem)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-99.33984375 -25.5 C-34.79994956371624 -25.49967515605144, 29.73994462256752 -25.499350312102877, 99.33984375 -25.499 M-99.33984375 -25.5 C-53.28787138281666 -25.49976820996174, -7.235899015633322 -25.49953641992348, 99.33984375 -25.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-99.33984375 -1.5 C-41.85395897749314 -1.4997106604832338, 15.631925795013714 -1.4994213209664677, 99.33984375 -1.499 M-99.33984375 -1.5 C-20.662802111014898 -1.4996040005768634, 58.014239527970204 -1.4992080011537265, 99.33984375 -1.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p15-classId-FineStrategy-4" data-look="neo" transform="translate(524.328125, 299.5)"><g class="basic label-container outer-path"><path d="M-96.4375 -70.5 L96.4375 -70.5 L96.4375 70.5 L-96.4375 70.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-96.4375 -70.5 C-29.963809365568324 -70.5, 36.50988126886335 -70.5, 96.4375 -70.5 M-96.4375 -70.5 C-51.548151135584995 -70.5, -6.658802271169989 -70.5, 96.4375 -70.5 M96.4375 -70.5 C96.4375 -41.084985853298136, 96.4375 -11.669971706596279, 96.4375 70.5 M96.4375 -70.5 C96.4375 -24.199077319178606, 96.4375 22.101845361642788, 96.4375 70.5 M96.4375 70.5 C40.764200622792124 70.5, -14.909098754415751 70.5, -96.4375 70.5 M96.4375 70.5 C54.39538767187832 70.5, 12.353275343756636 70.5, -96.4375 70.5 M-96.4375 70.5 C-96.4375 20.868602652741608, -96.4375 -28.762794694516785, -96.4375 -70.5 M-96.4375 70.5 C-96.4375 29.091198146797097, -96.4375 -12.317603706405805, -96.4375 -70.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-34.640625, -46.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="69.28125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«interface»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-42.40625, -25.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="84.8125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 132px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>FineStrategy</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-84.4375, 19.5)"/><g class="methods-group text" transform="translate(-84.4375, 49.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="126.46875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 187px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+calculateFine(loan)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-96.4375 -4.5 C-45.888585198629386 -4.499737918782624, 4.660329602741228 -4.499475837565248, 96.4375 -4.499 M-96.4375 -4.5 C-40.01860181492306 -4.499707484649721, 16.40029637015388 -4.499414969299441, 96.4375 -4.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-96.4375 19.5 C-43.00096100812048 19.5002770526973, 10.435577983759046 19.500554105394603, 96.4375 19.501 M-96.4375 19.5 C-41.18553377220859 19.500286465152186, 14.066432455582813 19.500572930304372, 96.4375 19.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p15-classId-Library-5" data-look="neo" transform="translate(406.439453125, 108)"><g class="basic label-container outer-path"><path d="M-64.5234375 -81 L64.5234375 -81 L64.5234375 81 L-64.5234375 81" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-64.5234375 -81 C-28.742614427936587 -81, 7.038208644126826 -81, 64.5234375 -81 M-64.5234375 -81 C-27.962572717277425 -81, 8.59829206544515 -81, 64.5234375 -81 M64.5234375 -81 C64.5234375 -26.224198992763824, 64.5234375 28.55160201447235, 64.5234375 81 M64.5234375 -81 C64.5234375 -36.216212392677946, 64.5234375 8.567575214644108, 64.5234375 81 M64.5234375 81 C35.41871772993421 81, 6.313997959868416 81, -64.5234375 81 M64.5234375 81 C14.423861731570376 81, -35.67571403685925 81, -64.5234375 81 M-64.5234375 81 C-64.5234375 25.161243817580676, -64.5234375 -30.67751236483865, -64.5234375 -81 M-64.5234375 81 C-64.5234375 38.286677973581206, -64.5234375 -4.426644052837588, -64.5234375 -81" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -57)"/><g class="label-group text" transform="translate(-23.734375, -57)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="47.46875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 98px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Library</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-52.5234375, -12)"/><g class="methods-group text" transform="translate(-52.5234375, 18)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="73.546875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 132px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+checkout()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="81.3125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 142px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+returnItem()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="79.765625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 140px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+placeHold()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-64.5234375 -36 C-24.447439728899724 -35.999689446197195, 15.628558042200552 -35.9993788923944, 64.5234375 -35.999 M-64.5234375 -36 C-22.535345815231885 -35.99967462914786, 19.45274586953623 -35.99934925829572, 64.5234375 -35.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-64.5234375 -12 C-19.849883999238003 -11.999653819176165, 24.823669501523995 -11.999307638352331, 64.5234375 -11.999 M-64.5234375 -12 C-28.268582491517236 -11.999719056699293, 7.986272516965528 -11.999438113398586, 64.5234375 -11.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p15-classId-Hold-6" data-look="neo" transform="translate(288.55078125, 507.5)"><g class="basic label-container outer-path"><path d="M-27.5546875 -40.5 L27.5546875 -40.5 L27.5546875 40.5 L-27.5546875 40.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-27.5546875 -40.5 C-15.444092996099599 -40.5, -3.3334984921991975 -40.5, 27.5546875 -40.5 M-27.5546875 -40.5 C-9.521570742737925 -40.5, 8.51154601452415 -40.5, 27.5546875 -40.5 M27.5546875 -40.5 C27.5546875 -15.328634058525463, 27.5546875 9.842731882949074, 27.5546875 40.5 M27.5546875 -40.5 C27.5546875 -12.599979565103489, 27.5546875 15.300040869793023, 27.5546875 40.5 M27.5546875 40.5 C15.852016626648794 40.5, 4.149345753297588 40.5, -27.5546875 40.5 M27.5546875 40.5 C12.069927670958277 40.5, -3.4148321580834455 40.5, -27.5546875 40.5 M-27.5546875 40.5 C-27.5546875 8.41853965684772, -27.5546875 -23.66292068630456, -27.5546875 -40.5 M-27.5546875 40.5 C-27.5546875 18.537599040368285, -27.5546875 -3.4248019192634302, -27.5546875 -40.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -16.5)"/><g class="label-group text" transform="translate(-15.5546875, -16.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="31.109375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 82px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Hold</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-15.5546875, 28.5)"/><g class="methods-group text" transform="translate(-15.5546875, 58.5)"/><g class="divider neo-line" style=""><path d="M-27.5546875 4.5 C-6.128641655198205 4.500388791305378, 15.29740418960359 4.5007775826107554, 27.5546875 4.501 M-27.5546875 4.5 C-11.044278519569662 4.500299593471717, 5.4661304608606756 4.500599186943435, 27.5546875 4.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-27.5546875 22.5 C-14.051103590598522 22.50024503242705, -0.5475196811970449 22.500490064854098, 27.5546875 22.501 M-27.5546875 22.5 C-15.627762172216185 22.500216422801525, -3.70083684443237 22.50043284560305, 27.5546875 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g></g></g></g><defs><filter id="diagram-p15-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><defs><filter id="diagram-p15-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs></svg>
+</div>
+<details class="mermaid-src"><summary>View Mermaid source</summary>
+<pre><code>classDiagram
+  class Book {
+    title
+    author
+    isbn
+    category
+  }
+  class BookItem {
+    barcode
+    status
+    dueDate
+    +checkout()
+    +returnItem()
+  }
+  class Loan {
+    dueDate
+    +isOverdue()
+  }
+  class HoldQueue {
+    +addHold()
+    +notifyNext(bookItem)
+  }
+  class FineStrategy {
+    &lt;&lt;interface&gt;&gt;
+    +calculateFine(loan)
+  }
+  class Library {
+    +checkout()
+    +returnItem()
+    +placeHold()
+  }
+  Book &quot;1&quot; --&gt; &quot;*&quot; BookItem
+  BookItem --&gt; Loan
+  HoldQueue --&gt; &quot;*&quot; Hold
+  Library --&gt; HoldQueue
+  Library --&gt; FineStrategy</code></pre>
+</details>
+
+<h3 id="p15-k">K. Responsibility Mapping</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Does NOT Handle</th></tr>
+<tr><td>Book</td><td>Title-level metadata</td><td>Copy-level status</td></tr>
+<tr><td>BookItem</td><td>One copy's lifecycle</td><td>Title metadata, fine amount</td></tr>
+<tr><td>HoldQueue</td><td>FIFO wait order and availability notification per title</td><td>Checkout eligibility decisions</td></tr>
+<tr><td>FineStrategy implementations</td><td>One fine formula</td><td>Loan record-keeping itself</td></tr>
+<tr><td>Library</td><td>Top-level orchestration</td><td>Catalog search internals, fine math</td></tr>
+</table>
+
+<h3 id="p15-l">L. SOLID Analysis</h3>
+<table>
+<tr><th>Principle</th><th>How It's Applied</th><th>Naive Violation</th></tr>
+<tr><td>SRP</td><td><code>Book</code> owns metadata; <code>BookItem</code> owns copy status; <code>HoldQueue</code> owns wait order; <code>FineStrategy</code> owns fine math</td><td>One <code>Library</code> god-class with methods for search, checkout, holds, and fines all touching the same giant record type</td></tr>
+<tr><td>OCP</td><td>A new item category is a new <code>Book</code> subtype via Factory; a new fine rule is a new <code>FineStrategy</code></td><td>A fine-calculation <code>if/else</code> chain keyed on member type, edited every time a new membership tier is added</td></tr>
+<tr><td>LSP</td><td>Every <code>Book</code> subtype (DVD, Magazine) honestly reports its own default loan duration without special-casing by callers</td><td>Checkout logic doing <code>if (item instanceof DVD) loanDays = 7</code> inline instead of asking the item itself</td></tr>
+<tr><td>ISP</td><td><code>FineStrategy</code> stays a single-method interface</td><td>A combined "LoanPolicy" interface mixing fine calculation with loan-duration and renewal-limit rules that don't always vary together</td></tr>
+<tr><td>DIP</td><td><code>Library</code> depends on the <code>FineStrategy</code> abstraction, not a hardcoded rate table</td><td><code>Loan.calculateFine()</code> embedding the rate table directly on the entity itself</td></tr>
+</table>
+
+<h3 id="p15-m">M. Design Patterns</h3>
+<table>
+<tr><th>Pattern</th><th>Problem It Solves</th><th>Where It Appears</th><th>When NOT to Use</th></tr>
+<tr><td>Observer</td><td>Availability notification shouldn't require the returning code path to know who's waiting</td><td><code>HoldQueue</code></td><td>Skip if holds are out of scope entirely</td></tr>
+<tr><td>Strategy</td><td>Fine rates vary by member type and category and change more often than the rest of the system</td><td><code>FineStrategy</code></td><td>Skip if the round only ever needs one flat fine rate</td></tr>
+<tr><td>Factory Method</td><td>Constructing the correct catalog item subtype from raw ingest data</td><td><code>CatalogItemFactory</code></td><td>Skip if the catalog only ever holds one item type (books only, no DVDs/magazines)</td></tr>
+</table>
+<p><strong>Explicitly avoided:</strong> merging <code>Book</code> and <code>BookItem</code> into one entity — see I for why this is the most common and most damaging shortcut in this specific problem.</p>
+
+<h3 id="p15-n">N. What Is Likely to Change?</h3>
+<table>
+<tr><th>Behavior</th><th>Current Design</th><th>Anticipated Change</th><th>Protecting Abstraction</th></tr>
+<tr><td>Fine rates</td><td>Fixed per member/category combination</td><td>Promotional waivers, grace periods, tiered escalation</td><td><code>FineStrategy</code> interface</td></tr>
+<tr><td>Item categories</td><td>Books</td><td>DVDs, magazines, digital loans (e-books with auto-return)</td><td><code>Book</code> subtype hierarchy via Factory</td></tr>
+<tr><td>Hold priority</td><td>Strict FIFO</td><td>Priority queueing for certain member types</td><td><code>HoldQueue</code>'s internal ordering, same public notify contract</td></tr>
+</table>
+
+<h3 id="p15-o">O. Design Evolution</h3>
+<ul>
+<li><strong>V1:</strong> one merged Book/copy entity, no holds, one flat fine rate.</li>
+<li><strong>V2:</strong> split into <code>Book</code> and <code>BookItem</code> the moment "how many copies are available" becomes a real query, not a demo simplification.</li>
+<li><strong>V3:</strong> extract <code>HoldQueue</code> as an Observer once holds are requested.</li>
+<li><strong>V4:</strong> extract <code>FineStrategy</code> once fines need to vary by member type or category.</li>
+<li><strong>V5:</strong> add a <code>CatalogItemFactory</code> once a second item category (DVDs) is requested.</li>
+</ul>
+<p><strong>What stays stable:</strong> <code>Library</code>'s public checkout/return/hold API. New categories and fine rules are additive.</p>
+
+<h3 id="p15-p">P. API / Interface Design</h3>
+<pre><code>interface FineStrategy {
+  Money calculateFine(Loan loan);
+}
+
+class Library {
+  List&lt;Book&gt; search(String query);
+  Loan checkout(Member member, String barcode);
+  void returnItem(String barcode);
+  void placeHold(Member member, Book book);
+}</code></pre>
+<p><strong>Ownership/validation notes:</strong> <code>checkout()</code> locates a specific <code>BookItem</code> with status <code>AVAILABLE</code> for the requested title, atomically transitions it to <code>CHECKED_OUT</code>, and creates the <code>Loan</code> — it never operates on the <code>Book</code> title level directly, since "available" is a copy-level fact.</p>
+
+<h3 id="p15-q">Q. Pseudocode — Critical Logic</h3>
+<pre><code>Library.checkout(member, barcode):
+  lock(bookItemFor(barcode))
+  try:
+    item = bookItemFor(barcode)
+    if item.status != AVAILABLE: reject
+    item.status = CHECKED_OUT
+    loan = new Loan(member, item, dueDate = now + loanPeriod(item.book.category))
+    return loan
+  finally:
+    unlock(item)
+
+BookItem.returnItem():
+  this.status = AVAILABLE
+  holdQueue = holdQueueFor(this.book)
+  if holdQueue.hasWaiting():
+    nextHold = holdQueue.popNext()
+    this.status = ON_HOLD          // reserved for the notified member, not generally available
+    notify(nextHold.member, this)</code></pre>
+
+<h3 id="p15-r">R. End-to-End Use Case</h3>
+<pre>
+placeHold(memberB, "Clean Code") — no copies available, joins HoldQueue
+  │
+  ▼
+memberA.returnItem(barcode)
+  │  BookItem.status → AVAILABLE
+  │  HoldQueue for "Clean Code" has memberB waiting → status → ON_HOLD, memberB notified
+  ▼
+memberB.checkout(barcode) within the hold window → status → CHECKED_OUT, Loan created
+</pre>
+
+<h3 id="p15-s">S. Data Structures</h3>
+<table>
+<tr><th>Structure</th><th>Used For</th><th>Why</th><th>Alternative &amp; Trade-off</th></tr>
+<tr><td>FIFO queue per title in <code>HoldQueue</code></td><td>Hold ordering</td><td>Matches the fairness expectation of "first to ask, first served"</td><td>A priority queue if member-type-based priority holds are required (see N)</td></tr>
+<tr><td>Inverted index (term → book IDs) in <code>Catalog</code></td><td>Search by title/author/category</td><td>Sub-linear lookup instead of scanning every book on every search</td><td>A linear scan is fine for a small catalog but doesn't hold up at real library scale</td></tr>
+</table>
+
+<h3 id="p15-t">T. Complexity Analysis</h3>
+<table>
+<tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+<tr><td><code>checkout()</code> / <code>returnItem()</code></td><td>O(1) given the copy's barcode</td><td>O(1)</td></tr>
+<tr><td><code>search()</code> (indexed)</td><td>O(matching terms)</td><td>O(index size)</td></tr>
+<tr><td>Hold enqueue/notify</td><td>O(1) amortized (queue push/pop)</td><td>O(waiting members)</td></tr>
+</table>
+
+<h3 id="p15-u">U. Testing Strategy</h3>
+<ul>
+<li><strong>Happy path:</strong> checking out the sole available copy of a title makes the title show zero available copies without affecting other titles.</li>
+<li><strong>Edge cases:</strong> placing a hold when copies <em>are</em> actually available is rejected (holds are for exhausted availability, not a bypass around normal checkout).</li>
+<li><strong>Fine tests:</strong> the same overdue duration produces different fines for a student vs. a faculty member, and for a book vs. a DVD, without changing any code — only the <code>FineStrategy</code> configuration.</li>
+<li><strong>Concurrency tests:</strong> two members simultaneously attempting to check out the last available copy of a title result in exactly one success.</li>
+</ul>
+
+<h3 id="p15-v">V. Interviewer Follow-Ups</h3>
+<table>
+<tr><th>Follow-Up</th><th>Testing</th><th>Design Change</th><th>Classes Changed</th><th>Pattern/Trade-off</th></tr>
+<tr><td>"Add DVDs and magazines with different loan periods."</td><td>Whether Book/BookItem was ever merged</td><td>New <code>Book</code> subtypes with their own default loan duration</td><td>New subclasses + Factory</td><td>Validates the Book/BookItem split from I</td></tr>
+<tr><td>"Faculty holds should jump ahead of student holds."</td><td>Whether HoldQueue ordering was hardcoded FIFO logic scattered elsewhere</td><td>Swap the queue's internal ordering to priority-based</td><td>HoldQueue only</td><td>Validates that ordering was encapsulated, not leaked</td></tr>
+<tr><td>"What if a book is reported lost?"</td><td>Lifecycle completeness</td><td>New <code>LOST</code> status, replacement-cost charge via a dedicated strategy</td><td>BookItem, a new fine/charge type</td><td>Tests whether the status enum anticipated more than just available/checked-out</td></tr>
+</table>
+
+<h3 id="p15-w">W. Concurrency</h3>
+<p><strong>Shared mutable state:</strong> each <code>BookItem</code>'s status field, particularly for the last remaining available copy of a popular title.</p>
+<ul>
+<li><strong>The check-then-act race, once more:</strong> reading "is this copy available" and then setting it to checked-out are two steps; without a lock around the specific <code>BookItem</code>, two members racing for the last copy could both read <code>AVAILABLE</code> before either commits the transition. The fix is the same as everywhere else this bug shape has appeared: lock the specific resource, re-verify, then commit.</li>
+<li><strong>Per-copy locking, not per-title:</strong> only the one contested <code>BookItem</code> needs locking — checkouts of other copies of the same title, or copies of other titles, proceed independently.</li>
+</ul>
+
+<h3 id="p15-x">X. Persistence</h3>
+<p>Catalog entries, loans, holds, and fines are all durable records by nature — a library system loses all value if a checkout isn't remembered across a restart. Each is a natural repository-backed entity; none of this changes the in-memory class design, only where <code>Library</code>'s operations ultimately read/write.</p>
+
+<h3 id="p15-y">Y. Scaling Boundary</h3>
+<table>
+<tr><th>Layer</th><th>What Belongs Here</th></tr>
+<tr><td><strong>LLD</strong></td><td>Book/BookItem model, hold queue, fine strategy, per-copy locking</td></tr>
+<tr><td><strong>HLD</strong></td><td>Multi-branch catalog federation, inter-library loan networks, digital-loan DRM</td></tr>
+<tr><td><strong>Explicitly out of scope</strong></td><td>Cross-branch/inter-library systems unless the round pivots there</td></tr>
+</table>
+
+<h3 id="p15-z">Z. Failure Scenarios</h3>
+<ul>
+<li><strong>A notified hold member never comes to collect the reserved copy:</strong> the <code>ON_HOLD</code> status should carry an expiry; on expiry, the copy reverts to <code>AVAILABLE</code> (or is offered to the next hold in queue) rather than being reserved indefinitely.</li>
+<li><strong>A returned item was never actually checked out (data inconsistency):</strong> <code>returnItem()</code> should validate the copy's current status is <code>CHECKED_OUT</code> before transitioning, rejecting a return on an already-available copy rather than silently accepting it.</li>
+</ul>
+
+<h3 id="p15-aa">AA. Common Bad Designs</h3>
+<ul>
+<li><strong>Merging Book and BookItem into one entity</strong> — the defining mistake for this problem; see I.</li>
+<li><strong>A single <code>Library</code> class directly implementing search, checkout, holds, and fines</strong> — the classic god-object shape this document warns against in nearly every problem, especially damaging here because each of those four concerns genuinely has an independent reason to change.</li>
+<li><strong>Hardcoding fine rates as constants inside <code>Loan</code></strong> instead of a swappable <code>FineStrategy</code> — breaks the first time two member types need different rates.</li>
+<li><strong>Notifying <em>all</em> waiting members when a copy returns instead of just the next one in FIFO order</strong> — technically an Observer pattern, but the wrong fan-out semantics for a single-copy resource.</li>
+</ul>
+
+<h3 id="p15-ab">AB. Design Trade-Offs</h3>
+<table>
+<tr><th>Decision</th><th>Option A</th><th>Option B</th><th>Recommendation</th></tr>
+<tr><td>Hold expiry handling</td><td>Automatic revert to AVAILABLE after a fixed window</td><td>Manual librarian intervention</td><td>Automatic — a fixed, published hold-pickup window is standard real-library practice and avoids indefinitely locking a copy for a no-show</td></tr>
+<tr><td>Catalog search</td><td>Inverted index</td><td>Linear scan</td><td>Inverted index once catalog size is realistic; linear scan is a reasonable V1 for a small demo</td></tr>
+</table>
+
+<h3 id="p15-ac">AC. Interviewer Evaluation</h3>
+<p><strong>Strong signal:</strong> splitting Book and BookItem unprompted; isolating fine calculation behind a Strategy before being asked for a second member type; catching the last-copy checkout race without being walked into it.</p>
+<p><strong>Red flag:</strong> one merged Book/copy entity; a god-object <code>Library</code> class; hardcoded fine constants; no expiry on holds.</p>
+
+<h3 id="p15-ad">AD. Interview Simulation</h3>
+<div class="dialog"><span class="who">Interviewer:</span> Design a library management system.</div>
+<div class="dialog"><span class="who">Candidate:</span> I'd split a title's catalog metadata — <code>Book</code> — from a specific physical copy — <code>BookItem</code> — since a library can hold multiple copies of the same title, each with its own availability status.</div>
+<div class="dialog"><span class="who">Interviewer:</span> What happens when a member wants a book that's fully checked out?</div>
+<div class="dialog"><span class="who">Candidate:</span> They place a hold, which joins a FIFO queue for that title. When any copy is returned, that copy's return path notifies the queue, which pops the next waiting member and reserves the copy for them — an Observer relationship, so the return code doesn't need to know who, if anyone, is waiting.</div>
+<div class="dialog"><span class="who">Interviewer:</span> How do fines work if students and faculty have different rates?</div>
+<div class="dialog"><span class="who">Candidate:</span> I'd isolate fine calculation behind a <code>FineStrategy</code> keyed by member type and item category, rather than hardcoding rates on the loan itself — new membership tiers become a configuration change, not a code change.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Two members try to check out the last copy of a popular title at the same instant.</div>
+<div class="dialog"><span class="who">Candidate:</span> Same fix as everywhere else this comes up — lock that specific copy, re-check its status is still available, then commit the checkout. Whoever's lock lands first gets it; the other is rejected cleanly, not left in an inconsistent state.</div>
+
+<h3 id="p15-ae">AE. Online Solution Comparison</h3>
+<table>
+<tr><th>Source</th><th>Approach</th><th>Strength</th><th>Weakness</th><th>Worth Learning</th></tr>
+<tr><td><a href="https://www.geeksforgeeks.org/system-design-for-library-management/" target="_blank">GeeksforGeeks — System Design for Library Management</a></td><td>Requirements-and-class-diagram walkthrough covering members, books, and transactions</td><td>Clear requirements decomposition before jumping to classes</td><td>Public treatment doesn't consistently distinguish title-level Book from copy-level BookItem, and fine logic is presented as a fixed formula rather than a swappable strategy</td><td>The requirements-first framing is useful; this document's Book/BookItem split and Strategy-based fines go further</td></tr>
+<tr><td><a href="https://github.com/ashishps1/awesome-low-level-design" target="_blank">ashishps1/awesome-low-level-design (GitHub)</a></td><td>A curated open-source repository of worked LLD problems, including library-management-style catalog and lending systems</td><td>Real, runnable code examples across many LLD problems in one place, useful for cross-checking class shapes</td><td>Breadth-over-depth — individual problems get a working solution but not the same depth of concurrency/trade-off analysis as a dedicated write-up</td><td>Good for spot-checking class-level structure against an independent, community-vetted source</td></tr>
+</table>
+
+<h3 id="p15-af">AF. Interview Cheat Sheet</h3>
+<table>
+<tr><td><strong>Problem</strong></td><td>Library Management System</td></tr>
+<tr><td><strong>Difficulty</strong></td><td>Intermediate</td></tr>
+<tr><td><strong>Core requirements</strong></td><td>Catalog search, checkout/return, holds with notification, member/category-aware fines</td></tr>
+<tr><td><strong>Key clarifications</strong></td><td>Fine formula variation? Multiple distinguishable copies? Hold priority rules? Lost-item handling?</td></tr>
+<tr><td><strong>Core entities</strong></td><td>Book, BookItem, Member, Loan, Hold, HoldQueue, FineStrategy, Catalog, Library</td></tr>
+<tr><td><strong>Key relationships</strong></td><td>Book/BookItem split is central; Observer for holds; Strategy for fines; Factory for item categories</td></tr>
+<tr><td><strong>Key patterns</strong></td><td>Observer, Strategy, Factory Method</td></tr>
+<tr><td><strong>Most important decision</strong></td><td>Separating title metadata (Book) from per-copy lifecycle state (BookItem)</td></tr>
+<tr><td><strong>Likely-changing behavior</strong></td><td>Fine rates, item categories, hold priority rules</td></tr>
+<tr><td><strong>Concurrency concern</strong></td><td>Check-then-act race on checking out the last available copy of a title</td></tr>
+<tr><td><strong>Top follow-ups</strong></td><td>New item categories, priority holds, lost-item lifecycle</td></tr>
+<tr><td><strong>Common mistakes</strong></td><td>Merged Book/BookItem entity; god-object Library class; hardcoded fine constants; no hold expiry</td></tr>
+<tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design multi-branch/inter-library federation unless asked</td></tr>
+</table><div class="prevnext"><a class="prevnext-link prev" href="p14.html">&larr; 14. ATM Machine</a><a class="prevnext-link next" href="p16.html">16. Hotel Reservation System &rarr;</a></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

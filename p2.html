@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('lld-theme') || 'light');</script>
+<title>2. LRU Cache — LLD Handbook</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+</head>
+<body>
+<button id="menu-toggle" aria-label="Toggle menu">&#9776;</button>
+<nav id="sidebar">
+  <div class="sidebar-top">
+    <a class="brand" href="index.html">LLD Handbook</a>
+    <button id="theme-toggle" aria-label="Toggle dark mode">&#127769;</button>
+  </div>
+  <div class="search-wrap">
+    <input id="search-box" type="text" placeholder="Search problems &amp; sections...">
+    <div id="search-results"></div>
+  </div>
+  <ul class="nav-list">
+    <li><a href="index.html" data-page="index.html">Home</a></li>
+    <li><a href="p1.html" data-page="p1.html">1. Parking Lot</a></li>
+    <li><a href="p2.html" data-page="p2.html">2. LRU Cache</a></li>
+    <li><a href="p3.html" data-page="p3.html">3. Rate Limiter</a></li>
+    <li><a href="p4.html" data-page="p4.html">4. Splitwise (Expense Sharing)</a></li>
+    <li><a href="p5.html" data-page="p5.html">5. Ride-Sharing Service (Uber/Lyft)</a></li>
+    <li><a href="p6.html" data-page="p6.html">6. Logging Framework</a></li>
+    <li><a href="p7.html" data-page="p7.html">7. Notification System</a></li>
+    <li><a href="p8.html" data-page="p8.html">8. Coffee Vending Machine</a></li>
+    <li><a href="p9.html" data-page="p9.html">9. File System</a></li>
+    <li><a href="p10.html" data-page="p10.html">10. Pub-Sub / Message Queue</a></li>
+    <li><a href="p11.html" data-page="p11.html">11. Elevator System</a></li>
+    <li><a href="p12.html" data-page="p12.html">12. Tic-Tac-Toe / Board Game Engine</a></li>
+    <li><a href="p13.html" data-page="p13.html">13. Chess Game</a></li>
+    <li><a href="p14.html" data-page="p14.html">14. ATM Machine</a></li>
+    <li><a href="p15.html" data-page="p15.html">15. Library Management System</a></li>
+    <li><a href="p16.html" data-page="p16.html">16. Hotel Reservation System</a></li>
+    <li><a href="p17.html" data-page="p17.html">17. Movie Ticket Booking System</a></li>
+    <li><a href="p18.html" data-page="p18.html">18. Restaurant / Food Delivery System</a></li>
+    <li><a href="p19.html" data-page="p19.html">19. E-commerce Shopping Cart &amp; Checkout</a></li>
+    <li><a href="p20.html" data-page="p20.html">20. Chat Application (WhatsApp-style)</a></li>
+    <li><a href="synthesis.html" data-page="synthesis.html">Cross-Problem Synthesis</a></li>
+  </ul>
+</nav>
+<main id="content">
+<h1 class="problem-title">2. LRU Cache <span class="badge">Intermediate</span></h1>
+
+<div class="section-toc">
+<a href="#p2-a">A. Interview Prompt</a><a href="#p2-b">B. Difficulty</a><a href="#p2-c">C. What It Tests</a>
+<a href="#p2-d">D. Requirements</a><a href="#p2-e">E. Clarifying Questions</a><a href="#p2-f">F. Assumptions</a>
+<a href="#p2-g">G. Actors</a><a href="#p2-h">H. Core Entities</a><a href="#p2-i">I. Relationships</a>
+<a href="#p2-j">J. Class Diagram</a><a href="#p2-k">K. Responsibility Map</a><a href="#p2-l">L. SOLID Analysis</a>
+<a href="#p2-m">M. Design Patterns</a><a href="#p2-n">N. What Changes?</a><a href="#p2-o">O. Design Evolution</a>
+<a href="#p2-p">P. API Design</a><a href="#p2-q">Q. Pseudocode</a><a href="#p2-r">R. End-to-End Flow</a>
+<a href="#p2-s">S. Data Structures</a><a href="#p2-t">T. Complexity</a><a href="#p2-u">U. Testing Strategy</a>
+<a href="#p2-v">V. Interviewer Follow-Ups</a><a href="#p2-w">W. Concurrency</a><a href="#p2-x">X. Persistence</a>
+<a href="#p2-y">Y. Scaling Boundary</a><a href="#p2-z">Z. Failure Scenarios</a><a href="#p2-aa">AA. Bad Designs</a>
+<a href="#p2-ab">AB. Trade-Offs</a><a href="#p2-ac">AC. Interviewer Evaluation</a><a href="#p2-ad">AD. Simulation</a>
+<a href="#p2-ae">AE. Source Comparison</a><a href="#p2-af">AF. Cheat Sheet</a>
+</div>
+
+<h3 id="p2-a">A. Realistic Interview Prompt</h3>
+<div class="prompt">"Design an in-memory cache with a fixed capacity that supports <code>get</code> and <code>put</code> in O(1) time. When the cache is full, evict the least-recently-used entry."</div>
+
+<h3 id="p2-b">B. Difficulty</h3>
+<p><strong>Intermediate</strong> as a pure data-structure exercise (many candidates have memorized DLL+HashMap). It becomes a genuine <strong>LLD</strong> problem — not just a DSA problem — the moment the interviewer asks for thread-safety, pluggable eviction policies, or scale, which is why it's included here despite its simple core.</p>
+
+<h3 id="p2-c">C. What This Problem Tests</h3>
+<ul>
+<li>Choosing the right data structure combination for O(1) access + O(1) reordering</li>
+<li>Encapsulation — hiding the linked-list/map wiring behind a clean two-method API</li>
+<li>Recognizing when Strategy/pluggability is (and isn't) the right abstraction</li>
+<li>Concurrency reasoning — specifically the "read that mutates" trap</li>
+<li>API design discipline (CQS: does <code>get</code> need a non-mutating <code>peek</code> sibling?)</li>
+</ul>
+
+<h3 id="p2-d">D. Requirements</h3>
+<p><strong>Functional</strong></p>
+<ol>
+<li>Fixed capacity, set at construction</li>
+<li><code>get(key)</code> returns the value or a miss signal; counts as a "use" (updates recency)</li>
+<li><code>put(key, value)</code> inserts or updates; counts as a "use"</li>
+<li>When inserting past capacity, evict the least-recently-used entry first</li>
+</ol>
+<p><strong>Non-Functional</strong></p>
+<ul>
+<li>O(1) time for both <code>get</code> and <code>put</code></li>
+<li>Thread-safe under concurrent access (confirm with interviewer — see E)</li>
+<li>Extensible to other eviction policies without a full rewrite, if asked</li>
+</ul>
+
+<h3 id="p2-e">E. Clarifying Questions</h3>
+<table>
+<tr><th>#</th><th>Question</th><th>Why It Matters</th><th>Design Decision Affected</th></tr>
+<tr><td>1</td><td>What should <code>get</code> return on a miss — null, a sentinel, an exception?</td><td>Defines the API contract callers rely on</td><td>Method signature / return type</td></tr>
+<tr><td>2</td><td>Is capacity fixed forever, or can it be resized at runtime?</td><td>Resizing down means potentially evicting multiple entries at once</td><td>Whether a <code>resize()</code> method exists</td></tr>
+<tr><td>3</td><td>Does calling <code>put</code> on an existing key count as a "use" (update recency)?</td><td>Determines whether put always calls moveToFront</td><td><code>put</code> implementation</td></tr>
+<tr><td>4</td><td>Is this accessed by a single thread or concurrently?</td><td>The single biggest design fork for this problem</td><td>Locking strategy, or none</td></tr>
+<tr><td>5</td><td>Should the eviction policy be pluggable (LRU today, LFU tomorrow)?</td><td>Determines whether to design a <code>Cache</code> interface now</td><td>Interface extraction vs. concrete class</td></tr>
+<tr><td>6</td><td>Is there a TTL/expiration requirement in addition to size-based eviction?</td><td>TTL needs either lazy checks or a background sweep</td><td>Node gains an expiry field; extra component</td></tr>
+<tr><td>7</td><td>Do we need a callback/listener when an entry is evicted?</td><td>E.g. write-back to a database on eviction</td><td>Observer/listener hook</td></tr>
+<tr><td>8</td><td>Is this a single in-process cache, or does it need to be shared across machines?</td><td>Distributed caching (Redis-like) is a fundamentally different problem</td><td>Scoping — see Y</td></tr>
+<tr><td>9</td><td>Is capacity counted by number of entries, or by total memory/weight?</td><td>Weight-based capacity changes the eviction-until-condition</td><td>Capacity accounting logic</td></tr>
+</table>
+
+<h3 id="p2-f">F. Assumptions</h3>
+<ul>
+<li><strong>Confirmed:</strong> fixed capacity, O(1) get/put, LRU eviction on overflow.</li>
+<li><strong>Assumption:</strong> both <code>get</code> and <code>put</code> on an existing key update recency.</li>
+<li><strong>Assumption:</strong> single-threaded core design first (V1–V3), thread-safety added explicitly (V4+) — this mirrors how the problem is actually escalated in interviews.</li>
+<li><strong>Assumption:</strong> capacity is entry-count based, not weight-based, unless asked.</li>
+<li><strong>Assumption:</strong> no TTL, no distributed scope, no persistence in the base design.</li>
+</ul>
+
+<h3 id="p2-g">G. Actors</h3>
+<table>
+<tr><th>Actor</th><th>Responsibility</th></tr>
+<tr><td>Client code / calling thread(s)</td><td>Calls <code>get</code>/<code>put</code>; in the concurrent version, multiple threads call simultaneously</td></tr>
+<tr><td>Cache (System)</td><td>Maintains capacity invariant and recency order autonomously</td></tr>
+</table>
+
+<h3 id="p2-h">H. Core Domain Entities</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Key Attributes</th><th>Key Methods</th><th>Does NOT Handle</th></tr>
+<tr><td><code>Node&lt;K,V&gt;</code></td><td>Intrusive doubly-linked-list element holding one entry</td><td>key, value, prev, next</td><td>—</td><td>Any policy logic — it's a pure data holder</td></tr>
+<tr><td><code>LRUCache&lt;K,V&gt;</code></td><td>Facade: owns the map + list, enforces capacity and recency order</td><td>capacity, <code>Map&lt;K,Node&gt;</code>, head/tail sentinels</td><td><code>get(key)</code>, <code>put(key,value)</code></td><td>Persistence, distributed coordination</td></tr>
+<tr><td><code>Cache&lt;K,V&gt;</code> (interface, introduced only if pluggability is requested)</td><td>Common contract so callers don't depend on a concrete eviction policy</td><td>—</td><td><code>get</code>, <code>put</code></td><td>How eviction actually works internally</td></tr>
+</table>
+
+<h3 id="p2-i">I. Class Relationships</h3>
+<ul>
+<li><strong>Composition:</strong> <code>LRUCache</code> owns its <code>Node</code> list and its map — neither outlives the cache.</li>
+<li><strong>Shared reference (not ownership duplication):</strong> the map's values and the linked list's nodes are the <em>same</em> objects — the map gives O(1) lookup, the list gives O(1) reordering. This dual-structure trick is the core insight of the whole problem.</li>
+<li><strong>Realization (optional):</strong> <code>LRUCache</code> implements <code>Cache&lt;K,V&gt;</code> only if a second implementation (e.g. LFU) is actually needed — see M for why this interface is easy to get wrong.</li>
+</ul>
+
+<h3 id="p2-j">J. Class Diagram</h3>
+<div class="diagram-card">
+<svg id="diagram-p2" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="classDiagram" style="max-width: 162.555px; background-color: white;" viewBox="4 4 162.5546875 713.5" role="graphics-document document" aria-roledescription="classDiagram"><style>#diagram-p2{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;fill:#1a1f26;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#diagram-p2 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#diagram-p2 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#diagram-p2 .error-icon{fill:#fff7e6;}#diagram-p2 .error-text{fill:#000819;stroke:#000819;}#diagram-p2 .edge-thickness-normal{stroke-width:1px;}#diagram-p2 .edge-thickness-thick{stroke-width:3.5px;}#diagram-p2 .edge-pattern-solid{stroke-dasharray:0;}#diagram-p2 .edge-thickness-invisible{stroke-width:0;fill:none;}#diagram-p2 .edge-pattern-dashed{stroke-dasharray:3;}#diagram-p2 .edge-pattern-dotted{stroke-dasharray:2;}#diagram-p2 .marker{fill:#334155;stroke:#334155;}#diagram-p2 .marker.cross{stroke:#334155;}#diagram-p2 svg{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;}#diagram-p2 p{margin:0;}#diagram-p2 g.classGroup text{fill:#2563eb;stroke:none;font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:10px;}#diagram-p2 g.classGroup text .title{font-weight:bolder;}#diagram-p2 .cluster-label text{fill:#000819;}#diagram-p2 .cluster-label span{color:#000819;}#diagram-p2 .cluster-label span p{background-color:transparent;}#diagram-p2 .cluster rect{fill:#f4f6f8;stroke:#d8dee5;stroke-width:1px;}#diagram-p2 .cluster text{fill:#000819;}#diagram-p2 .cluster span{color:#000819;}#diagram-p2 .nodeLabel,#diagram-p2 .edgeLabel{color:#0f2540;}#diagram-p2 .noteLabel .nodeLabel,#diagram-p2 .noteLabel .edgeLabel{color:#333;}#diagram-p2 .edgeLabel .label rect{fill:#eef6ff;}#diagram-p2 .label text{fill:#0f2540;}#diagram-p2 .labelBkg{background:#eef6ff;}#diagram-p2 .edgeLabel .label span{background:#eef6ff;}#diagram-p2 .classTitle{font-weight:bolder;}#diagram-p2 .node rect,#diagram-p2 .node circle,#diagram-p2 .node ellipse,#diagram-p2 .node polygon,#diagram-p2 .node path{fill:#eef6ff;stroke:#2563eb;stroke-width:1;}#diagram-p2 .divider{stroke:#2563eb;stroke-width:1;}#diagram-p2 g.clickable{cursor:pointer;}#diagram-p2 g.classGroup rect{fill:#eef6ff;stroke:#2563eb;}#diagram-p2 g.classGroup line{stroke:#2563eb;stroke-width:1;}#diagram-p2 .classLabel .box{stroke:none;stroke-width:0;fill:#eef6ff;opacity:0.5;}#diagram-p2 .classLabel .label{fill:#2563eb;font-size:10px;}#diagram-p2 .relation{stroke:#334155;stroke-width:1;fill:none;}#diagram-p2 .dashed-line{stroke-dasharray:3;}#diagram-p2 .dotted-line{stroke-dasharray:1 2;}#diagram-p2 [id$="-compositionStart"],#diagram-p2 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p2 [id$="-compositionEnd"],#diagram-p2 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p2 [id$="-dependencyStart"],#diagram-p2 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p2 [id$="-dependencyEnd"],#diagram-p2 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p2 [id$="-extensionStart"],#diagram-p2 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p2 [id$="-extensionEnd"],#diagram-p2 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p2 [id$="-aggregationStart"],#diagram-p2 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p2 [id$="-aggregationEnd"],#diagram-p2 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p2 [id$="-lollipopStart"],#diagram-p2 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p2 [id$="-lollipopEnd"],#diagram-p2 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p2 .edgeTerminals{font-size:11px;line-height:initial;}#diagram-p2 .classTitleText{text-anchor:middle;font-size:18px;fill:#1a1f26;}#diagram-p2 .edgeLabel[data-look="neo"]{background-color:#ffffff;text-align:center;}#diagram-p2 .edgeLabel[data-look="neo"] p{background-color:#ffffff;}#diagram-p2 .edgeLabel[data-look="neo"] rect{opacity:0.5;background-color:#ffffff;fill:#ffffff;}#diagram-p2 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#diagram-p2 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#diagram-p2 .node .neo-node{stroke:#2563eb;}#diagram-p2 [data-look="neo"].node rect,#diagram-p2 [data-look="neo"].cluster rect,#diagram-p2 [data-look="neo"].node polygon{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p2 [data-look="neo"].swimlane.cluster rect{filter:none;}#diagram-p2 [data-look="neo"].node path{stroke:#2563eb;stroke-width:1px;}#diagram-p2 [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p2 [data-look="neo"].node .neo-line path{stroke:#2563eb;filter:none;}#diagram-p2 [data-look="neo"].node circle{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p2 [data-look="neo"].node circle .state-start{fill:#000000;}#diagram-p2 [data-look="neo"].icon-shape .icon{fill:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p2 [data-look="neo"].icon-shape .icon-neo path{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p2 .classGroup text{font-size:14px!important;}#diagram-p2 .classGroup .title{font-size:16px!important;font-weight:700;}#diagram-p2 .classLabel .label{font-size:14px!important;}#diagram-p2 .edgeLabel,#diagram-p2 .edgeLabel .label{font-size:13px!important;}#diagram-p2 .relationshipLabelBox{font-size:13px!important;}#diagram-p2 .nodeLabel,#diagram-p2 .cluster-label{font-size:14px!important;}#diagram-p2 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><defs><marker id="diagram-p2_classDiagram-aggregationStart" class="marker aggregation classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p2_classDiagram-aggregationEnd" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p2_classDiagram-aggregationStart-margin" class="marker aggregation classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p2_classDiagram-aggregationEnd-margin" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p2_classDiagram-extensionStart" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,7 L18,13 V 1 Z"/></marker></defs><defs><marker id="diagram-p2_classDiagram-extensionEnd" class="marker extension classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,1 V 13 L18,7 Z"/></marker></defs><marker id="diagram-p2_classDiagram-extensionStart-margin" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,7 18,13 18,1" style="stroke-width: 2; stroke-dasharray: 0;"/></marker><defs><marker id="diagram-p2_classDiagram-extensionEnd-margin" class="marker extension classDiagram" refX="9" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,1 10,13 18,7" style="stroke-width: 2; stroke-dasharray: 0;"/></marker></defs><defs><marker id="diagram-p2_classDiagram-compositionStart" class="marker composition classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p2_classDiagram-compositionEnd" class="marker composition classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p2_classDiagram-compositionStart-margin" class="marker composition classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path viewBox="0 0 15 15" d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p2_classDiagram-compositionEnd-margin" class="marker composition classDiagram" refX="3.5" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p2_classDiagram-dependencyStart" class="marker dependency classDiagram" refX="6" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p2_classDiagram-dependencyEnd" class="marker dependency classDiagram" refX="13" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p2_classDiagram-dependencyStart-margin" class="marker dependency classDiagram" refX="4" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p2_classDiagram-dependencyEnd-margin" class="marker dependency classDiagram" refX="16" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p2_classDiagram-lollipopStart" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p2_classDiagram-lollipopEnd" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p2_classDiagram-lollipopStart-margin" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><defs><marker id="diagram-p2_classDiagram-lollipopEnd-margin" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><g class="root"><g class="clusters"/><g class="edges edgePaths"><path d="M85.27734375,450.25L85.27734375,532.5" id="diagram-p2-id_LRUCache_Node_1" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 82.25 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_LRUCache_Node_1" data-points="W3sieCI6ODUuMjc3MzQzNzUsInkiOjQzM30seyJ4Ijo4NS4yNzczNDM3NSwieSI6NTMyLjV9XQ==" data-look="neo" marker-start="url(#diagram-p2_classDiagram-aggregationStart-margin)"/><path d="M85.27734375,191.25L85.27734375,214" id="diagram-p2-id_Cache_LRUCache_2" class="edge-thickness-normal edge-pattern-dashed relation" style="stroke-dasharray: 0 0 2 2 2 2 2 2 2 2 2 2 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Cache_LRUCache_2" data-points="W3sieCI6ODUuMjc3MzQzNzUsInkiOjE3NH0seyJ4Ijo4NS4yNzczNDM3NSwieSI6MjE0fV0=" data-look="neo" marker-start="url(#diagram-p2_classDiagram-extensionStart-margin)"/></g><g class="edgeLabels"><g class="edgeLabel" transform="translate(85.00390625, 482.75)"><g class="label" data-id="id_LRUCache_Node_1" transform="translate(-65.2265625, -9.75)"><foreignObject width="130.453125" height="19.5"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>head/tail + map values</p></span></div></foreignObject></g></g></g><g class="nodes"><g class="node default" id="diagram-p2-classId-LRUCache-0" data-look="neo" transform="translate(85.27734375, 323.5)"><g class="basic label-container outer-path"><path d="M-73.27734375 -109.5 L73.27734375 -109.5 L73.27734375 109.5 L-73.27734375 109.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-73.27734375 -109.5 C-26.177098420503434 -109.5, 20.923146908993132 -109.5, 73.27734375 -109.5 M-73.27734375 -109.5 C-42.18023569189677 -109.5, -11.083127633793538 -109.5, 73.27734375 -109.5 M73.27734375 -109.5 C73.27734375 -39.63406920676201, 73.27734375 30.231861586475986, 73.27734375 109.5 M73.27734375 -109.5 C73.27734375 -55.67595801304435, 73.27734375 -1.851916026088702, 73.27734375 109.5 M73.27734375 109.5 C36.785847787931644 109.5, 0.2943518258632878 109.5, -73.27734375 109.5 M73.27734375 109.5 C30.959669645266352 109.5, -11.358004459467296 109.5, -73.27734375 109.5 M-73.27734375 109.5 C-73.27734375 54.96108555674471, -73.27734375 0.4221711134894264, -73.27734375 -109.5 M-73.27734375 109.5 C-73.27734375 33.8057091793938, -73.27734375 -41.8885816412124, -73.27734375 -109.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -85.5)"/><g class="label-group text" transform="translate(-55.2421875, -85.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="110.484375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 204px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>LRUCache&lt;K,V&gt;</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-61.27734375, -40.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="56.03125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 113px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>-capacity</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="31.90625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 87px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>-map</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="35.8125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 90px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>-head</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,52.5)"><foreignObject width="22.5625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 80px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>-tail</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-61.27734375, 67.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="67.3125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 129px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+get(K) : V</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="59.53125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+put(K,V)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-73.27734375 -64.5 C-37.65269397255562 -64.4997569190697, -2.028044195111235 -64.49951383813939, 73.27734375 -64.499 M-73.27734375 -64.5 C-32.64641906723126 -64.49972275929638, 7.984505615537486 -64.49944551859274, 73.27734375 -64.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-73.27734375 43.5 C-20.725031384015388 43.50035858499829, 31.827280981969224 43.50071716999657, 73.27734375 43.501 M-73.27734375 43.5 C-15.291424100892797 43.5003956606277, 42.694495548214405 43.500791321255406, 73.27734375 43.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p2-classId-Node-1" data-look="neo" transform="translate(85.27734375, 621)"><g class="basic label-container outer-path"><path d="M-49.3515625 -88.5 L49.3515625 -88.5 L49.3515625 88.5 L-49.3515625 88.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-49.3515625 -88.5 C-24.345601308148893 -88.5, 0.6603598837022133 -88.5, 49.3515625 -88.5 M-49.3515625 -88.5 C-21.55950903476662 -88.5, 6.23254443046676 -88.5, 49.3515625 -88.5 M49.3515625 -88.5 C49.3515625 -24.89933096920172, 49.3515625 38.70133806159656, 49.3515625 88.5 M49.3515625 -88.5 C49.3515625 -26.334166515187036, 49.3515625 35.83166696962593, 49.3515625 88.5 M49.3515625 88.5 C24.735233478384046 88.5, 0.11890445676809236 88.5, -49.3515625 88.5 M49.3515625 88.5 C27.195751932873687 88.5, 5.039941365747374 88.5, -49.3515625 88.5 M-49.3515625 88.5 C-49.3515625 47.18218118199717, -49.3515625 5.864362363994346, -49.3515625 -88.5 M-49.3515625 88.5 C-49.3515625 17.73604713254106, -49.3515625 -53.02790573491788, -49.3515625 -88.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -64.5)"/><g class="label-group text" transform="translate(-37.3515625, -64.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="74.703125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 167px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Node&lt;K,V&gt;</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-37.3515625, -19.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="21.796875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 73px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>key</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="33.46875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 85px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>value</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="27.234375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 78px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>prev</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,52.5)"><foreignObject width="26.46875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 78px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>next</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-37.3515625, 88.5)"/><g class="divider neo-line" style=""><path d="M-49.3515625 -43.5 C-26.626923110189914 -43.49976976778203, -3.9022837203798275 -43.499539535564054, 49.3515625 -43.499 M-49.3515625 -43.5 C-25.82020773333362 -43.49976159463273, -2.2888529666672426 -43.49952318926545, 49.3515625 -43.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-49.3515625 64.5 C-23.35037706998126 64.50026342818862, 2.6508083600374803 64.50052685637725, 49.3515625 64.501 M-49.3515625 64.5 C-10.884321438862102 64.50038972667848, 27.582919622275796 64.50077945335696, 49.3515625 64.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p2-classId-Cache-2" data-look="neo" transform="translate(85.27734375, 93)"><g class="basic label-container outer-path"><path d="M-62.1953125 -81 L62.1953125 -81 L62.1953125 81 L-62.1953125 81" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-62.1953125 -81 C-14.856016140272033 -81, 32.483280219455935 -81, 62.1953125 -81 M-62.1953125 -81 C-26.50970926665041 -81, 9.175893966699178 -81, 62.1953125 -81 M62.1953125 -81 C62.1953125 -42.805166302164295, 62.1953125 -4.61033260432859, 62.1953125 81 M62.1953125 -81 C62.1953125 -20.97445144178731, 62.1953125 39.05109711642538, 62.1953125 81 M62.1953125 81 C22.73121487829112 81, -16.73288274341776 81, -62.1953125 81 M62.1953125 81 C30.849314661682875 81, -0.49668317663424943 81, -62.1953125 81 M-62.1953125 81 C-62.1953125 47.144149464209676, -62.1953125 13.288298928419351, -62.1953125 -81 M-62.1953125 81 C-62.1953125 41.42852564849921, -62.1953125 1.8570512969984208, -62.1953125 -81" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-34.640625, -57)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="69.28125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«interface»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-40.859375, -36)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="81.71875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 172px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Cache&lt;K,V&gt;</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-50.1953125, 9)"/><g class="methods-group text" transform="translate(-50.1953125, 39)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="46.3125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 105px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+get(K)</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="59.53125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+put(K,V)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-62.1953125 -15 C-29.02207379393981 -14.999733313996083, 4.151164912120379 -14.999466627992165, 62.1953125 -14.999 M-62.1953125 -15 C-28.47214317300768 -14.999728892998753, 5.25102615398464 -14.999457785997507, 62.1953125 -14.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-62.1953125 9 C-14.718353933546119 9.000381676340693, 32.75860463290776 9.000763352681384, 62.1953125 9.001 M-62.1953125 9 C-18.72747173348897 9.000349446276731, 24.740369033022063 9.000698892553462, 62.1953125 9.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g></g></g></g><defs><filter id="diagram-p2-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><defs><filter id="diagram-p2-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs></svg>
+</div>
+<details class="mermaid-src"><summary>View Mermaid source</summary>
+<pre><code>classDiagram
+  class LRUCache~K,V~ {
+    -capacity
+    -map
+    -head
+    -tail
+    +get(K) V
+    +put(K,V)
+  }
+  class Node~K,V~ {
+    key
+    value
+    prev
+    next
+  }
+  class Cache~K,V~ {
+    &lt;&lt;interface&gt;&gt;
+    +get(K)
+    +put(K,V)
+  }
+  LRUCache o-- Node : head/tail + map values
+  Cache &lt;|.. LRUCache</code></pre>
+</details>
+
+<h3 id="p2-k">K. Responsibility Mapping</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Does NOT Handle</th></tr>
+<tr><td>Node</td><td>Holds one key/value + pointers</td><td>Any ordering decision</td></tr>
+<tr><td>LRUCache</td><td>Capacity enforcement, recency ordering, lookup</td><td>Persistence, cross-process sharing</td></tr>
+</table>
+
+<h3 id="p2-l">L. SOLID Analysis</h3>
+<table>
+<tr><th>Principle</th><th>How It's Applied</th><th>Naive Violation</th></tr>
+<tr><td>SRP</td><td><code>Node</code> is a pure data holder; all policy logic lives in <code>LRUCache</code></td><td>Node with its own <code>evictSelf()</code> logic that reaches into siblings</td></tr>
+<tr><td>OCP</td><td>Adding a <code>peek()</code> or listener hook doesn't require changing existing move/evict logic</td><td>Every new requirement (TTL, listener) bolted on by editing <code>get</code>/<code>put</code> directly with more if/else</td></tr>
+<tr><td>LSP</td><td>If <code>Cache&lt;K,V&gt;</code> exists, any implementation must honor O(1)-ish semantics callers expect</td><td>An "LFU-lite" implementation that's secretly O(n) but still claims the interface</td></tr>
+<tr><td>ISP</td><td>Two-method interface — nothing forced on clients they don't need</td><td>A bloated interface with <code>resize()</code>, <code>persist()</code>, <code>subscribe()</code> all mandatory</td></tr>
+<tr><td>DIP</td><td>Client code can depend on <code>Cache&lt;K,V&gt;</code> rather than <code>LRUCache</code> directly, if swappability was requested</td><td>Client code calling <code>((LRUCache)cache).evictOldest()</code> directly, breaking the abstraction</td></tr>
+</table>
+
+<h3 id="p2-m">M. Design Patterns</h3>
+<table>
+<tr><th>Pattern</th><th>Problem It Solves</th><th>Where It Appears</th><th>When NOT to Use</th></tr>
+<tr><td>Facade / Encapsulation</td><td>Callers shouldn't manipulate the map or list directly</td><td><code>LRUCache.get/put</code> hides both structures</td><td>N/A — always appropriate here</td></tr>
+<tr><td>Strategy (cache-level, not field-level)</td><td>Swapping LRU for LFU entirely</td><td>A <code>Cache&lt;K,V&gt;</code> interface with <code>LRUCache</code>/<code>LFUCache</code> as siblings</td><td><strong>Do not</strong> try to inject a fine-grained "EvictionPolicy" object into one fixed DLL+Map structure — LFU needs frequency buckets, not a recency list. The two policies need <em>different backing data structures</em>, so the correct seam is the whole class, not a plugged-in comparator. This is a case where Strategy looks tempting but doesn't cleanly fit — flag it explicitly rather than forcing it.</td></tr>
+<tr><td>Decorator (optional)</td><td>Add logging/metrics around get/put without touching core logic</td><td><code>MetricsCache</code> wrapping a <code>Cache&lt;K,V&gt;</code></td><td>Skip if metrics were never asked for</td></tr>
+<tr><td>Observer (optional)</td><td>Notify on eviction (e.g. write-back)</td><td>An <code>EvictionListener</code> called from inside <code>put</code>'s eviction branch</td><td>Skip unless a "notify on evict" requirement exists</td></tr>
+</table>
+
+<h3 id="p2-n">N. What Is Likely to Change?</h3>
+<table>
+<tr><th>Behavior</th><th>Current Design</th><th>Anticipated Change</th><th>Protecting Abstraction</th></tr>
+<tr><td>Eviction algorithm</td><td>LRU</td><td>LFU, ARC, CLOCK/approximate-LRU</td><td><code>Cache&lt;K,V&gt;</code> interface (whole-class swap, not a plugged field)</td></tr>
+<tr><td>Concurrency model</td><td>Single-threaded</td><td>Single lock → sharded locks</td><td>Locking is internal to <code>LRUCache</code>; public API doesn't change</td></tr>
+<tr><td>Capacity accounting</td><td>Entry count</td><td>Byte/weight-based</td><td>Isolate capacity check into one method (<code>isOverCapacity()</code>) so the rule can change in one place</td></tr>
+<tr><td>Persistence</td><td>None</td><td>Write-through/write-back to a store</td><td>Future <code>CacheWriter</code>/<code>CacheLoader</code> hook, not built prematurely</td></tr>
+</table>
+
+<h3 id="p2-o">O. Design Evolution</h3>
+<ul>
+<li><strong>V1:</strong> HashMap + DLL, fixed capacity, no eviction yet — just storage.</li>
+<li><strong>V2:</strong> Add eviction — when <code>put</code> exceeds capacity, remove the tail (LRU) node.</li>
+<li><strong>V3:</strong> <code>get</code> and <code>put</code> on existing keys move the node to the head (recency).</li>
+<li><strong>V4:</strong> Thread-safety — wrap critical sections in a single lock; explicitly reason about why "readers don't need a lock" is wrong here (see W).</li>
+<li><strong>V5:</strong> Reduce contention — shard into N independent sub-caches by <code>hash(key) % N</code>, each with its own lock; global order becomes approximate.</li>
+<li><strong>V6:</strong> Pluggability — extract <code>Cache&lt;K,V&gt;</code> interface if a second policy (LFU) is genuinely required, accepting that it's a whole-class swap, not a strategy field.</li>
+</ul>
+<p><strong>What stays stable:</strong> the two-method public API (<code>get</code>/<code>put</code>). Internal locking granularity and eviction bookkeeping evolve underneath it without callers noticing.</p>
+
+<h3 id="p2-p">P. API / Interface Design</h3>
+<pre><code>interface Cache&lt;K, V&gt; {
+  Optional&lt;V&gt; get(K key);
+  void        put(K key, V value);
+}
+
+class LRUCache&lt;K, V&gt; implements Cache&lt;K, V&gt; {
+  LRUCache(int capacity);            // throws IllegalArgumentException if capacity <= 0
+  Optional&lt;V&gt; get(K key);           // O(1); updates recency
+  void        put(K key, V value);   // O(1); may trigger eviction
+}</code></pre>
+<p><strong>Ownership/validation notes:</strong> returning <code>Optional&lt;V&gt;</code> (or a language-appropriate nullable/sentinel) avoids ambiguity between "missing key" and "value is actually null." Capacity is validated once, at construction, not on every operation.</p>
+
+<h3 id="p2-q">Q. Pseudocode — Critical Logic</h3>
+<pre><code>get(key):
+  node = map.get(key)
+  if node is null: return MISS
+  moveToHead(node)
+  return node.value
+
+put(key, value):
+  node = map.get(key)
+  if node exists:
+    node.value = value
+    moveToHead(node)
+    return
+  newNode = Node(key, value)
+  map[key] = newNode
+  addToHead(newNode)
+  if map.size() > capacity:
+    lru = tail.prev
+    removeNode(lru)
+    map.remove(lru.key)</code></pre>
+
+<h3 id="p2-r">R. End-to-End Use Case</h3>
+<pre>
+capacity = 2
+put(1,"a")  → list: [1]                map:{1}
+put(2,"b")  → list: [2,1]              map:{1,2}
+get(1)      → moves 1 to head → [1,2]  returns "a"
+put(3,"c")  → over capacity → evict tail (2) → [3,1]   map:{1,3}
+get(2)      → MISS (was evicted)
+</pre>
+
+<h3 id="p2-s">S. Data Structures</h3>
+<table>
+<tr><th>Structure</th><th>Used For</th><th>Why</th><th>Alternative &amp; Trade-off</th></tr>
+<tr><td><code>HashMap&lt;K, Node&gt;</code></td><td>O(1) key lookup</td><td>Direct pointer to the node, no scanning</td><td>TreeMap by last-access time — O(log n), unnecessary here</td></tr>
+<tr><td>Doubly linked list w/ head+tail sentinels</td><td>O(1) reordering and O(1) tail eviction</td><td>Sentinels avoid null-checks at the boundaries</td><td>Singly linked list — can't remove an arbitrary node in O(1) without a prev pointer</td></tr>
+</table>
+
+<h3 id="p2-t">T. Complexity Analysis</h3>
+<table>
+<tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+<tr><td><code>get</code></td><td>O(1)</td><td>O(1) extra</td></tr>
+<tr><td><code>put</code></td><td>O(1)</td><td>O(1) extra</td></tr>
+<tr><td>Overall storage</td><td>—</td><td>O(capacity)</td></tr>
+</table>
+
+<h3 id="p2-u">U. Testing Strategy</h3>
+<ul>
+<li><strong>Happy path:</strong> put then get returns the same value; recency order updates correctly.</li>
+<li><strong>Edge cases:</strong> capacity = 1; put on an already-full cache with a brand-new key evicts exactly one; repeated <code>get</code> on the same key never evicts it.</li>
+<li><strong>Invalid input:</strong> capacity ≤ 0 at construction should be rejected.</li>
+<li><strong>Concurrency tests:</strong> N threads hammering get/put — assert size never exceeds capacity and no node ever appears twice in the list (structural corruption check), even though exact eviction order under a race is not required to be deterministic.</li>
+</ul>
+
+<h3 id="p2-v">V. Interviewer Follow-Ups</h3>
+<table>
+<tr><th>Follow-Up</th><th>Testing</th><th>Design Change</th><th>Classes Changed</th><th>Pattern/Trade-off</th></tr>
+<tr><td>"Make it thread-safe."</td><td>Concurrency reasoning</td><td>Guard get/put with one exclusive lock</td><td><code>LRUCache</code></td><td>Must realize <code>get</code> mutates (moveToHead) — a read-write lock optimization is a bug here, not an improvement</td></tr>
+<tr><td>"Now support LFU, switchable at runtime."</td><td>Recognizing pattern limits</td><td>Extract <code>Cache&lt;K,V&gt;</code>; write a separate <code>LFUCache</code> with frequency buckets</td><td>New class, not a plugged field</td><td>Strategy at the class level, not the field level (see M)</td></tr>
+<tr><td>"Needs to hold a billion entries — one process won't fit."</td><td>LLD → HLD boundary</td><td>Recognize this is now a distributed cache problem</td><td>None in-process — infra/service change</td><td>Consistent hashing, replication — out of LLD scope</td></tr>
+<tr><td>"Add TTL to entries."</td><td>State/lifecycle extension</td><td>Node gains an expiry timestamp; check lazily on access or sweep periodically</td><td><code>Node</code>, <code>LRUCache.get</code></td><td>Lazy-check is simpler; background sweep is more proactive but adds a thread to reason about</td></tr>
+<tr><td>"Reduce lock contention under heavy concurrent load."</td><td>Scalability under concurrency</td><td>Shard into N sub-caches, each with its own lock, keyed by <code>hash(key) % N</code></td><td><code>LRUCache</code> wrapped by a <code>ShardedCache</code></td><td>Global LRU order becomes approximate — trade precision for throughput</td></tr>
+<tr><td>"What if two threads both try to insert the same brand-new key at once?"</td><td>Atomicity of check-then-act</td><td>The existence-check + insert must happen inside the same locked section</td><td><code>LRUCache.put</code></td><td>Classic check-then-act race if split across two lock acquisitions</td></tr>
+<tr><td>"Add an eviction callback for write-back to a database."</td><td>Extensibility via hooks</td><td>An <code>EvictionListener</code> invoked when a node is removed</td><td><code>LRUCache</code> gains an optional listener field</td><td>Call the listener <em>outside</em> the lock to avoid holding it during I/O</td></tr>
+<tr><td>"I want to inspect the LRU value without affecting its recency."</td><td>API design / CQS discipline</td><td>Add a non-mutating <code>peek(key)</code></td><td><code>LRUCache</code></td><td>Keeps <code>get</code>'s contract ("get counts as use") intact and explicit</td></tr>
+<tr><td>"Persist cache contents across restarts."</td><td>Persistence trade-offs</td><td>Serialize order + entries on shutdown, or treat cache purely as derived/rebuildable state</td><td>New (de)serialization path</td><td>Often simpler to just accept a cold cache after restart than to persist a cache correctly</td></tr>
+</table>
+
+<h3 id="p2-w">W. Concurrency</h3>
+<p><strong>The central insight:</strong> <code>get</code> is not a pure read — it mutates the linked list (<code>moveToHead</code>). Treating it as read-only and reaching for a read-write lock (letting concurrent "readers" proceed together) is a classic, subtle bug: two concurrent "reads" can corrupt the list pointers.</p>
+<ul>
+<li><strong>Simplest correct approach:</strong> one exclusive lock (mutex/<code>synchronized</code>) guarding both <code>get</code> and <code>put</code> entirely.</li>
+<li><strong>Reducing contention:</strong> shard into N independent caches by key hash, each with its own lock — same idea used internally by structures like <code>ConcurrentHashMap</code>. Global recency order becomes approximate across shards, which is an accepted trade-off.</li>
+<li><strong>Why plain atomics aren't enough:</strong> updating a DLL node touches multiple pointers (prev/next on up to three nodes) — not a single atomic word, so <code>std::atomic</code> alone can't make this safe without a lock or a much more complex lock-free list.</li>
+<li><strong>Real-world alternative:</strong> production caches (e.g. Caffeine) use approximate recency (CLOCK-like sampling) specifically to avoid taking a lock on every access — worth mentioning as the "senior" answer if pushed on extreme throughput, without over-claiming you'd implement it from scratch in an interview.</li>
+</ul>
+
+<h3 id="p2-x">X. Persistence</h3>
+<p>Caches are usually intentionally volatile — the source of truth lives elsewhere (DB), and the cache is just an optimization. If persistence is explicitly requested: introduce a <code>CacheLoader</code> (read-through on miss) and/or <code>CacheWriter</code> (write-through/write-back on put), and be explicit that persisted "cache" state is a performance optimization, not a durability guarantee — losing it on crash should be an acceptable, recoverable event, not a data-loss incident.</p>
+
+<h3 id="p2-y">Y. Scaling Boundary</h3>
+<table>
+<tr><th>Layer</th><th>What Belongs Here</th></tr>
+<tr><td><strong>LLD</strong></td><td>This class: map+list, eviction, in-process locking</td></tr>
+<tr><td><strong>HLD</strong></td><td>A caching service/tier (Redis-like), client libraries, cache invalidation strategy</td></tr>
+<tr><td><strong>Distributed Systems</strong></td><td>Consistent hashing across cache nodes, replication, handling node failure without losing all cached data at once</td></tr>
+</table>
+
+<h3 id="p2-z">Z. Failure Scenarios</h3>
+<ul>
+<li><strong>Process crash:</strong> all cached data is lost by design — the system must tolerate a cold cache and repopulate from the source of truth.</li>
+<li><strong>Partial mutation on crash mid-eviction:</strong> only relevant if persisted; in-memory-only designs don't need to reason about this.</li>
+<li><strong>Listener/write-back failure on eviction:</strong> should not block or corrupt the cache itself — failures in a listener must be isolated (e.g., caught and logged, not propagated to break <code>put</code>).</li>
+</ul>
+
+<h3 id="p2-aa">AA. Common Bad Designs</h3>
+<ul>
+<li><strong><code>ArrayList</code> + linear shift for order</strong> — looks intuitive, but shifting elements on every access is O(n), defeating the entire point of the problem.</li>
+<li><strong>Sorting by a stored "last accessed" timestamp at eviction time</strong> — looks clever (avoids a linked list), but makes eviction O(n log n) instead of O(1), and still needs a way to look up entries by key.</li>
+<li><strong>Read-write lock "optimization"</strong> — looks like a throughput win ("reads don't block each other"), but is actually incorrect here because <code>get</code> mutates state (see W).</li>
+<li><strong>A generic pluggable "EvictionPolicy" interface bolted onto one fixed DLL+Map structure</strong> — looks extensible, but LFU/ARC genuinely need different backing structures, so the abstraction leaks or becomes dishonestly slow. Better to swap the whole class via a <code>Cache&lt;K,V&gt;</code> interface.</li>
+</ul>
+
+<h3 id="p2-ab">AB. Design Trade-Offs</h3>
+<table>
+<tr><th>Decision</th><th>Option A</th><th>Option B</th><th>Trade-off</th></tr>
+<tr><td>Ordering structure</td><td>Doubly linked list</td><td>Sorted map by timestamp</td><td>DLL is O(1) for reorder/evict; sorted map is O(log n) but avoids pointer bookkeeping</td></tr>
+<tr><td>Concurrency control</td><td>Single global lock</td><td>Sharded locks</td><td>Global lock is simple and exactly correct; sharding trades exact global LRU order for throughput</td></tr>
+<tr><td>Eviction policy extensibility</td><td>Whole-class Strategy (<code>Cache&lt;K,V&gt;</code>)</td><td>Field-level policy injection into one structure</td><td>Whole-class swap is honest about differing internal structures; field injection looks elegant but breaks down for LFU</td></tr>
+</table>
+
+<h3 id="p2-ac">AC. Interviewer Evaluation</h3>
+<ul>
+<li><strong>Weak candidate:</strong> uses an array/list with linear scans; doesn't recognize the O(1) requirement drives the whole design.</li>
+<li><strong>Average candidate:</strong> correct HashMap+DLL design, but doesn't proactively mention thread-safety or ask about it.</li>
+<li><strong>Strong candidate:</strong> correct design, asks about concurrency requirements unprompted, and explains why get is "secretly a write."</li>
+<li><strong>Exceptional candidate:</strong> all of the above, plus recognizes that naive policy-pluggability (LRU→LFU) doesn't fit a field-injection model, and can discuss sharding/approximate-LRU trade-offs at scale without being asked.</li>
+</ul>
+
+<h3 id="p2-ad">AD. Interview Simulation</h3>
+<div class="dialog"><span class="who">Interviewer:</span> Design an LRU cache with O(1) get and put.</div>
+<div class="dialog"><span class="who">Candidate:</span> I'll use a hash map for O(1) lookup and a doubly linked list for O(1) reordering — the map's values and the list's nodes will be the same objects.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Walk me through put when the cache is full.</div>
+<div class="dialog"><span class="who">Candidate:</span> Insert the new node at the head, then if size exceeds capacity, remove the tail's previous node — that's the least recently used — and delete it from the map too.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Now make it thread-safe.</div>
+<div class="dialog"><span class="who">Candidate:</span> I'd guard both get and put with a single exclusive lock. It's worth calling out explicitly: get isn't read-only here, it moves the node to the head, so a read-write lock would actually be a bug, not an optimization.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Good catch. Now, high contention — thousands of threads hitting this every millisecond.</div>
+<div class="dialog"><span class="who">Candidate:</span> I'd shard into N independent LRU caches by hashing the key, each with its own lock — similar to how ConcurrentHashMap works internally. The trade-off is the LRU order becomes approximate across the whole cache rather than globally exact.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Now I want LFU as an alternative, switchable at runtime.</div>
+<div class="dialog"><span class="who">Candidate:</span> I wouldn't try to inject an eviction-policy object into this same map+list structure — LFU needs frequency buckets, a genuinely different backing structure. I'd extract a <code>Cache&lt;K,V&gt;</code> interface and write <code>LFUCache</code> as a sibling implementation instead.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Last one — a billion entries, way past one machine's memory.</div>
+<div class="dialog"><span class="who">Candidate:</span> That's outside LLD at that point — it becomes a distributed cache with consistent hashing and replication across nodes. The class design here stays the same per-node; the system around it changes.</div>
+
+<h3 id="p2-ae">AE. Online Solution Comparison</h3>
+<table>
+<tr><th>Source</th><th>Approach</th><th>Strength</th><th>Weakness</th><th>Worth Learning</th></tr>
+<tr><td><a href="https://github.com/ashishps1/awesome-low-level-design/blob/main/problems/lru-cache.md" target="_blank">ashishps1/awesome-low-level-design (GitHub)</a></td><td>HashMap + DLL, <code>synchronized</code> methods for thread safety, helper methods (<code>addToHead</code>, <code>removeTail</code>)</td><td>Clean, minimal, multi-language reference implementations</td><td>Doesn't explore sharding or LFU extensibility</td><td>The helper-method decomposition (addToHead/removeNode/moveToHead) keeps the core logic readable</td></tr>
+<tr><td><a href="https://medium.com/@shubhamsharma935154/thread-safe-lru-cache-in-java-design-and-implementation-a5e00c4d8e54" target="_blank">Medium — Thread-Safe LRU Cache in Java</a></td><td>Explicit discussion of the "get mutates, so RW-lock is wrong" trap; proposes sharded buckets each with its own lock</td><td>Best concurrency-specific reasoning of the sources found</td><td>Lighter on the base data-structure walkthrough</td><td>The explicit "get is a write" framing — central to this document's W section</td></tr>
+<tr><td><a href="https://algo.monster/courses/lld/lld_lru_cache" target="_blank">AlgoMonster</a> / <a href="https://algomaster.io/learn/lld/design-lru-cache" target="_blank">AlgoMaster</a> (cross-referenced, not deep-fetched)</td><td>Standard DLL+map walkthroughs with interview framing</td><td>Good for a first-pass mental model</td><td>Mentions Strategy/Singleton patterns somewhat by rote rather than derived from a requirement</td><td>Useful as a sanity check against the synthesized design here</td></tr>
+</table>
+
+<h3 id="p2-af">AF. Interview Cheat Sheet</h3>
+<table>
+<tr><td><strong>Problem</strong></td><td>LRU Cache</td></tr>
+<tr><td><strong>Difficulty</strong></td><td>Intermediate (Advanced+Concurrency once thread-safety is asked)</td></tr>
+<tr><td><strong>Core requirements</strong></td><td>Fixed capacity, O(1) get/put, evict LRU on overflow</td></tr>
+<tr><td><strong>Key clarifications</strong></td><td>Thread-safety needed? Pluggable eviction policy? TTL? Weight-based capacity?</td></tr>
+<tr><td><strong>Core entities</strong></td><td>Node, LRUCache (map + DLL), optional Cache&lt;K,V&gt; interface</td></tr>
+<tr><td><strong>Key relationships</strong></td><td>Map values and DLL nodes are the same shared objects</td></tr>
+<tr><td><strong>Key patterns</strong></td><td>Facade; whole-class Strategy for alternate policies (not field-level)</td></tr>
+<tr><td><strong>Most important decision</strong></td><td>Recognizing get mutates state — drives the entire concurrency story</td></tr>
+<tr><td><strong>Likely-changing behavior</strong></td><td>Eviction algorithm, concurrency model, capacity accounting</td></tr>
+<tr><td><strong>Concurrency concern</strong></td><td>get-is-a-write; RW-lock is a bug, not an optimization; sharding trades exactness for throughput</td></tr>
+<tr><td><strong>Top follow-ups</strong></td><td>Thread-safety, LFU swap, TTL, eviction callback, billion-entry scale (HLD boundary)</td></tr>
+<tr><td><strong>Common mistakes</strong></td><td>ArrayList shifting, RW-lock misuse, forcing a generic eviction-policy field</td></tr>
+<tr><td><strong>What NOT to over-engineer</strong></td><td>Persistence, distributed coordination — unless explicitly asked</td></tr>
+</table><div class="prevnext"><a class="prevnext-link prev" href="p1.html">&larr; 1. Parking Lot</a><a class="prevnext-link next" href="p3.html">3. Rate Limiter &rarr;</a></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

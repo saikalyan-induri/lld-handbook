@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('lld-theme') || 'light');</script>
+<title>16. Hotel Reservation System — LLD Handbook</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+</head>
+<body>
+<button id="menu-toggle" aria-label="Toggle menu">&#9776;</button>
+<nav id="sidebar">
+  <div class="sidebar-top">
+    <a class="brand" href="index.html">LLD Handbook</a>
+    <button id="theme-toggle" aria-label="Toggle dark mode">&#127769;</button>
+  </div>
+  <div class="search-wrap">
+    <input id="search-box" type="text" placeholder="Search problems &amp; sections...">
+    <div id="search-results"></div>
+  </div>
+  <ul class="nav-list">
+    <li><a href="index.html" data-page="index.html">Home</a></li>
+    <li><a href="p1.html" data-page="p1.html">1. Parking Lot</a></li>
+    <li><a href="p2.html" data-page="p2.html">2. LRU Cache</a></li>
+    <li><a href="p3.html" data-page="p3.html">3. Rate Limiter</a></li>
+    <li><a href="p4.html" data-page="p4.html">4. Splitwise (Expense Sharing)</a></li>
+    <li><a href="p5.html" data-page="p5.html">5. Ride-Sharing Service (Uber/Lyft)</a></li>
+    <li><a href="p6.html" data-page="p6.html">6. Logging Framework</a></li>
+    <li><a href="p7.html" data-page="p7.html">7. Notification System</a></li>
+    <li><a href="p8.html" data-page="p8.html">8. Coffee Vending Machine</a></li>
+    <li><a href="p9.html" data-page="p9.html">9. File System</a></li>
+    <li><a href="p10.html" data-page="p10.html">10. Pub-Sub / Message Queue</a></li>
+    <li><a href="p11.html" data-page="p11.html">11. Elevator System</a></li>
+    <li><a href="p12.html" data-page="p12.html">12. Tic-Tac-Toe / Board Game Engine</a></li>
+    <li><a href="p13.html" data-page="p13.html">13. Chess Game</a></li>
+    <li><a href="p14.html" data-page="p14.html">14. ATM Machine</a></li>
+    <li><a href="p15.html" data-page="p15.html">15. Library Management System</a></li>
+    <li><a href="p16.html" data-page="p16.html">16. Hotel Reservation System</a></li>
+    <li><a href="p17.html" data-page="p17.html">17. Movie Ticket Booking System</a></li>
+    <li><a href="p18.html" data-page="p18.html">18. Restaurant / Food Delivery System</a></li>
+    <li><a href="p19.html" data-page="p19.html">19. E-commerce Shopping Cart &amp; Checkout</a></li>
+    <li><a href="p20.html" data-page="p20.html">20. Chat Application (WhatsApp-style)</a></li>
+    <li><a href="synthesis.html" data-page="synthesis.html">Cross-Problem Synthesis</a></li>
+  </ul>
+</nav>
+<main id="content">
+<h1 class="problem-title">16. Hotel Reservation System <span class="badge">Intermediate → Advanced (Concurrency)</span></h1>
+
+<div class="section-toc">
+<a href="#p16-a">A. Interview Prompt</a><a href="#p16-b">B. Difficulty</a><a href="#p16-c">C. What It Tests</a>
+<a href="#p16-d">D. Requirements</a><a href="#p16-e">E. Clarifying Questions</a><a href="#p16-f">F. Assumptions</a>
+<a href="#p16-g">G. Actors</a><a href="#p16-h">H. Core Entities</a><a href="#p16-i">I. Relationships</a>
+<a href="#p16-j">J. Class Diagram</a><a href="#p16-k">K. Responsibility Map</a><a href="#p16-l">L. SOLID Analysis</a>
+<a href="#p16-m">M. Design Patterns</a><a href="#p16-n">N. What Changes?</a><a href="#p16-o">O. Design Evolution</a>
+<a href="#p16-p">P. API Design</a><a href="#p16-q">Q. Pseudocode</a><a href="#p16-r">R. End-to-End Flow</a>
+<a href="#p16-s">S. Data Structures</a><a href="#p16-t">T. Complexity</a><a href="#p16-u">U. Testing Strategy</a>
+<a href="#p16-v">V. Interviewer Follow-Ups</a><a href="#p16-w">W. Concurrency</a><a href="#p16-x">X. Persistence</a>
+<a href="#p16-y">Y. Scaling Boundary</a><a href="#p16-z">Z. Failure Scenarios</a><a href="#p16-aa">AA. Bad Designs</a>
+<a href="#p16-ab">AB. Trade-Offs</a><a href="#p16-ac">AC. Interviewer Evaluation</a><a href="#p16-ad">AD. Simulation</a>
+<a href="#p16-ae">AE. Source Comparison</a><a href="#p16-af">AF. Cheat Sheet</a>
+</div>
+
+<h3 id="p16-a">A. Realistic Interview Prompt</h3>
+<div class="prompt">"Design a hotel reservation system. Guests can search for available rooms over a date range, book a room, and cancel a reservation. Room prices vary by room type and season."</div>
+
+<h3 id="p16-b">B. Difficulty</h3>
+<p><strong>Intermediate, climbing to Advanced on the concurrency follow-up.</strong> The entity model itself is approachable; the real signal is whether the candidate notices that "room available for these dates" is a date-<em>range</em> query, not a boolean flag, and handles two guests racing to book overlapping dates on the same room.</p>
+
+<h3 id="p16-c">C. What This Problem Tests</h3>
+<ul>
+<li>Modeling availability as a function of a date range, not a single mutable status flag on the room</li>
+<li>Builder for constructing a reservation request that has many optional parts (dates, room type, guest count, add-ons, special requests)</li>
+<li>Strategy for pricing that varies by room type, season, and demand</li>
+<li>Observer for booking-confirmation/cancellation notifications, reusing the Pub-Sub foundation rather than reinventing a notification path</li>
+<li>The check-then-act race, now shaped as an <em>interval-overlap</em> race rather than a simple boolean flag race</li>
+</ul>
+
+<h3 id="p16-d">D. Requirements</h3>
+<p><strong>Functional</strong></p>
+<ol>
+<li>Search for rooms available across a given check-in/check-out date range, optionally filtered by room type</li>
+<li>Book a room for a date range, producing a reservation with a computed total price</li>
+<li>Cancel a reservation, freeing the room's availability for that date range</li>
+<li>Price a room based on room type, season, and current demand</li>
+<li>Notify the guest (and hotel staff) on booking confirmation and cancellation</li>
+</ol>
+<p><strong>Non-Functional</strong></p>
+<ul>
+<li>Two guests booking overlapping (or identical) date ranges on the same room must not both succeed</li>
+<li>Adding a new pricing rule (e.g. a weekend surcharge) must not require touching booking or cancellation logic</li>
+</ul>
+
+<h3 id="p16-e">E. Clarifying Questions</h3>
+<table>
+<tr><th>#</th><th>Question</th><th>Why It Matters</th><th>Design Decision Affected</th></tr>
+<tr><td>1</td><td>Is availability tracked per physical room, or per room <em>type</em> with an undifferentiated pool (any "Deluxe" room, not a specific numbered one)?</td><td>Changes whether overlap-checking happens against one specific room's calendar or against a type-level count</td><td>Design of the availability/inventory structure</td></tr>
+<tr><td>2</td><td>Does pricing vary by season, day-of-week, and/or real-time demand, or is it a fixed rate per room type?</td><td>Determines whether pricing needs to be a Strategy or can be a static lookup</td><td>Design of <code>PricingStrategy</code></td></tr>
+<tr><td>3</td><td>Is overbooking ever intentionally allowed (a common real hotel practice, betting on no-shows)?</td><td>If yes, availability becomes probabilistic rather than a hard overlap check</td><td>Whether the overlap check is a hard invariant or a soft one with an overbooking margin</td></tr>
+<tr><td>4</td><td>What's the cancellation policy — free cancellation window, partial refund, no refund?</td><td>Determines whether cancellation needs its own Strategy alongside pricing</td><td>Scope of <code>CancellationPolicy</code></td></tr>
+</table>
+
+<h3 id="p16-f">F. Assumptions</h3>
+<ul>
+<li><strong>Confirmed:</strong> date-range search, booking, cancellation, room-type-and-season-aware pricing, booking/cancellation notifications.</li>
+<li><strong>Assumption:</strong> availability is tracked per specific physical room (not an undifferentiated type-level pool), since that is the harder and more commonly asked version.</li>
+<li><strong>Assumption:</strong> no intentional overbooking — a booked date range is a hard exclusion on that room unless stated otherwise.</li>
+</ul>
+
+<h3 id="p16-g">G. Actors</h3>
+<table>
+<tr><th>Actor</th><th>Responsibility</th></tr>
+<tr><td>Guest</td><td>Searches, books, cancels reservations</td></tr>
+<tr><td>Hotel Staff / Front Desk</td><td>Manages room inventory, checks guests in/out</td></tr>
+<tr><td>Hotel (facade)</td><td>Top-level API coordinating search, booking, and cancellation</td></tr>
+</table>
+
+<h3 id="p16-h">H. Core Domain Entities</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Key Attributes</th><th>Key Methods</th><th>Does NOT Handle</th></tr>
+<tr><td><code>Room</code></td><td>One physical room and its static attributes</td><td>roomNumber, roomType, floor</td><td>—</td><td>Its own availability calendar — delegates to <code>RoomInventory</code></td></tr>
+<tr><td><code>RoomInventory</code></td><td>Per-room calendar of booked date-range intervals; the overlap-checking authority</td><td>bookedIntervals</td><td><code>isAvailable(range)</code>, <code>book(range)</code>, <code>release(range)</code></td><td>Pricing or guest identity</td></tr>
+<tr><td><code>Reservation</code></td><td>One confirmed booking record</td><td>guest, room, checkIn, checkOut, status, totalPrice</td><td><code>cancel()</code></td><td>Its own price calculation — delegates to <code>PricingStrategy</code> at booking time</td></tr>
+<tr><td><code>ReservationRequest</code> (built via Builder)</td><td>An in-progress, not-yet-committed booking intent with optional fields</td><td>dates, roomType, guestCount, addOns, specialRequests</td><td>—</td><td>Persistence or availability checking itself</td></tr>
+<tr><td><code>ReservationRequestBuilder</code></td><td>Fluent, step-by-step construction of a <code>ReservationRequest</code></td><td>—</td><td><code>withDates()</code>, <code>withRoomType()</code>, <code>withAddOn()</code>, <code>build()</code></td><td>—</td></tr>
+<tr><td><code>PricingStrategy</code> (interface)</td><td>One price-calculation rule</td><td>—</td><td><code>calculatePrice(room, checkIn, checkOut)</code></td><td>—</td></tr>
+<tr><td><code>BookingNotifier</code></td><td>Observer subject for booking lifecycle events</td><td>—</td><td><code>notifyConfirmed()</code>, <code>notifyCancelled()</code></td><td>Deciding booking eligibility itself</td></tr>
+<tr><td><code>Hotel</code> (facade)</td><td>Top-level orchestration</td><td>rooms, inventory</td><td><code>searchAvailability()</code>, <code>bookRoom()</code>, <code>cancelReservation()</code></td><td>—</td></tr>
+</table>
+
+<h3 id="p16-i">I. Class Relationships</h3>
+<ul>
+<li><strong>Availability as an interval structure, not a boolean:</strong> the single most consequential modeling decision in this problem is that a room's availability is a function of a date range, so <code>RoomInventory</code> holds a sorted collection of booked intervals per room and answers "is this range free" via interval-overlap logic — not a single <code>isAvailable</code> boolean on <code>Room</code>, which cannot represent "free from March 1–5 but booked March 6–10."</li>
+<li><strong>Builder for reservation requests:</strong> a booking has several optional parts — room type preference, number of guests, add-ons (breakfast, late checkout), special requests — that don't all apply to every booking. A telescoping constructor or a giant parameter list is the naive alternative; <code>ReservationRequestBuilder</code> assembles the request step by step and validates it once, at <code>build()</code>, rather than validating partial state throughout.</li>
+<li><strong>Strategy for pricing:</strong> price depends on room type, season, and demand, and hotels change these rules far more often than they change the booking flow itself — isolating this behind <code>PricingStrategy.calculatePrice(...)</code> means a new seasonal rule is a new strategy, not a change to <code>Reservation</code> or <code>Hotel</code>.</li>
+<li><strong>Observer for booking notifications:</strong> confirming or cancelling a reservation triggers notifications to the guest and possibly hotel staff. Rather than building a bespoke notification path, this explicitly reuses the same subject/observer relationship Pub-Sub (Problem 10) established as the foundational pattern for "something happened, tell everyone who's registered interest" — <code>BookingNotifier</code> is a thin, domain-specific subject, and the actual message dispatch reuses the Notification System (Problem 7) rather than reimplementing channel logic.</li>
+</ul>
+
+<h3 id="p16-j">J. Class Diagram</h3>
+<div class="diagram-card">
+<svg id="diagram-p16" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="classDiagram" style="max-width: 630.082px; background-color: white;" viewBox="4 4 630.08203125 618" role="graphics-document document" aria-roledescription="classDiagram"><style>#diagram-p16{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;fill:#1a1f26;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#diagram-p16 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#diagram-p16 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#diagram-p16 .error-icon{fill:#fff7e6;}#diagram-p16 .error-text{fill:#000819;stroke:#000819;}#diagram-p16 .edge-thickness-normal{stroke-width:1px;}#diagram-p16 .edge-thickness-thick{stroke-width:3.5px;}#diagram-p16 .edge-pattern-solid{stroke-dasharray:0;}#diagram-p16 .edge-thickness-invisible{stroke-width:0;fill:none;}#diagram-p16 .edge-pattern-dashed{stroke-dasharray:3;}#diagram-p16 .edge-pattern-dotted{stroke-dasharray:2;}#diagram-p16 .marker{fill:#334155;stroke:#334155;}#diagram-p16 .marker.cross{stroke:#334155;}#diagram-p16 svg{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;}#diagram-p16 p{margin:0;}#diagram-p16 g.classGroup text{fill:#2563eb;stroke:none;font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:10px;}#diagram-p16 g.classGroup text .title{font-weight:bolder;}#diagram-p16 .cluster-label text{fill:#000819;}#diagram-p16 .cluster-label span{color:#000819;}#diagram-p16 .cluster-label span p{background-color:transparent;}#diagram-p16 .cluster rect{fill:#f4f6f8;stroke:#d8dee5;stroke-width:1px;}#diagram-p16 .cluster text{fill:#000819;}#diagram-p16 .cluster span{color:#000819;}#diagram-p16 .nodeLabel,#diagram-p16 .edgeLabel{color:#0f2540;}#diagram-p16 .noteLabel .nodeLabel,#diagram-p16 .noteLabel .edgeLabel{color:#333;}#diagram-p16 .edgeLabel .label rect{fill:#eef6ff;}#diagram-p16 .label text{fill:#0f2540;}#diagram-p16 .labelBkg{background:#eef6ff;}#diagram-p16 .edgeLabel .label span{background:#eef6ff;}#diagram-p16 .classTitle{font-weight:bolder;}#diagram-p16 .node rect,#diagram-p16 .node circle,#diagram-p16 .node ellipse,#diagram-p16 .node polygon,#diagram-p16 .node path{fill:#eef6ff;stroke:#2563eb;stroke-width:1;}#diagram-p16 .divider{stroke:#2563eb;stroke-width:1;}#diagram-p16 g.clickable{cursor:pointer;}#diagram-p16 g.classGroup rect{fill:#eef6ff;stroke:#2563eb;}#diagram-p16 g.classGroup line{stroke:#2563eb;stroke-width:1;}#diagram-p16 .classLabel .box{stroke:none;stroke-width:0;fill:#eef6ff;opacity:0.5;}#diagram-p16 .classLabel .label{fill:#2563eb;font-size:10px;}#diagram-p16 .relation{stroke:#334155;stroke-width:1;fill:none;}#diagram-p16 .dashed-line{stroke-dasharray:3;}#diagram-p16 .dotted-line{stroke-dasharray:1 2;}#diagram-p16 [id$="-compositionStart"],#diagram-p16 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p16 [id$="-compositionEnd"],#diagram-p16 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p16 [id$="-dependencyStart"],#diagram-p16 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p16 [id$="-dependencyEnd"],#diagram-p16 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p16 [id$="-extensionStart"],#diagram-p16 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p16 [id$="-extensionEnd"],#diagram-p16 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p16 [id$="-aggregationStart"],#diagram-p16 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p16 [id$="-aggregationEnd"],#diagram-p16 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p16 [id$="-lollipopStart"],#diagram-p16 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p16 [id$="-lollipopEnd"],#diagram-p16 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p16 .edgeTerminals{font-size:11px;line-height:initial;}#diagram-p16 .classTitleText{text-anchor:middle;font-size:18px;fill:#1a1f26;}#diagram-p16 .edgeLabel[data-look="neo"]{background-color:#ffffff;text-align:center;}#diagram-p16 .edgeLabel[data-look="neo"] p{background-color:#ffffff;}#diagram-p16 .edgeLabel[data-look="neo"] rect{opacity:0.5;background-color:#ffffff;fill:#ffffff;}#diagram-p16 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#diagram-p16 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#diagram-p16 .node .neo-node{stroke:#2563eb;}#diagram-p16 [data-look="neo"].node rect,#diagram-p16 [data-look="neo"].cluster rect,#diagram-p16 [data-look="neo"].node polygon{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p16 [data-look="neo"].swimlane.cluster rect{filter:none;}#diagram-p16 [data-look="neo"].node path{stroke:#2563eb;stroke-width:1px;}#diagram-p16 [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p16 [data-look="neo"].node .neo-line path{stroke:#2563eb;filter:none;}#diagram-p16 [data-look="neo"].node circle{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p16 [data-look="neo"].node circle .state-start{fill:#000000;}#diagram-p16 [data-look="neo"].icon-shape .icon{fill:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p16 [data-look="neo"].icon-shape .icon-neo path{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p16 .classGroup text{font-size:14px!important;}#diagram-p16 .classGroup .title{font-size:16px!important;font-weight:700;}#diagram-p16 .classLabel .label{font-size:14px!important;}#diagram-p16 .edgeLabel,#diagram-p16 .edgeLabel .label{font-size:13px!important;}#diagram-p16 .relationshipLabelBox{font-size:13px!important;}#diagram-p16 .nodeLabel,#diagram-p16 .cluster-label{font-size:14px!important;}#diagram-p16 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><defs><marker id="diagram-p16_classDiagram-aggregationStart" class="marker aggregation classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p16_classDiagram-aggregationEnd" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p16_classDiagram-aggregationStart-margin" class="marker aggregation classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p16_classDiagram-aggregationEnd-margin" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p16_classDiagram-extensionStart" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,7 L18,13 V 1 Z"/></marker></defs><defs><marker id="diagram-p16_classDiagram-extensionEnd" class="marker extension classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,1 V 13 L18,7 Z"/></marker></defs><marker id="diagram-p16_classDiagram-extensionStart-margin" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,7 18,13 18,1" style="stroke-width: 2; stroke-dasharray: 0;"/></marker><defs><marker id="diagram-p16_classDiagram-extensionEnd-margin" class="marker extension classDiagram" refX="9" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,1 10,13 18,7" style="stroke-width: 2; stroke-dasharray: 0;"/></marker></defs><defs><marker id="diagram-p16_classDiagram-compositionStart" class="marker composition classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p16_classDiagram-compositionEnd" class="marker composition classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p16_classDiagram-compositionStart-margin" class="marker composition classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path viewBox="0 0 15 15" d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p16_classDiagram-compositionEnd-margin" class="marker composition classDiagram" refX="3.5" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p16_classDiagram-dependencyStart" class="marker dependency classDiagram" refX="6" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p16_classDiagram-dependencyEnd" class="marker dependency classDiagram" refX="13" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p16_classDiagram-dependencyStart-margin" class="marker dependency classDiagram" refX="4" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p16_classDiagram-dependencyEnd-margin" class="marker dependency classDiagram" refX="16" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p16_classDiagram-lollipopStart" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p16_classDiagram-lollipopEnd" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p16_classDiagram-lollipopStart-margin" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><defs><marker id="diagram-p16_classDiagram-lollipopEnd-margin" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><g class="root"><g class="clusters"/><g class="edges edgePaths"><path d="M74.76953125,195L74.76953125,207.92893218813452Q74.76953125,215 81.84059906186548,215L120.62825520833331,215Q127.62825520833331,215 127.62825520833331,222L127.62825520833331,229" id="diagram-p16-id_Room_RoomInventory_1" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 81.55717468261719 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Room_RoomInventory_1" data-points="W3sieCI6NzQuNzY5NTMxMjUsInkiOjE5NX0seyJ4Ijo3NC43Njk1MzEyNSwieSI6MjE1fSx7IngiOjEyNy42MjgyNTUyMDgzMzMzMSwieSI6MjE1fSx7IngiOjEyNy42MjgyNTUyMDgzMzMzMSwieSI6MjM1fV0=" data-look="neo" marker-end="url(#diagram-p16_classDiagram-dependencyEnd-margin)"/><path d="M504.66796875,195L504.66796875,207.92893218813452Q504.66796875,215 497.5969009381345,215L421.697265625,215Q414.697265625,215 414.697265625,222L414.697265625,229" id="diagram-p16-id_ReservationRequestBuilder_Reservation_2" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 118.66919708251953 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_ReservationRequestBuilder_Reservation_2" data-points="W3sieCI6NTA0LjY2Nzk2ODc1LCJ5IjoxOTV9LHsieCI6NTA0LjY2Nzk2ODc1LCJ5IjoyMTV9LHsieCI6NDE0LjY5NzI2NTYyNSwieSI6MjE1fSx7IngiOjQxNC42OTcyNjU2MjUsInkiOjIzNX1d" data-look="neo" marker-end="url(#diagram-p16_classDiagram-dependencyEnd-margin)"/><path d="M380.291015625,433L380.291015625,445.9289321881345Q380.291015625,453 373.2199478131345,453L271.9296875,453Q264.9296875,453 264.9296875,460L264.9296875,467" id="diagram-p16-id_Reservation_PricingStrategy_3" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 144.059814453125 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Reservation_PricingStrategy_3" data-points="W3sieCI6MzgwLjI5MTAxNTYyNSwieSI6NDMzfSx7IngiOjM4MC4yOTEwMTU2MjUsInkiOjQ1M30seyJ4IjoyNjQuOTI5Njg3NSwieSI6NDUzfSx7IngiOjI2NC45Mjk2ODc1LCJ5Ijo0NzN9XQ==" data-look="neo" marker-end="url(#diagram-p16_classDiagram-dependencyEnd-margin)"/><path d="M414.697265625,433L414.697265625,445.9289321881345Q414.697265625,453 421.7683334368655,453L523.05859375,453Q530.05859375,453 530.05859375,460L530.05859375,467" id="diagram-p16-id_Reservation_BookingNotifier_4" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 144.0598602294922 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Reservation_BookingNotifier_4" data-points="W3sieCI6NDE0LjY5NzI2NTYyNSwieSI6NDMzfSx7IngiOjQxNC42OTcyNjU2MjUsInkiOjQ1M30seyJ4Ijo1MzAuMDU4NTkzNzUsInkiOjQ1M30seyJ4Ijo1MzAuMDU4NTkzNzUsInkiOjQ3M31d" data-look="neo" marker-end="url(#diagram-p16_classDiagram-dependencyEnd-margin)"/><path d="M238.9296875,195L238.9296875,207.92893218813452Q238.9296875,215 231.85861968813452,215L193.07096354166663,215Q186.07096354166663,215 186.07096354166663,222L186.07096354166663,229" id="diagram-p16-id_Hotel_RoomInventory_5" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 81.55720520019531 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Hotel_RoomInventory_5" data-points="W3sieCI6MjM4LjkyOTY4NzUsInkiOjE5NX0seyJ4IjoyMzguOTI5Njg3NSwieSI6MjE1fSx7IngiOjE4Ni4wNzA5NjM1NDE2NjY2MywieSI6MjE1fSx7IngiOjE4Ni4wNzA5NjM1NDE2NjY2MywieSI6MjM1fV0=" data-look="neo" marker-end="url(#diagram-p16_classDiagram-dependencyEnd-margin)"/><path d="M290.3203125,195L290.3203125,207.92893218813452Q290.3203125,215 297.3913803118655,215L373.291015625,215Q380.291015625,215 380.291015625,222L380.291015625,229" id="diagram-p16-id_Hotel_Reservation_6" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 118.66921997070312 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Hotel_Reservation_6" data-points="W3sieCI6MjkwLjMyMDMxMjUsInkiOjE5NX0seyJ4IjoyOTAuMzIwMzEyNSwieSI6MjE1fSx7IngiOjM4MC4yOTEwMTU2MjUsInkiOjIxNX0seyJ4IjozODAuMjkxMDE1NjI1LCJ5IjoyMzV9XQ==" data-look="neo" marker-end="url(#diagram-p16_classDiagram-dependencyEnd-margin)"/></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="id_Room_RoomInventory_1" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeTerminals" transform="translate(70.269530265, 213.99999952)"><g class="inner" transform="translate(-3.6171875, -9.75)"><foreignObject width="7.234375" height="19.5" style="width: 9px; height: 12px;"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="edgeLabel"><p>1</p></span></div></foreignObject></g></g><g class="edgeTerminals" transform="translate(127.12825898416668, 211.00000184000032)"><g class="inner" transform="translate(-3.6171875, -9.75)"/><foreignObject width="7.234375" height="19.5" style="width: 9px; height: 12px;"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="edgeLabel"><p>1</p></span></div></foreignObject></g></g><g class="nodes"><g class="node default" id="diagram-p16-classId-Room-0" data-look="neo" transform="translate(74.76953125, 117)"><g class="basic label-container outer-path"><path d="M-62.76953125 -78 L62.76953125 -78 L62.76953125 78 L-62.76953125 78" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-62.76953125 -78 C-28.732317797709904 -78, 5.304895654580193 -78, 62.76953125 -78 M-62.76953125 -78 C-29.899345823212727 -78, 2.9708396035745466 -78, 62.76953125 -78 M62.76953125 -78 C62.76953125 -37.93124741605914, 62.76953125 2.137505167881713, 62.76953125 78 M62.76953125 -78 C62.76953125 -31.695752254826807, 62.76953125 14.608495490346385, 62.76953125 78 M62.76953125 78 C16.885466330786876 78, -28.998598588426248 78, -62.76953125 78 M62.76953125 78 C17.32232221120853 78, -28.12488682758294 78, -62.76953125 78 M-62.76953125 78 C-62.76953125 41.505484371312136, -62.76953125 5.0109687426242715, -62.76953125 -78 M-62.76953125 78 C-62.76953125 43.1384646163922, -62.76953125 8.276929232784397, -62.76953125 -78" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -54)"/><g class="label-group text" transform="translate(-19.8359375, -54)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="39.671875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 89px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Room</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-50.76953125, -9)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="81.703125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 136px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>roomNumber</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="62.265625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 116px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>roomType</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="27.234375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 81px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>floor</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-50.76953125, 78)"/><g class="divider neo-line" style=""><path d="M-62.76953125 -33 C-34.91804331837973 -32.99977814484689, -7.066555386759461 -32.99955628969379, 62.76953125 -32.999 M-62.76953125 -33 C-12.56787548935501 -32.99960011127405, 37.63378027128998 -32.99920022254809, 62.76953125 -32.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-62.76953125 54 C-23.639426582348023 54.000311696645554, 15.490678085303955 54.000623393291114, 62.76953125 54.001 M-62.76953125 54 C-13.81638712089645 54.0003899435216, 35.1367570082071 54.00077988704319, 62.76953125 54.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p16-classId-RoomInventory-1" data-look="neo" transform="translate(156.84960937499994, 316)"><g class="basic label-container outer-path"><path d="M-97.6640625 -81 L97.6640625 -81 L97.6640625 81 L-97.6640625 81" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-97.6640625 -81 C-34.934980082544755 -81, 27.79410233491049 -81, 97.6640625 -81 M-97.6640625 -81 C-58.55163088231348 -81, -19.439199264626964 -81, 97.6640625 -81 M97.6640625 -81 C97.6640625 -35.14029157252716, 97.6640625 10.719416854945678, 97.6640625 81 M97.6640625 -81 C97.6640625 -47.673801606898586, 97.6640625 -14.347603213797171, 97.6640625 81 M97.6640625 81 C50.89256868637753 81, 4.1210748727550595 81, -97.6640625 81 M97.6640625 81 C57.29769333725983 81, 16.93132417451966 81, -97.6640625 81 M-97.6640625 81 C-97.6640625 30.889518018246996, -97.6640625 -19.22096396350601, -97.6640625 -81 M-97.6640625 81 C-97.6640625 21.564023474756773, -97.6640625 -37.871953050486454, -97.6640625 -81" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -57)"/><g class="label-group text" transform="translate(-51.34375, -57)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="102.6875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 151px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>RoomInventory</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-85.6640625, -12)"/><g class="methods-group text" transform="translate(-85.6640625, 18)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="119.984375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 181px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+isAvailable(range)</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="83.671875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 142px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+book(range)</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="99.234375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 154px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+release(range)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-97.6640625 -36 C-20.25194132883857 -35.99960368164507, 57.16017984232286 -35.99920736329015, 97.6640625 -35.999 M-97.6640625 -36 C-24.23879901484085 -35.999624092723536, 49.1864644703183 -35.99924818544708, 97.6640625 -35.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-97.6640625 -12 C-26.813301303057727 -11.999637273120822, 44.037459893884545 -11.999274546241644, 97.6640625 -11.999 M-97.6640625 -12 C-30.54613815745175 -11.999656383716669, 36.5717861850965 -11.999312767433338, 97.6640625 -11.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p16-classId-ReservationRequestBuilder-2" data-look="neo" transform="translate(504.66796875, 103.5)"><g class="basic label-container outer-path"><path d="M-112.95703125 -91.5 L112.95703125 -91.5 L112.95703125 91.5 L-112.95703125 91.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-112.95703125 -91.5 C-34.3123175056693 -91.5, 44.3323962386614 -91.5, 112.95703125 -91.5 M-112.95703125 -91.5 C-49.422685565979094 -91.5, 14.111660118041812 -91.5, 112.95703125 -91.5 M112.95703125 -91.5 C112.95703125 -37.11677437816447, 112.95703125 17.266451243671057, 112.95703125 91.5 M112.95703125 -91.5 C112.95703125 -40.894322593811644, 112.95703125 9.711354812376712, 112.95703125 91.5 M112.95703125 91.5 C37.82515912654152 91.5, -37.30671299691696 91.5, -112.95703125 91.5 M112.95703125 91.5 C36.97884174250839 91.5, -38.99934776498321 91.5, -112.95703125 91.5 M-112.95703125 91.5 C-112.95703125 35.653521522453204, -112.95703125 -20.192956955093592, -112.95703125 -91.5 M-112.95703125 91.5 C-112.95703125 51.78645795088161, -112.95703125 12.072915901763224, -112.95703125 -91.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -67.5)"/><g class="label-group text" transform="translate(-91.8046875, -67.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="183.609375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 226px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>ReservationRequestBuilder</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-100.95703125, -22.5)"/><g class="methods-group text" transform="translate(-100.95703125, 7.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="78.96875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 139px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+withDates()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="110.109375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 173px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+withRoomType()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="85.984375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 150px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+withAddOn()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,52.5)"><foreignObject width="47.09375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 107px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+build()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-112.95703125 -46.5 C-25.9925368963047 -46.49961505497537, 60.9719574573906 -46.49923010995074, 112.95703125 -46.499 M-112.95703125 -46.5 C-55.98569190388132 -46.49974781853455, 0.9856474422373651 -46.49949563706911, 112.95703125 -46.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-112.95703125 -22.5 C-63.28633725004027 -22.499780134563338, -13.615643250080538 -22.499560269126672, 112.95703125 -22.499 M-112.95703125 -22.5 C-59.05051937961319 -22.499761384876738, -5.144007509226384 -22.499522769753472, 112.95703125 -22.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p16-classId-Reservation-3" data-look="neo" transform="translate(397.494140625, 334)"><g class="basic label-container outer-path"><path d="M-61.609375 -99 L61.609375 -99 L61.609375 99 L-61.609375 99" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-61.609375 -99 C-25.624196873608035 -99, 10.36098125278393 -99, 61.609375 -99 M-61.609375 -99 C-28.040971773461422 -99, 5.527431453077156 -99, 61.609375 -99 M61.609375 -99 C61.609375 -27.890853887749017, 61.609375 43.218292224501965, 61.609375 99 M61.609375 -99 C61.609375 -57.77161799175063, 61.609375 -16.543235983501262, 61.609375 99 M61.609375 99 C21.43140574169702 99, -18.74656351660596 99, -61.609375 99 M61.609375 99 C25.546015365549046 99, -10.517344268901908 99, -61.609375 99 M-61.609375 99 C-61.609375 56.16644253820387, -61.609375 13.332885076407734, -61.609375 -99 M-61.609375 99 C-61.609375 38.95416658093551, -61.609375 -21.091666838128987, -61.609375 -99" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -75)"/><g class="label-group text" transform="translate(-40.078125, -75)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="80.15625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 126px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Reservation</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-49.609375, -30)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="48.25" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 101px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>checkIn</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="59.140625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 111px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>checkOut</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="37.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 86px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>status</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,52.5)"><foreignObject width="58.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 111px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>totalPrice</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-49.609375, 78)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="57.96875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 115px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+cancel()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-61.609375 -54 C-31.22232392891305 -53.99975338939024, -0.835272857826098 -53.999506778780486, 61.609375 -53.999 M-61.609375 -54 C-33.98331754115857 -53.99977579664249, -6.35726008231714 -53.99955159328497, 61.609375 -53.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-61.609375 54 C-31.633256742255785 54.000243275623696, -1.6571384845115702 54.0004865512474, 61.609375 54.001 M-61.609375 54 C-33.547343500469715 54.00022774156936, -5.48531200093943 54.000455483138715, 61.609375 54.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p16-classId-PricingStrategy-4" data-look="neo" transform="translate(264.9296875, 543.5)"><g class="basic label-container outer-path"><path d="M-129.10546875 -70.5 L129.10546875 -70.5 L129.10546875 70.5 L-129.10546875 70.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-129.10546875 -70.5 C-65.2206258245674 -70.5, -1.335782899134827 -70.5, 129.10546875 -70.5 M-129.10546875 -70.5 C-66.30353458081515 -70.5, -3.5016004116302923 -70.5, 129.10546875 -70.5 M129.10546875 -70.5 C129.10546875 -23.29106543495358, 129.10546875 23.91786913009284, 129.10546875 70.5 M129.10546875 -70.5 C129.10546875 -41.140649919546746, 129.10546875 -11.781299839093492, 129.10546875 70.5 M129.10546875 70.5 C50.09286314609861 70.5, -28.919742457802784 70.5, -129.10546875 70.5 M129.10546875 70.5 C72.26057504749676 70.5, 15.41568134499353 70.5, -129.10546875 70.5 M-129.10546875 70.5 C-129.10546875 19.489394374839783, -129.10546875 -31.521211250320434, -129.10546875 -70.5 M-129.10546875 70.5 C-129.10546875 23.551703672150417, -129.10546875 -23.396592655699166, -129.10546875 -70.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-34.640625, -46.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="69.28125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«interface»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-51.7421875, -25.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="103.484375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 150px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>PricingStrategy</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-117.10546875, 19.5)"/><g class="methods-group text" transform="translate(-117.10546875, 49.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="182.46875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 247px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+calculatePrice(room, in, out)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-129.10546875 -4.5 C-27.840134971823957 -4.499607819348171, 73.42519880635209 -4.499215638696342, 129.10546875 -4.499 M-129.10546875 -4.5 C-37.05358554024848 -4.49964350122384, 54.998297669503046 -4.499287002447681, 129.10546875 -4.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-129.10546875 19.5 C-54.219079096114086 19.500290020207427, 20.667310557771827 19.500580040414857, 129.10546875 19.501 M-129.10546875 19.5 C-48.42083941838355 19.50031247564535, 32.2637899132329 19.5006249512907, 129.10546875 19.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p16-classId-BookingNotifier-5" data-look="neo" transform="translate(530.05859375, 543.5)"><g class="basic label-container outer-path"><path d="M-96.0234375 -70.5 L96.0234375 -70.5 L96.0234375 70.5 L-96.0234375 70.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-96.0234375 -70.5 C-54.379578325149566 -70.5, -12.735719150299133 -70.5, 96.0234375 -70.5 M-96.0234375 -70.5 C-30.62277810280679 -70.5, 34.77788129438642 -70.5, 96.0234375 -70.5 M96.0234375 -70.5 C96.0234375 -27.819275206571994, 96.0234375 14.861449586856011, 96.0234375 70.5 M96.0234375 -70.5 C96.0234375 -34.4697072596151, 96.0234375 1.5605854807698023, 96.0234375 70.5 M96.0234375 70.5 C54.58685955769989 70.5, 13.150281615399777 70.5, -96.0234375 70.5 M96.0234375 70.5 C38.966351731363545 70.5, -18.09073403727291 70.5, -96.0234375 70.5 M-96.0234375 70.5 C-96.0234375 21.496836551131963, -96.0234375 -27.506326897736074, -96.0234375 -70.5 M-96.0234375 70.5 C-96.0234375 14.2311207558649, -96.0234375 -42.0377584882702, -96.0234375 -70.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -46.5)"/><g class="label-group text" transform="translate(-52.5, -46.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="105" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 156px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>BookingNotifier</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-84.0234375, -1.5)"/><g class="methods-group text" transform="translate(-84.0234375, 28.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="115.546875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 182px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+notifyConfirmed()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="113.234375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 176px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+notifyCancelled()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-96.0234375 -25.5 C-39.22800133324635 -25.499704262638136, 17.567434833507306 -25.49940852527627, 96.0234375 -25.499 M-96.0234375 -25.5 C-54.155881429661115 -25.49978199303649, -12.28832535932223 -25.499563986072978, 96.0234375 -25.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-96.0234375 -1.5 C-27.570534103920025 -1.4996435614826011, 40.88236929215995 -1.4992871229652025, 96.0234375 -1.499 M-96.0234375 -1.5 C-55.274165121292434 -1.4997878160090932, -14.524892742584868 -1.499575632018186, 96.0234375 -1.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p16-classId-Hotel-6" data-look="neo" transform="translate(264.625, 114)"><g class="basic label-container outer-path"><path d="M-87.0859375 -81 L87.0859375 -81 L87.0859375 81 L-87.0859375 81" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-87.0859375 -81 C-23.57917450713998 -81, 39.92758848572004 -81, 87.0859375 -81 M-87.0859375 -81 C-47.94378474857183 -81, -8.801631997143659 -81, 87.0859375 -81 M87.0859375 -81 C87.0859375 -48.0007579130726, 87.0859375 -15.001515826145194, 87.0859375 81 M87.0859375 -81 C87.0859375 -30.868442250170034, 87.0859375 19.263115499659932, 87.0859375 81 M87.0859375 81 C39.9076686940042 81, -7.270600111991598 81, -87.0859375 81 M87.0859375 81 C26.446215336141805 81, -34.19350682771639 81, -87.0859375 81 M-87.0859375 81 C-87.0859375 16.803408379004225, -87.0859375 -47.39318324199155, -87.0859375 -81 M-87.0859375 81 C-87.0859375 20.473292052822735, -87.0859375 -40.05341589435453, -87.0859375 -81" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -57)"/><g class="label-group text" transform="translate(-17.5, -57)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="35" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 86px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Hotel</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-75.0859375, -12)"/><g class="methods-group text" transform="translate(-75.0859375, 18)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="125.421875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 190px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+searchAvailability()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="85.203125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 145px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+bookRoom()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="132.671875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 191px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+cancelReservation()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-87.0859375 -36 C-21.34845791051268 -35.99962257121255, 44.38902167897464 -35.999245142425096, 87.0859375 -35.999 M-87.0859375 -36 C-43.24596444540236 -35.99974829476312, 0.594008609195285 -35.999496589526245, 87.0859375 -35.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-87.0859375 -12 C-19.209141172875462 -11.999610288421554, 48.667655154249076 -11.99922057684311, 87.0859375 -11.999 M-87.0859375 -12 C-38.879959434935756 -11.999723227541386, 9.326018630128488 -11.999446455082774, 87.0859375 -11.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g></g></g></g><defs><filter id="diagram-p16-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><defs><filter id="diagram-p16-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs></svg>
+</div>
+<details class="mermaid-src"><summary>View Mermaid source</summary>
+<pre><code>classDiagram
+  class Room {
+    roomNumber
+    roomType
+    floor
+  }
+  class RoomInventory {
+    +isAvailable(range)
+    +book(range)
+    +release(range)
+  }
+  class ReservationRequestBuilder {
+    +withDates()
+    +withRoomType()
+    +withAddOn()
+    +build()
+  }
+  class Reservation {
+    checkIn
+    checkOut
+    status
+    totalPrice
+    +cancel()
+  }
+  class PricingStrategy {
+    &lt;&lt;interface&gt;&gt;
+    +calculatePrice(room, in, out)
+  }
+  class BookingNotifier {
+    +notifyConfirmed()
+    +notifyCancelled()
+  }
+  class Hotel {
+    +searchAvailability()
+    +bookRoom()
+    +cancelReservation()
+  }
+  Room &quot;1&quot; --&gt; &quot;1&quot; RoomInventory
+  ReservationRequestBuilder --&gt; Reservation
+  Reservation --&gt; PricingStrategy
+  Reservation --&gt; BookingNotifier
+  Hotel --&gt; RoomInventory
+  Hotel --&gt; Reservation</code></pre>
+</details>
+
+<h3 id="p16-k">K. Responsibility Mapping</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Does NOT Handle</th></tr>
+<tr><td>RoomInventory</td><td>Per-room interval overlap checking and booking/release</td><td>Pricing, guest identity</td></tr>
+<tr><td>ReservationRequestBuilder</td><td>Step-by-step, validated request construction</td><td>Availability checking, persistence</td></tr>
+<tr><td>PricingStrategy implementations</td><td>One price formula</td><td>Booking commitment itself</td></tr>
+<tr><td>BookingNotifier</td><td>Fan-out of booking lifecycle events to interested parties</td><td>Booking eligibility decisions</td></tr>
+<tr><td>Hotel</td><td>Top-level orchestration</td><td>Interval math, price math</td></tr>
+</table>
+
+<h3 id="p16-l">L. SOLID Analysis</h3>
+<table>
+<tr><th>Principle</th><th>How It's Applied</th><th>Naive Violation</th></tr>
+<tr><td>SRP</td><td><code>RoomInventory</code> owns overlap logic; <code>PricingStrategy</code> owns pricing; <code>BookingNotifier</code> owns notification fan-out</td><td>One <code>Hotel</code> god-class checking overlap, computing price, and sending emails all inline</td></tr>
+<tr><td>OCP</td><td>A new pricing rule is a new <code>PricingStrategy</code>; a new request field is a new Builder step</td><td>A pricing <code>if/else</code> chain keyed on season, edited every time a new promotional period is added</td></tr>
+<tr><td>LSP</td><td>Every <code>PricingStrategy</code> implementation honestly returns a price for the same method signature regardless of internal complexity</td><td>A "premium" strategy that also silently mutates the reservation's dates as a side effect</td></tr>
+<tr><td>ISP</td><td><code>PricingStrategy</code> stays a single-method interface</td><td>A combined "BookingPolicy" interface mixing pricing with cancellation-refund and overbooking rules that don't always vary together</td></tr>
+<tr><td>DIP</td><td><code>Reservation</code> depends on the <code>PricingStrategy</code> abstraction, not a hardcoded rate table</td><td><code>Reservation.calculatePrice()</code> embedding a season lookup table directly on the entity</td></tr>
+</table>
+
+<h3 id="p16-m">M. Design Patterns</h3>
+<table>
+<tr><th>Pattern</th><th>Problem It Solves</th><th>Where It Appears</th><th>When NOT to Use</th></tr>
+<tr><td>Builder</td><td>A reservation request has several optional parts that don't all apply to every booking</td><td><code>ReservationRequestBuilder</code></td><td>Skip if a booking only ever needs dates and a room type — a plain constructor is enough</td></tr>
+<tr><td>Strategy</td><td>Price varies by room type, season, and demand, and changes more often than booking logic</td><td><code>PricingStrategy</code></td><td>Skip if the round only ever needs one flat rate per room type</td></tr>
+<tr><td>Observer</td><td>Booking confirmation/cancellation shouldn't require the booking code path to know who needs telling</td><td><code>BookingNotifier</code></td><td>Skip if notifications are entirely out of scope for the round</td></tr>
+</table>
+<p><strong>Explicitly avoided:</strong> a single boolean <code>isAvailable</code> flag on <code>Room</code> — see I for why this cannot represent partial-date-range availability, which is the defining shape of this problem.</p>
+
+<h3 id="p16-n">N. What Is Likely to Change?</h3>
+<table>
+<tr><th>Behavior</th><th>Current Design</th><th>Anticipated Change</th><th>Protecting Abstraction</th></tr>
+<tr><td>Pricing rules</td><td>Room-type-and-season-based</td><td>Real-time demand pricing, loyalty discounts, promotional codes</td><td><code>PricingStrategy</code> interface</td></tr>
+<tr><td>Reservation request fields</td><td>Dates, room type, guest count</td><td>Add-ons, special requests, group bookings</td><td>New Builder steps, additive to <code>ReservationRequest</code></td></tr>
+<tr><td>Cancellation terms</td><td>Simple cancel-and-release</td><td>Tiered refund windows, non-refundable rate plans</td><td>A future <code>CancellationPolicy</code> strategy, same shape as <code>PricingStrategy</code></td></tr>
+</table>
+
+<h3 id="p16-o">O. Design Evolution</h3>
+<ul>
+<li><strong>V1:</strong> one boolean availability flag per room, one flat price, no notifications.</li>
+<li><strong>V2:</strong> replace the flag with <code>RoomInventory</code>'s interval structure the moment "available for these specific dates" becomes a real requirement, not a demo simplification.</li>
+<li><strong>V3:</strong> extract <code>PricingStrategy</code> once a second pricing rule (season) is requested.</li>
+<li><strong>V4:</strong> introduce <code>ReservationRequestBuilder</code> once the request grows past dates and room type.</li>
+<li><strong>V5:</strong> wire <code>BookingNotifier</code> to the existing Pub-Sub/Notification System infrastructure once confirmations are requested.</li>
+</ul>
+<p><strong>What stays stable:</strong> <code>Hotel</code>'s public search/book/cancel API. New pricing rules and request fields are additive.</p>
+
+<h3 id="p16-p">P. API / Interface Design</h3>
+<pre><code>interface PricingStrategy {
+  Money calculatePrice(Room room, Date checkIn, Date checkOut);
+}
+
+class ReservationRequestBuilder {
+  ReservationRequestBuilder withDates(Date checkIn, Date checkOut);
+  ReservationRequestBuilder withRoomType(RoomType type);
+  ReservationRequestBuilder withAddOn(AddOn addOn);
+  ReservationRequest build();
+}
+
+class Hotel {
+  List&lt;Room&gt; searchAvailability(Date checkIn, Date checkOut, RoomType type);
+  Reservation bookRoom(Guest guest, ReservationRequest request);
+  void cancelReservation(String reservationId);
+}</code></pre>
+<p><strong>Ownership/validation notes:</strong> <code>bookRoom()</code> locates a specific <code>Room</code> whose <code>RoomInventory</code> reports the requested range free, atomically reserves that interval, and only then constructs the <code>Reservation</code> and prices it — availability is never assumed to still hold between the search call and the book call.</p>
+
+<h3 id="p16-q">Q. Pseudocode — Critical Logic</h3>
+<pre><code>Hotel.bookRoom(guest, request):
+  candidateRoom = pickCandidate(request.roomType)
+  lock(candidateRoom.inventory)
+  try:
+    if not candidateRoom.inventory.isAvailable(request.range): reject
+    candidateRoom.inventory.book(request.range)
+    price = pricingStrategyFor(candidateRoom).calculatePrice(candidateRoom, request.range)
+    reservation = new Reservation(guest, candidateRoom, request.range, price)
+    bookingNotifier.notifyConfirmed(reservation)
+    return reservation
+  finally:
+    unlock(candidateRoom.inventory)
+
+RoomInventory.isAvailable(range):
+  return bookedIntervals.none(existing => existing.overlaps(range))</code></pre>
+
+<h3 id="p16-r">R. End-to-End Use Case</h3>
+<pre>
+guestA.searchAvailability(Mar 1–5, Deluxe) → Room 204 returned as free
+  │
+  ▼
+guestA.bookRoom(Room 204, Mar 1–5)
+  │  lock(Room 204.inventory) → re-check still free → book interval → unlock
+  │  price computed via SeasonalPricingStrategy → Reservation created
+  │  BookingNotifier.notifyConfirmed() → guestA emailed, front desk updated
+  ▼
+guestA.cancelReservation() before Mar 1 → interval released, BookingNotifier.notifyCancelled()
+</pre>
+
+<h3 id="p16-s">S. Data Structures</h3>
+<table>
+<tr><th>Structure</th><th>Used For</th><th>Why</th><th>Alternative &amp; Trade-off</th></tr>
+<tr><td>Sorted list / interval tree of booked ranges per room in <code>RoomInventory</code></td><td>Overlap checking</td><td>Supports O(log n) overlap queries as a room accumulates many bookings over time, instead of scanning every booking</td><td>A plain unsorted list is fine for a small demo but degrades to O(n) per check</td></tr>
+<tr><td>Index of rooms by type</td><td>Type-filtered availability search</td><td>Avoids scanning every room in the hotel for every search</td><td>Full scan is acceptable for a small single-property hotel</td></tr>
+</table>
+
+<h3 id="p16-t">T. Complexity Analysis</h3>
+<table>
+<tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+<tr><td><code>isAvailable(range)</code> (interval tree)</td><td>O(log n + k) where k = overlapping candidates</td><td>O(n) bookings per room</td></tr>
+<tr><td><code>bookRoom()</code></td><td>O(log n) for the overlap check + O(1) commit</td><td>O(1)</td></tr>
+<tr><td><code>searchAvailability()</code> across a hotel</td><td>O(rooms of matching type × log n)</td><td>O(1) beyond the inventory structures</td></tr>
+</table>
+
+<h3 id="p16-u">U. Testing Strategy</h3>
+<ul>
+<li><strong>Happy path:</strong> booking a free date range on a room makes that exact range unavailable for future searches without affecting adjacent, non-overlapping ranges on the same room.</li>
+<li><strong>Edge cases:</strong> a request whose check-out date exactly equals another booking's check-in date (back-to-back stays) is accepted, not rejected as a false overlap.</li>
+<li><strong>Pricing tests:</strong> the same room and duration produce different totals in peak vs. off-season, without changing any code — only the active <code>PricingStrategy</code>.</li>
+<li><strong>Concurrency tests:</strong> two guests simultaneously booking overlapping date ranges on the same room result in exactly one success and one clean rejection.</li>
+</ul>
+
+<h3 id="p16-v">V. Interviewer Follow-Ups</h3>
+<table>
+<tr><th>Follow-Up</th><th>Testing</th><th>Design Change</th><th>Classes Changed</th><th>Pattern/Trade-off</th></tr>
+<tr><td>"Add demand-based dynamic pricing."</td><td>Whether pricing was ever hardcoded inline</td><td>New <code>DemandBasedPricingStrategy</code> reading current occupancy</td><td>New strategy only</td><td>Validates the Strategy boundary from I</td></tr>
+<tr><td>"Support group bookings of multiple rooms in one reservation."</td><td>Whether Reservation assumed exactly one room</td><td><code>Reservation</code> holds a list of rooms; booking must lock and verify all rooms together, in a fixed order</td><td>Reservation, booking flow</td><td>Directly reuses the canonical-ordering deadlock-avoidance lesson from File System (Problem 9)</td></tr>
+<tr><td>"Allow intentional overbooking with a no-show margin."</td><td>Whether availability was a hard boolean invariant baked in everywhere</td><td>Overlap check becomes probabilistic/threshold-based rather than a hard exclusion</td><td>RoomInventory only</td><td>Tests whether the hard-invariant assumption from F was actually isolated behind one class</td></tr>
+</table>
+
+<h3 id="p16-w">W. Concurrency</h3>
+<p><strong>Shared mutable state:</strong> each room's booked-interval collection in <code>RoomInventory</code>, particularly for popular rooms/dates.</p>
+<ul>
+<li><strong>The check-then-act race, in interval form:</strong> checking "is this range free" and then booking it are two steps; without a lock around the specific room's inventory, two guests racing for overlapping dates on the same room could both read "free" before either commits. This is the same bug shape already seen in Parking Lot (Problem 1), Splitwise (Problem 4), ATM (Problem 14), and Library (Problem 15) — lock the specific resource, re-verify, then commit.</li>
+<li><strong>Per-room locking, not per-hotel:</strong> only the one contested room's inventory needs locking — bookings on other rooms proceed independently, even for the same dates.</li>
+<li><strong>Real-world alternative:</strong> a database-level exclusion constraint on a range type (e.g. PostgreSQL's <code>EXCLUDE USING gist</code> over a date range column) enforces non-overlap at the storage layer itself, turning the race into a constraint-violation error on the losing transaction instead of requiring an application-level lock.</li>
+</ul>
+
+<h3 id="p16-x">X. Persistence</h3>
+<p>Reservations and booked intervals are durable by nature — a booking that disappears on restart is a correctness failure, not a caching inconvenience. Each room's booked intervals are naturally repository-backed, and the exclusion-constraint approach from W is specifically a persistence-layer technique, not an in-memory one.</p>
+
+<h3 id="p16-y">Y. Scaling Boundary</h3>
+<table>
+<tr><th>Layer</th><th>What Belongs Here</th></tr>
+<tr><td><strong>LLD</strong></td><td>Room/RoomInventory model, interval overlap checking, pricing strategy, per-room locking</td></tr>
+<tr><td><strong>HLD</strong></td><td>Multi-property search federation, distributed inventory across data centers, third-party OTA (Expedia/Booking.com-style) integration</td></tr>
+<tr><td><strong>Explicitly out of scope</strong></td><td>Cross-property or multi-tenant systems unless the round pivots there</td></tr>
+</table>
+
+<h3 id="p16-z">Z. Failure Scenarios</h3>
+<ul>
+<li><strong>Payment succeeds but the booking commit fails (or vice versa):</strong> the two must be transactionally consistent, or the booking flow needs a compensating action (refund on booking failure, or hold-then-confirm rather than charge-then-book) — the same commit-ordering discipline as ATM's debit-before-dispense logic (Problem 14).</li>
+<li><strong>A cancellation is retried after a network timeout:</strong> cancelling an already-cancelled reservation must be idempotent — checking current status before re-releasing the interval, rather than assuming the retry is the first attempt (the same idempotency-under-retries lesson from Pub-Sub, Problem 10).</li>
+</ul>
+
+<h3 id="p16-aa">AA. Common Bad Designs</h3>
+<ul>
+<li><strong>A boolean <code>isAvailable</code> flag on <code>Room</code></strong> instead of an interval structure — the defining mistake for this problem; see I.</li>
+<li><strong>Checking availability and booking as two separate, unlocked calls from the caller's side</strong> — reintroduces the check-then-act race even if <code>RoomInventory</code> itself is well-designed, because the caller does the check-then-act instead of the room.</li>
+<li><strong>Hardcoding seasonal price multipliers as constants inside <code>Reservation</code></strong> instead of a swappable <code>PricingStrategy</code> — breaks the first time a promotional rate or demand-based rule is requested.</li>
+<li><strong>A single <code>Hotel</code> class directly implementing search, booking, pricing, and notification</strong> — the same god-object shape flagged in nearly every problem in this document.</li>
+</ul>
+
+<h3 id="p16-ab">AB. Design Trade-Offs</h3>
+<table>
+<tr><th>Decision</th><th>Option A</th><th>Option B</th><th>Recommendation</th></tr>
+<tr><td>Overlap enforcement</td><td>Application-level lock + re-check</td><td>Database exclusion constraint on a range type</td><td>Exclusion constraint in production (removes an entire class of application bugs); application lock is the right level of detail to describe in an interview if the schema/DB isn't the focus</td></tr>
+<tr><td>Inventory granularity</td><td>Per specific physical room</td><td>Per room type (undifferentiated pool)</td><td>Per specific room when a guest needs a specific room; per type is simpler and sufficient if any room of a type is interchangeable</td></tr>
+</table>
+
+<h3 id="p16-ac">AC. Interviewer Evaluation</h3>
+<p><strong>Strong signal:</strong> modeling availability as intervals unprompted; isolating pricing behind a Strategy before being asked for a second pricing rule; catching the overlapping-booking race and proposing either a lock or an exclusion constraint without being walked into it.</p>
+<p><strong>Red flag:</strong> a boolean availability flag; checking-then-booking as two unlocked steps; hardcoded seasonal price constants; a god-object <code>Hotel</code> class.</p>
+
+<h3 id="p16-ad">AD. Interview Simulation</h3>
+<div class="dialog"><span class="who">Interviewer:</span> Design a hotel reservation system.</div>
+<div class="dialog"><span class="who">Candidate:</span> The key modeling decision is that a room's availability isn't a single flag — it's a set of booked date intervals. I'd give each <code>Room</code> a <code>RoomInventory</code> that answers "is this range free" via overlap checks against its booked intervals, not a boolean that can't represent partial-date availability.</div>
+<div class="dialog"><span class="who">Interviewer:</span> How would you handle a booking request with optional extras like breakfast or late checkout?</div>
+<div class="dialog"><span class="who">Candidate:</span> I'd use a Builder for the reservation request — <code>ReservationRequestBuilder</code> — since the request has several optional parts that don't all apply to every booking. It validates once at <code>build()</code> instead of forcing every caller through a huge constructor or leaving partial state to be validated ad hoc.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Two guests try to book the same room for overlapping dates at the same instant.</div>
+<div class="dialog"><span class="who">Candidate:</span> Same fix as the last-copy race in the Library problem or the balance race in the ATM problem — lock that room's inventory, re-verify the range is still free, then commit. In production I'd actually push this to the database with an exclusion constraint on a date-range column, so the non-overlap invariant is enforced at the storage layer instead of relying purely on application-level locking.</div>
+<div class="dialog"><span class="who">Interviewer:</span> How does pricing work if it varies by season?</div>
+<div class="dialog"><span class="who">Candidate:</span> Behind a <code>PricingStrategy</code> interface, keyed by room type and the date range's season — a new promotional rule or demand-based rule becomes a new strategy, not a change to the booking flow itself.</div>
+
+<h3 id="p16-ae">AE. Online Solution Comparison</h3>
+<table>
+<tr><th>Source</th><th>Approach</th><th>Strength</th><th>Weakness</th><th>Worth Learning</th></tr>
+<tr><td><a href="https://medium.com/@ankitviddya/designing-a-hotel-booking-system-low-level-design-f30247e5aefa" target="_blank">Medium — Designing a Hotel Booking System (Low Level Design)</a></td><td>Entity-and-class walkthrough covering rooms, bookings, and a basic pricing notion</td><td>Approachable introduction to the room/reservation entity split</td><td>Availability is generally presented closer to a status flag than an explicit interval-overlap structure, and concurrency on overlapping bookings isn't the central focus</td><td>Useful as an entity-modeling starting point; this document's interval-based <code>RoomInventory</code> and the overlapping-booking race are the parts worth adding on top</td></tr>
+<tr><td><a href="https://github.com/ashishps1/awesome-low-level-design/blob/main/problems/hotel-management-system.md" target="_blank">ashishps1/awesome-low-level-design — Hotel Management System</a></td><td>A curated, runnable reference solution with room, reservation, and hotel classes</td><td>Real, buildable code to cross-check class shapes against an independent, community-vetted source</td><td>Breadth-over-depth — a working solution without the same depth of concurrency/trade-off analysis as a dedicated write-up</td><td>Good for spot-checking that this document's entity boundaries match a widely-referenced independent implementation</td></tr>
+</table>
+
+<h3 id="p16-af">AF. Interview Cheat Sheet</h3>
+<table>
+<tr><td><strong>Problem</strong></td><td>Hotel Reservation System</td></tr>
+<tr><td><strong>Difficulty</strong></td><td>Intermediate → Advanced (concurrency follow-up)</td></tr>
+<tr><td><strong>Core requirements</strong></td><td>Date-range search, booking, cancellation, room-type/season-aware pricing, booking notifications</td></tr>
+<tr><td><strong>Key clarifications</strong></td><td>Per-room or per-type inventory? Pricing variation? Overbooking allowed? Cancellation/refund policy?</td></tr>
+<tr><td><strong>Core entities</strong></td><td>Room, RoomInventory, Reservation, ReservationRequest, ReservationRequestBuilder, PricingStrategy, BookingNotifier, Hotel</td></tr>
+<tr><td><strong>Key relationships</strong></td><td>Availability modeled as booked intervals, not a flag; Builder for requests; Strategy for pricing; Observer for notifications</td></tr>
+<tr><td><strong>Key patterns</strong></td><td>Builder, Strategy, Observer</td></tr>
+<tr><td><strong>Most important decision</strong></td><td>Modeling availability as a date-range interval structure instead of a boolean flag</td></tr>
+<tr><td><strong>Likely-changing behavior</strong></td><td>Pricing rules, reservation request fields, cancellation/refund terms</td></tr>
+<tr><td><strong>Concurrency concern</strong></td><td>Check-then-act race on overlapping date-range bookings for the same room</td></tr>
+<tr><td><strong>Top follow-ups</strong></td><td>Demand-based pricing, multi-room group bookings, intentional overbooking</td></tr>
+<tr><td><strong>Common mistakes</strong></td><td>Boolean availability flag; unlocked check-then-book from the caller; hardcoded seasonal constants; god-object Hotel class</td></tr>
+<tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design multi-property/OTA federation unless asked</td></tr>
+</table><div class="prevnext"><a class="prevnext-link prev" href="p15.html">&larr; 15. Library Management System</a><a class="prevnext-link next" href="p17.html">17. Movie Ticket Booking System &rarr;</a></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

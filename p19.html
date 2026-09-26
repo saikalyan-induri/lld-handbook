@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('lld-theme') || 'light');</script>
+<title>19. E-commerce Shopping Cart &amp; Checkout — LLD Handbook</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+</head>
+<body>
+<button id="menu-toggle" aria-label="Toggle menu">&#9776;</button>
+<nav id="sidebar">
+  <div class="sidebar-top">
+    <a class="brand" href="index.html">LLD Handbook</a>
+    <button id="theme-toggle" aria-label="Toggle dark mode">&#127769;</button>
+  </div>
+  <div class="search-wrap">
+    <input id="search-box" type="text" placeholder="Search problems &amp; sections...">
+    <div id="search-results"></div>
+  </div>
+  <ul class="nav-list">
+    <li><a href="index.html" data-page="index.html">Home</a></li>
+    <li><a href="p1.html" data-page="p1.html">1. Parking Lot</a></li>
+    <li><a href="p2.html" data-page="p2.html">2. LRU Cache</a></li>
+    <li><a href="p3.html" data-page="p3.html">3. Rate Limiter</a></li>
+    <li><a href="p4.html" data-page="p4.html">4. Splitwise (Expense Sharing)</a></li>
+    <li><a href="p5.html" data-page="p5.html">5. Ride-Sharing Service (Uber/Lyft)</a></li>
+    <li><a href="p6.html" data-page="p6.html">6. Logging Framework</a></li>
+    <li><a href="p7.html" data-page="p7.html">7. Notification System</a></li>
+    <li><a href="p8.html" data-page="p8.html">8. Coffee Vending Machine</a></li>
+    <li><a href="p9.html" data-page="p9.html">9. File System</a></li>
+    <li><a href="p10.html" data-page="p10.html">10. Pub-Sub / Message Queue</a></li>
+    <li><a href="p11.html" data-page="p11.html">11. Elevator System</a></li>
+    <li><a href="p12.html" data-page="p12.html">12. Tic-Tac-Toe / Board Game Engine</a></li>
+    <li><a href="p13.html" data-page="p13.html">13. Chess Game</a></li>
+    <li><a href="p14.html" data-page="p14.html">14. ATM Machine</a></li>
+    <li><a href="p15.html" data-page="p15.html">15. Library Management System</a></li>
+    <li><a href="p16.html" data-page="p16.html">16. Hotel Reservation System</a></li>
+    <li><a href="p17.html" data-page="p17.html">17. Movie Ticket Booking System</a></li>
+    <li><a href="p18.html" data-page="p18.html">18. Restaurant / Food Delivery System</a></li>
+    <li><a href="p19.html" data-page="p19.html">19. E-commerce Shopping Cart &amp; Checkout</a></li>
+    <li><a href="p20.html" data-page="p20.html">20. Chat Application (WhatsApp-style)</a></li>
+    <li><a href="synthesis.html" data-page="synthesis.html">Cross-Problem Synthesis</a></li>
+  </ul>
+</nav>
+<main id="content">
+<h1 class="problem-title">19. E-commerce Shopping Cart &amp; Checkout <span class="badge">Intermediate → Advanced</span></h1>
+
+<div class="section-toc">
+<a href="#p19-a">A. Interview Prompt</a><a href="#p19-b">B. Difficulty</a><a href="#p19-c">C. What It Tests</a>
+<a href="#p19-d">D. Requirements</a><a href="#p19-e">E. Clarifying Questions</a><a href="#p19-f">F. Assumptions</a>
+<a href="#p19-g">G. Actors</a><a href="#p19-h">H. Core Entities</a><a href="#p19-i">I. Relationships</a>
+<a href="#p19-j">J. Class Diagram</a><a href="#p19-k">K. Responsibility Map</a><a href="#p19-l">L. SOLID Analysis</a>
+<a href="#p19-m">M. Design Patterns</a><a href="#p19-n">N. What Changes?</a><a href="#p19-o">O. Design Evolution</a>
+<a href="#p19-p">P. API Design</a><a href="#p19-q">Q. Pseudocode</a><a href="#p19-r">R. End-to-End Flow</a>
+<a href="#p19-s">S. Data Structures</a><a href="#p19-t">T. Complexity</a><a href="#p19-u">U. Testing Strategy</a>
+<a href="#p19-v">V. Interviewer Follow-Ups</a><a href="#p19-w">W. Concurrency</a><a href="#p19-x">X. Persistence</a>
+<a href="#p19-y">Y. Scaling Boundary</a><a href="#p19-z">Z. Failure Scenarios</a><a href="#p19-aa">AA. Bad Designs</a>
+<a href="#p19-ab">AB. Trade-Offs</a><a href="#p19-ac">AC. Interviewer Evaluation</a><a href="#p19-ad">AD. Simulation</a>
+<a href="#p19-ae">AE. Source Comparison</a><a href="#p19-af">AF. Cheat Sheet</a>
+</div>
+
+<h3 id="p19-a">A. Realistic Interview Prompt</h3>
+<div class="prompt">"Design an e-commerce shopping cart and checkout system. Users add products to a cart, optionally add per-item add-ons like gift wrap, apply coupons, and check out. Checkout must handle tax, discounts, and inventory correctly under concurrent load."</div>
+
+<h3 id="p19-b">B. Difficulty</h3>
+<p><strong>Intermediate, climbing to Advanced on the checkout-concurrency and pricing-pipeline follow-ups.</strong> The cart itself is simple; the interesting design decisions are (1) picking Decorator for stackable per-item add-ons instead of misusing Strategy for them, and (2) making inventory decrement race-free under concurrent checkouts.</p>
+
+<h3 id="p19-c">C. What This Problem Tests</h3>
+<ul>
+<li>Decorator for per-item add-ons (gift wrap, extended warranty, engraving) that stack and each contribute their own price/behavior — deliberately distinguished from Strategy</li>
+<li>Strategy for the pricing pipeline (tax, discount, coupon) — a fixed, ordered sequence of interchangeable rules applied to a running total</li>
+<li>State machine for order lifecycle (placed → paid → shipped → delivered, plus cancelled/refunded)</li>
+<li>The check-then-act race on inventory decrement under concurrent checkouts of the same product</li>
+<li>Idempotent payment webhook handling, the same lesson already established for Movie Ticket Booking (Problem 17)</li>
+</ul>
+
+<h3 id="p19-d">D. Requirements</h3>
+<p><strong>Functional</strong></p>
+<ol>
+<li>Add/remove products from a cart, with optional per-item add-ons</li>
+<li>Apply a coupon code and compute tax and discounts at checkout</li>
+<li>Check out, decrementing inventory and creating an immutable order</li>
+<li>Track order status from placed through delivered, including cancellation/refund</li>
+</ol>
+<p><strong>Non-Functional</strong></p>
+<ul>
+<li>Concurrent checkouts for the last unit of a product must not oversell it</li>
+<li>A retried payment confirmation webhook must not double-charge or double-create an order</li>
+<li>Adding a new discount rule or a new add-on type must not require touching the cart or checkout core logic</li>
+</ul>
+
+<h3 id="p19-e">E. Clarifying Questions</h3>
+<table>
+<tr><th>#</th><th>Question</th><th>Why It Matters</th><th>Design Decision Affected</th></tr>
+<tr><td>1</td><td>Can a cart item have multiple stacked add-ons at once (e.g. gift wrap <em>and</em> engraving on the same item)?</td><td>Confirms add-ons need to compose (Decorator) rather than being one mutually-exclusive choice (Strategy)</td><td>Design of the add-on hierarchy</td></tr>
+<tr><td>2</td><td>In what order are tax, discounts, and coupons applied — does a coupon apply before or after tax?</td><td>Determines whether the pricing pipeline is a fixed-order chain or needs configurable ordering</td><td>Design of the pricing pipeline</td></tr>
+<tr><td>3</td><td>Is overselling ever acceptable with a backorder fallback, or is inventory a hard limit?</td><td>Determines whether the decrement check is a hard invariant or a soft threshold</td><td>Inventory-check strictness in checkout</td></tr>
+<tr><td>4</td><td>Is payment synchronous or confirmed later via a provider webhook that might retry?</td><td>Determines whether order creation needs an idempotency key</td><td>Design of the checkout/payment-confirmation flow</td></tr>
+</table>
+
+<h3 id="p19-f">F. Assumptions</h3>
+<ul>
+<li><strong>Confirmed:</strong> cart management with stackable add-ons, coupon/tax/discount pricing, checkout with inventory decrement, order lifecycle tracking.</li>
+<li><strong>Assumption:</strong> inventory is a hard limit — no intentional overselling/backordering unless stated otherwise.</li>
+<li><strong>Assumption:</strong> payment confirmation arrives via a retryable webhook, so checkout completion must be idempotent.</li>
+</ul>
+
+<h3 id="p19-g">G. Actors</h3>
+<table>
+<tr><th>Actor</th><th>Responsibility</th></tr>
+<tr><td>Customer</td><td>Manages cart, applies coupons, checks out</td></tr>
+<tr><td>Payment Gateway</td><td>External system authorizing payment and confirming via webhook</td></tr>
+<tr><td>CheckoutService (facade)</td><td>Top-level API coordinating pricing, inventory, and order creation</td></tr>
+</table>
+
+<h3 id="p19-h">H. Core Domain Entities</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Key Attributes</th><th>Key Methods</th><th>Does NOT Handle</th></tr>
+<tr><td><code>Product</code></td><td>Catalog entry and live stock count</td><td>name, price, stock</td><td><code>decrementStock(qty)</code></td><td>Cart-specific add-ons</td></tr>
+<tr><td><code>CartItem</code> (component)</td><td>Base priceable unit — one product at a quantity</td><td>product, quantity</td><td><code>getPrice()</code></td><td>Add-on behavior directly</td></tr>
+<tr><td><code>CartItemDecorator</code> (abstract)</td><td>Wraps a <code>CartItem</code> to add one stackable add-on's price/behavior</td><td>wrapped item</td><td><code>getPrice()</code> (delegates + adds its own charge)</td><td>Pricing-pipeline concerns (tax/discount) — those apply at cart level, not per add-on</td></tr>
+<tr><td><code>Cart</code></td><td>A customer's mutable, pre-checkout collection of items</td><td>items</td><td><code>addItem()</code>, <code>removeItem()</code>, <code>subtotal()</code></td><td>Tax/discount math, inventory commitment</td></tr>
+<tr><td><code>PricingStep</code> (interface)</td><td>One stage of the pricing pipeline (tax, discount, coupon)</td><td>—</td><td><code>apply(runningTotal)</code></td><td>—</td></tr>
+<tr><td><code>Order</code> (snapshot)</td><td>Immutable checkout result and its lifecycle status</td><td>lineItems (frozen), totalPrice, status</td><td><code>transitionTo(status)</code></td><td>Live catalog/cart state</td></tr>
+<tr><td><code>OrderState</code> (interface)</td><td>One lifecycle state's legal transitions</td><td>—</td><td><code>onPaid()</code>, <code>onShipped()</code>, <code>onDelivered()</code>, <code>onCancelled()</code></td><td>—</td></tr>
+<tr><td><code>CheckoutService</code> (facade)</td><td>Top-level orchestration</td><td>—</td><td><code>checkout(cart, coupon)</code>, <code>confirmPayment()</code></td><td>—</td></tr>
+</table>
+
+<h3 id="p19-i">I. Class Relationships</h3>
+<ul>
+<li><strong>Decorator for add-ons, Strategy for the pricing pipeline — and why they're not the same tool:</strong> this is the canonical place in this document to make that boundary explicit. An add-on (gift wrap, engraving) <em>wraps</em> a specific cart item and stacks arbitrarily — an item can have gift wrap <em>and</em> engraving <em>and</em> extended warranty all at once, each layering its own price on top of the last, which is exactly Decorator's shape. A pricing step (tax, a specific discount rule, a coupon) is not attached to one item and does not stack arbitrarily — it's one selected algorithm applied once, in a fixed pipeline position, to a running total, which is Strategy's shape. Reaching for Strategy to model add-ons (one "AddOnStrategy" enum picking exactly one add-on) would break the moment two add-ons need to combine on the same item; reaching for Decorator to model tax/discount (wrapping the cart in a "TaxDecorator") would obscure that these are pipeline stages applied in a specific, meaningful order, not arbitrarily stackable wrappers.</li>
+<li><strong>Cart vs. Order is the mutable-draft-vs.-frozen-snapshot split, once more:</strong> <code>Cart</code> is mutable right up until checkout; <code>Order</code> is an immutable record of exactly what was charged, at what price, with what add-ons — the same "shared template vs. frozen instance" family as Book/BookItem, Room/RoomInventory, Seat/ShowSeat, and Food Delivery's OrderLineItem (Problem 18), now applied to an entire cart's worth of line items at once, including their decorator-priced add-ons.</li>
+<li><strong>State machine for order lifecycle:</strong> the same shape as Food Delivery's <code>OrderState</code> (Problem 18), tailored here to a payment-gated first transition and a cancellation/refund path that food delivery didn't need to model.</li>
+</ul>
+
+<h3 id="p19-j">J. Class Diagram</h3>
+<div class="diagram-card">
+<svg id="diagram-p19" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="classDiagram" style="max-width: 603.337px; background-color: white;" viewBox="4 4 603.3372192382812 603" role="graphics-document document" aria-roledescription="classDiagram"><style>#diagram-p19{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;fill:#1a1f26;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#diagram-p19 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#diagram-p19 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#diagram-p19 .error-icon{fill:#fff7e6;}#diagram-p19 .error-text{fill:#000819;stroke:#000819;}#diagram-p19 .edge-thickness-normal{stroke-width:1px;}#diagram-p19 .edge-thickness-thick{stroke-width:3.5px;}#diagram-p19 .edge-pattern-solid{stroke-dasharray:0;}#diagram-p19 .edge-thickness-invisible{stroke-width:0;fill:none;}#diagram-p19 .edge-pattern-dashed{stroke-dasharray:3;}#diagram-p19 .edge-pattern-dotted{stroke-dasharray:2;}#diagram-p19 .marker{fill:#334155;stroke:#334155;}#diagram-p19 .marker.cross{stroke:#334155;}#diagram-p19 svg{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;}#diagram-p19 p{margin:0;}#diagram-p19 g.classGroup text{fill:#2563eb;stroke:none;font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:10px;}#diagram-p19 g.classGroup text .title{font-weight:bolder;}#diagram-p19 .cluster-label text{fill:#000819;}#diagram-p19 .cluster-label span{color:#000819;}#diagram-p19 .cluster-label span p{background-color:transparent;}#diagram-p19 .cluster rect{fill:#f4f6f8;stroke:#d8dee5;stroke-width:1px;}#diagram-p19 .cluster text{fill:#000819;}#diagram-p19 .cluster span{color:#000819;}#diagram-p19 .nodeLabel,#diagram-p19 .edgeLabel{color:#0f2540;}#diagram-p19 .noteLabel .nodeLabel,#diagram-p19 .noteLabel .edgeLabel{color:#333;}#diagram-p19 .edgeLabel .label rect{fill:#eef6ff;}#diagram-p19 .label text{fill:#0f2540;}#diagram-p19 .labelBkg{background:#eef6ff;}#diagram-p19 .edgeLabel .label span{background:#eef6ff;}#diagram-p19 .classTitle{font-weight:bolder;}#diagram-p19 .node rect,#diagram-p19 .node circle,#diagram-p19 .node ellipse,#diagram-p19 .node polygon,#diagram-p19 .node path{fill:#eef6ff;stroke:#2563eb;stroke-width:1;}#diagram-p19 .divider{stroke:#2563eb;stroke-width:1;}#diagram-p19 g.clickable{cursor:pointer;}#diagram-p19 g.classGroup rect{fill:#eef6ff;stroke:#2563eb;}#diagram-p19 g.classGroup line{stroke:#2563eb;stroke-width:1;}#diagram-p19 .classLabel .box{stroke:none;stroke-width:0;fill:#eef6ff;opacity:0.5;}#diagram-p19 .classLabel .label{fill:#2563eb;font-size:10px;}#diagram-p19 .relation{stroke:#334155;stroke-width:1;fill:none;}#diagram-p19 .dashed-line{stroke-dasharray:3;}#diagram-p19 .dotted-line{stroke-dasharray:1 2;}#diagram-p19 [id$="-compositionStart"],#diagram-p19 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p19 [id$="-compositionEnd"],#diagram-p19 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p19 [id$="-dependencyStart"],#diagram-p19 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p19 [id$="-dependencyEnd"],#diagram-p19 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p19 [id$="-extensionStart"],#diagram-p19 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p19 [id$="-extensionEnd"],#diagram-p19 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p19 [id$="-aggregationStart"],#diagram-p19 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p19 [id$="-aggregationEnd"],#diagram-p19 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p19 [id$="-lollipopStart"],#diagram-p19 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p19 [id$="-lollipopEnd"],#diagram-p19 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p19 .edgeTerminals{font-size:11px;line-height:initial;}#diagram-p19 .classTitleText{text-anchor:middle;font-size:18px;fill:#1a1f26;}#diagram-p19 .edgeLabel[data-look="neo"]{background-color:#ffffff;text-align:center;}#diagram-p19 .edgeLabel[data-look="neo"] p{background-color:#ffffff;}#diagram-p19 .edgeLabel[data-look="neo"] rect{opacity:0.5;background-color:#ffffff;fill:#ffffff;}#diagram-p19 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#diagram-p19 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#diagram-p19 .node .neo-node{stroke:#2563eb;}#diagram-p19 [data-look="neo"].node rect,#diagram-p19 [data-look="neo"].cluster rect,#diagram-p19 [data-look="neo"].node polygon{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p19 [data-look="neo"].swimlane.cluster rect{filter:none;}#diagram-p19 [data-look="neo"].node path{stroke:#2563eb;stroke-width:1px;}#diagram-p19 [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p19 [data-look="neo"].node .neo-line path{stroke:#2563eb;filter:none;}#diagram-p19 [data-look="neo"].node circle{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p19 [data-look="neo"].node circle .state-start{fill:#000000;}#diagram-p19 [data-look="neo"].icon-shape .icon{fill:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p19 [data-look="neo"].icon-shape .icon-neo path{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p19 .classGroup text{font-size:14px!important;}#diagram-p19 .classGroup .title{font-size:16px!important;font-weight:700;}#diagram-p19 .classLabel .label{font-size:14px!important;}#diagram-p19 .edgeLabel,#diagram-p19 .edgeLabel .label{font-size:13px!important;}#diagram-p19 .relationshipLabelBox{font-size:13px!important;}#diagram-p19 .nodeLabel,#diagram-p19 .cluster-label{font-size:14px!important;}#diagram-p19 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><defs><marker id="diagram-p19_classDiagram-aggregationStart" class="marker aggregation classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p19_classDiagram-aggregationEnd" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p19_classDiagram-aggregationStart-margin" class="marker aggregation classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p19_classDiagram-aggregationEnd-margin" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p19_classDiagram-extensionStart" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,7 L18,13 V 1 Z"/></marker></defs><defs><marker id="diagram-p19_classDiagram-extensionEnd" class="marker extension classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,1 V 13 L18,7 Z"/></marker></defs><marker id="diagram-p19_classDiagram-extensionStart-margin" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,7 18,13 18,1" style="stroke-width: 2; stroke-dasharray: 0;"/></marker><defs><marker id="diagram-p19_classDiagram-extensionEnd-margin" class="marker extension classDiagram" refX="9" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,1 10,13 18,7" style="stroke-width: 2; stroke-dasharray: 0;"/></marker></defs><defs><marker id="diagram-p19_classDiagram-compositionStart" class="marker composition classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p19_classDiagram-compositionEnd" class="marker composition classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p19_classDiagram-compositionStart-margin" class="marker composition classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path viewBox="0 0 15 15" d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p19_classDiagram-compositionEnd-margin" class="marker composition classDiagram" refX="3.5" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p19_classDiagram-dependencyStart" class="marker dependency classDiagram" refX="6" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p19_classDiagram-dependencyEnd" class="marker dependency classDiagram" refX="13" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p19_classDiagram-dependencyStart-margin" class="marker dependency classDiagram" refX="4" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p19_classDiagram-dependencyEnd-margin" class="marker dependency classDiagram" refX="16" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p19_classDiagram-lollipopStart" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p19_classDiagram-lollipopEnd" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p19_classDiagram-lollipopStart-margin" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><defs><marker id="diagram-p19_classDiagram-lollipopEnd-margin" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><g class="root"><g class="clusters"/><g class="edges edgePaths"><path d="M89.1640625,355L89.1640625,377.75" id="diagram-p19-id_CartItemDecorator_CartItem_1" class="edge-thickness-normal edge-pattern-dashed relation" style="stroke-dasharray: 0 0 2 2 2 2 2 2 2 2 2 2 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_CartItemDecorator_CartItem_1" data-points="W3sieCI6ODkuMTY0MDYyNSwieSI6MzU1fSx7IngiOjg5LjE2NDA2MjUsInkiOjM5NX1d" data-look="neo" marker-end="url(#diagram-p19_classDiagram-extensionEnd-margin)"/><path d="M265.2669270833333,355L265.2669270833333,367.9289321881345Q265.2669270833333,375 258.19585927146784,375L129.91666666666663,375Q122.91666666666663,375 122.91666666666663,382L122.91666666666663,389" id="diagram-p19-id_Cart_CartItem_2" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 171.04876708984375 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Cart_CartItem_2" data-points="W3sieCI6MjY1LjI2NjkyNzA4MzMzMzMsInkiOjM1NX0seyJ4IjoyNjUuMjY2OTI3MDgzMzMzMywieSI6Mzc1fSx7IngiOjEyMi45MTY2NjY2NjY2NjY2MywieSI6Mzc1fSx7IngiOjEyMi45MTY2NjY2NjY2NjY2MywieSI6Mzk1fV0=" data-look="neo" marker-end="url(#diagram-p19_classDiagram-dependencyEnd-margin)"/><path d="M301.7434895833333,355L301.7434895833333,389" id="diagram-p19-id_Cart_PricingStep_3" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 34 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Cart_PricingStep_3" data-points="W3sieCI6MzAxLjc0MzQ4OTU4MzMzMzMsInkiOjM1NX0seyJ4IjozMDEuNzQzNDg5NTgzMzMzMywieSI6Mzk1fV0=" data-look="neo" marker-end="url(#diagram-p19_classDiagram-dependencyEnd-margin)"/><path d="M369.1321614583333,153L369.1321614583333,165.92893218813452Q369.1321614583333,173 362.06109364646784,173L290.5052083333333,173Q283.5052083333333,173 283.5052083333333,180L283.5052083333333,187" id="diagram-p19-id_CheckoutService_Cart_4" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 114.3254623413086 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_CheckoutService_Cart_4" data-points="W3sieCI6MzY5LjEzMjE2MTQ1ODMzMzMsInkiOjE1M30seyJ4IjozNjkuMTMyMTYxNDU4MzMzMywieSI6MTczfSx7IngiOjI4My41MDUyMDgzMzMzMzMzLCJ5IjoxNzN9LHsieCI6MjgzLjUwNTIwODMzMzMzMzMsInkiOjE5M31d" data-look="neo" marker-end="url(#diagram-p19_classDiagram-dependencyEnd-margin)"/><path d="M428.9524739583333,153L428.9524739583333,165.92893218813452Q428.9524739583333,173 436.0235417701988,173L507.5083592714679,173Q514.5794270833334,173 514.5794270833334,180.07106781186548L514.5794270833334,190" id="diagram-p19-id_CheckoutService_Order_5" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 117.29869842529297 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_CheckoutService_Order_5" data-points="W3sieCI6NDI4Ljk1MjQ3Mzk1ODMzMzMsInkiOjE1M30seyJ4Ijo0MjguOTUyNDczOTU4MzMzMywieSI6MTczfSx7IngiOjUxNC41Nzk0MjcwODMzMzM0LCJ5IjoxNzN9LHsieCI6NTE0LjU3OTQyNzA4MzMzMzQsInkiOjE5Nn1d" data-look="neo" marker-end="url(#diagram-p19_classDiagram-dependencyEnd-margin)"/><path d="M514.5794270833334,352L514.5794270833334,389" id="diagram-p19-id_Order_OrderState_6" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 37 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Order_OrderState_6" data-points="W3sieCI6NTE0LjU3OTQyNzA4MzMzMzQsInkiOjM1Mn0seyJ4Ijo1MTQuNTc5NDI3MDgzMzMzNCwieSI6Mzk1fV0=" data-look="neo" marker-end="url(#diagram-p19_classDiagram-dependencyEnd-margin)"/></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="id_Cart_CartItem_2" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeTerminals" transform="translate(137.41666737333333, 389.0000012799999)"><g class="inner" transform="translate(-2.53125, -9.75)"/><foreignObject width="5.0625" height="19.5" style="width: 9px; height: 12px;"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="edgeLabel"><p>*</p></span></div></foreignObject></g></g><g class="nodes"><g class="node default" id="diagram-p19-classId-CartItem-0" data-look="neo" transform="translate(106.04036458333331, 473)"><g class="basic label-container outer-path"><path d="M-60.62890625 -78 L60.62890625 -78 L60.62890625 78 L-60.62890625 78" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-60.62890625 -78 C-13.137603555401519 -78, 34.35369913919696 -78, 60.62890625 -78 M-60.62890625 -78 C-21.219063922691085 -78, 18.19077840461783 -78, 60.62890625 -78 M60.62890625 -78 C60.62890625 -26.857769489456103, 60.62890625 24.284461021087793, 60.62890625 78 M60.62890625 -78 C60.62890625 -37.34563996530465, 60.62890625 3.308720069390702, 60.62890625 78 M60.62890625 78 C35.31787054187698 78, 10.006834833753956 78, -60.62890625 78 M60.62890625 78 C30.81504111064477 78, 1.0011759712895412 78, -60.62890625 78 M-60.62890625 78 C-60.62890625 38.58044005456569, -60.62890625 -0.8391198908686164, -60.62890625 -78 M-60.62890625 78 C-60.62890625 15.764976492541628, -60.62890625 -46.470047014916744, -60.62890625 -78" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -54)"/><g class="label-group text" transform="translate(-28.3984375, -54)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="56.796875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 107px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>CartItem</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-48.62890625, -9)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="46.703125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 99px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>product</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="49.046875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 102px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>quantity</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-48.62890625, 57)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="68.859375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 127px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+getPrice()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-60.62890625 -33 C-28.752919806202645 -32.99973712220444, 3.123066637594711 -32.999474244408894, 60.62890625 -32.999 M-60.62890625 -33 C-33.291141069935094 -32.99977454842194, -5.953375889870195 -32.999549096843886, 60.62890625 -32.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-60.62890625 33 C-16.76333403081742 33.00036175460628, 27.102238188365163 33.000723509212555, 60.62890625 33.001 M-60.62890625 33 C-33.26298986896107 33.00022568373795, -5.897073487922135 33.000451367475904, 60.62890625 33.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p19-classId-CartItemDecorator-1" data-look="neo" transform="translate(89.1640625, 295)"><g class="basic label-container outer-path"><path d="M-77.1640625 -60 L77.1640625 -60 L77.1640625 60 L-77.1640625 60" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-77.1640625 -60 C-38.27946176044974 -60, 0.6051389791005164 -60, 77.1640625 -60 M-77.1640625 -60 C-31.888168166726125 -60, 13.38772616654775 -60, 77.1640625 -60 M77.1640625 -60 C77.1640625 -28.48607178435949, 77.1640625 3.027856431281023, 77.1640625 60 M77.1640625 -60 C77.1640625 -16.912954179640977, 77.1640625 26.174091640718046, 77.1640625 60 M77.1640625 60 C40.77684592698567 60, 4.389629353971344 60, -77.1640625 60 M77.1640625 60 C16.959655854149922 60, -43.244750791700156 60, -77.1640625 60 M-77.1640625 60 C-77.1640625 17.829858278546403, -77.1640625 -24.340283442907193, -77.1640625 -60 M-77.1640625 60 C-77.1640625 32.460327757879405, -77.1640625 4.92065551575881, -77.1640625 -60" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -36)"/><g class="label-group text" transform="translate(-61.46875, -36)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="122.9375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 171px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>CartItemDecorator</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-65.1640625, 9)"/><g class="methods-group text" transform="translate(-65.1640625, 39)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="68.859375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 127px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+getPrice()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-77.1640625 -15 C-31.666415949484097 -14.999705188885367, 13.831230601031805 -14.999410377770733, 77.1640625 -14.999 M-77.1640625 -15 C-40.700436443523074 -14.999763726630798, -4.236810387046148 -14.999527453261594, 77.1640625 -14.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-77.1640625 9 C-26.935875041450487 9.00032546360204, 23.292312417099026 9.000650927204079, 77.1640625 9.001 M-77.1640625 9 C-35.31160548518093 9.000271191378854, 6.540851529638147 9.00054238275771, 77.1640625 9.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p19-classId-Cart-2" data-look="neo" transform="translate(283.5052083333333, 274)"><g class="basic label-container outer-path"><path d="M-64.71484375 -81 L64.71484375 -81 L64.71484375 81 L-64.71484375 81" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-64.71484375 -81 C-24.764972369180434 -81, 15.184899011639132 -81, 64.71484375 -81 M-64.71484375 -81 C-19.442485334241894 -81, 25.82987308151621 -81, 64.71484375 -81 M64.71484375 -81 C64.71484375 -47.00488841152658, 64.71484375 -13.009776823053159, 64.71484375 81 M64.71484375 -81 C64.71484375 -35.726899242193625, 64.71484375 9.54620151561275, 64.71484375 81 M64.71484375 81 C26.24176808665375 81, -12.231307576692501 81, -64.71484375 81 M64.71484375 81 C23.396886010473708 81, -17.921071729052585 81, -64.71484375 81 M-64.71484375 81 C-64.71484375 21.063722980189432, -64.71484375 -38.872554039621136, -64.71484375 -81 M-64.71484375 81 C-64.71484375 27.754897863778034, -64.71484375 -25.490204272443933, -64.71484375 -81" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -57)"/><g class="label-group text" transform="translate(-14.0078125, -57)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="28.015625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 78px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Cart</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-52.71484375, -12)"/><g class="methods-group text" transform="translate(-52.71484375, 18)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="68.09375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 127px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+addItem()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="91.421875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 151px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+removeItem()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="66.546875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 125px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+subtotal()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-64.71484375 -36 C-22.90869993898751 -35.999676997259144, 18.89744387202498 -35.99935399451828, 64.71484375 -35.999 M-64.71484375 -36 C-14.384681166222457 -35.99961113896235, 35.94548141755509 -35.9992222779247, 64.71484375 -35.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-64.71484375 -12 C-14.88063380428708 -11.999614970792958, 34.95357614142584 -11.999229941585918, 64.71484375 -11.999 M-64.71484375 -12 C-29.09278612624869 -11.99972477676249, 6.52927149750262 -11.999449553524979, 64.71484375 -11.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p19-classId-PricingStep-3" data-look="neo" transform="translate(301.7434895833333, 465.5)"><g class="basic label-container outer-path"><path d="M-95.07421875 -70.5 L95.07421875 -70.5 L95.07421875 70.5 L-95.07421875 70.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-95.07421875 -70.5 C-46.398601167188104 -70.5, 2.277016415623791 -70.5, 95.07421875 -70.5 M-95.07421875 -70.5 C-35.29519604509944 -70.5, 24.483826659801124 -70.5, 95.07421875 -70.5 M95.07421875 -70.5 C95.07421875 -36.07060884900244, 95.07421875 -1.6412176980048798, 95.07421875 70.5 M95.07421875 -70.5 C95.07421875 -34.259276599482526, 95.07421875 1.9814468010349486, 95.07421875 70.5 M95.07421875 70.5 C51.414053562805705 70.5, 7.75388837561141 70.5, -95.07421875 70.5 M95.07421875 70.5 C43.52606003232008 70.5, -8.022098685359836 70.5, -95.07421875 70.5 M-95.07421875 70.5 C-95.07421875 40.388626872493546, -95.07421875 10.277253744987085, -95.07421875 -70.5 M-95.07421875 70.5 C-95.07421875 23.259067289444445, -95.07421875 -23.98186542111111, -95.07421875 -70.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-34.640625, -46.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="69.28125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«interface»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-38.8984375, -25.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="77.796875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 125px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>PricingStep</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-83.07421875, 19.5)"/><g class="methods-group text" transform="translate(-83.07421875, 49.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="127.25" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 192px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+apply(runningTotal)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-95.07421875 -4.5 C-28.283882005689378 -4.499648746328803, 38.506454738621244 -4.499297492657605, 95.07421875 -4.499 M-95.07421875 -4.5 C-53.59726409019449 -4.4997818706521855, -12.120309430388986 -4.499563741304371, 95.07421875 -4.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-95.07421875 19.5 C-46.633774930202186 19.500254750680345, 1.8066688895956275 19.500509501360693, 95.07421875 19.501 M-95.07421875 19.5 C-55.92346116755489 19.50020589576279, -16.77270358510978 19.500411791525583, 95.07421875 19.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p19-classId-Order-4" data-look="neo" transform="translate(514.5794270833334, 274)"><g class="basic label-container outer-path"><path d="M-84.7578125 -78 L84.7578125 -78 L84.7578125 78 L-84.7578125 78" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-84.7578125 -78 C-50.04394483594391 -78, -15.330077171887822 -78, 84.7578125 -78 M-84.7578125 -78 C-34.1076723606519 -78, 16.542467778696206 -78, 84.7578125 -78 M84.7578125 -78 C84.7578125 -33.75825270403624, 84.7578125 10.483494591927524, 84.7578125 78 M84.7578125 -78 C84.7578125 -44.58968050426714, 84.7578125 -11.179361008534286, 84.7578125 78 M84.7578125 78 C23.940256706148176 78, -36.87729908770365 78, -84.7578125 78 M84.7578125 78 C41.75511664951244 78, -1.2475792009751245 78, -84.7578125 78 M-84.7578125 78 C-84.7578125 28.817540198491756, -84.7578125 -20.36491960301649, -84.7578125 -78 M-84.7578125 78 C-84.7578125 43.27564781515967, -84.7578125 8.551295630319345, -84.7578125 -78" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -54)"/><g class="label-group text" transform="translate(-19.0625, -54)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="38.125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 87px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Order</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-72.7578125, -9)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="58.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 111px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>totalPrice</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="37.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 86px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>status</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-72.7578125, 57)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="126.453125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 188px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+transitionTo(status)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-84.7578125 -33 C-25.31707336963931 -32.99964934949725, 34.12366576072138 -32.9992986989945, 84.7578125 -32.999 M-84.7578125 -33 C-47.95939411593799 -32.99978292019757, -11.160975731875979 -32.999565840395135, 84.7578125 -32.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-84.7578125 33 C-30.467835232907277 33.00032026532815, 23.822142034185447 33.0006405306563, 84.7578125 33.001 M-84.7578125 33 C-33.26966707739146 33.00030373687041, 18.21847834521708 33.000607473740814, 84.7578125 33.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p19-classId-OrderState-5" data-look="neo" transform="translate(514.5794270833334, 497)"><g class="basic label-container outer-path"><path d="M-77.76171875 -102 L77.76171875 -102 L77.76171875 102 L-77.76171875 102" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-77.76171875 -102 C-21.67724877799396 -102, 34.40722119401208 -102, 77.76171875 -102 M-77.76171875 -102 C-46.137217304312756 -102, -14.512715858625505 -102, 77.76171875 -102 M77.76171875 -102 C77.76171875 -34.53112041005538, 77.76171875 32.93775917988924, 77.76171875 102 M77.76171875 -102 C77.76171875 -54.12943078757651, 77.76171875 -6.25886157515302, 77.76171875 102 M77.76171875 102 C35.48791520406899 102, -6.7858883418620195 102, -77.76171875 102 M77.76171875 102 C16.244095188466815 102, -45.27352837306637 102, -77.76171875 102 M-77.76171875 102 C-77.76171875 50.139883510667644, -77.76171875 -1.7202329786647113, -77.76171875 -102 M-77.76171875 102 C-77.76171875 22.907296603206817, -77.76171875 -56.18540679358637, -77.76171875 -102" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-34.640625, -78)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="69.28125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«interface»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-36.1796875, -57)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="72.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 119px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>OrderState</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-65.76171875, -12)"/><g class="methods-group text" transform="translate(-65.76171875, 18)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="61.09375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 119px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+onPaid()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="84.453125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 143px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+onShipped()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="92.21875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 153px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+onDelivered()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,52.5)"><foreignObject width="95.34375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 154px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+onCancelled()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-77.76171875 -36 C-25.754780375303135 -35.999665600637364, 26.25215799939373 -35.999331201274735, 77.76171875 -35.999 M-77.76171875 -36 C-29.295568156633024 -35.99968836754529, 19.17058243673395 -35.99937673509058, 77.76171875 -35.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-77.76171875 -12 C-44.556418540624996 -11.999786493272376, -11.351118331249992 -11.999572986544754, 77.76171875 -11.999 M-77.76171875 -12 C-43.538749924985105 -11.999779949765932, -9.31578109997021 -11.999559899531864, 77.76171875 -11.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p19-classId-CheckoutService-6" data-look="neo" transform="translate(399.0423177083333, 82.5)"><g class="basic label-container outer-path"><path d="M-99.73046875 -70.5 L99.73046875 -70.5 L99.73046875 70.5 L-99.73046875 70.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-99.73046875 -70.5 C-27.556020408555597 -70.5, 44.61842793288881 -70.5, 99.73046875 -70.5 M-99.73046875 -70.5 C-40.75238949981828 -70.5, 18.225689750363443 -70.5, 99.73046875 -70.5 M99.73046875 -70.5 C99.73046875 -40.72795339259458, 99.73046875 -10.955906785189157, 99.73046875 70.5 M99.73046875 -70.5 C99.73046875 -21.19130543231919, 99.73046875 28.11738913536162, 99.73046875 70.5 M99.73046875 70.5 C20.694339078377013 70.5, -58.341790593245975 70.5, -99.73046875 70.5 M99.73046875 70.5 C55.54957501763446 70.5, 11.36868128526892 70.5, -99.73046875 70.5 M-99.73046875 70.5 C-99.73046875 38.61715480584117, -99.73046875 6.734309611682342, -99.73046875 -70.5 M-99.73046875 70.5 C-99.73046875 27.427950866451162, -99.73046875 -15.644098267097675, -99.73046875 -70.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -46.5)"/><g class="label-group text" transform="translate(-56.8046875, -46.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="113.609375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 159px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>CheckoutService</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-87.73046875, -1.5)"/><g class="methods-group text" transform="translate(-87.73046875, 28.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="73.546875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 132px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+checkout()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="118.65625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 181px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+confirmPayment()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-99.73046875 -25.5 C-49.04796752331045 -25.499745902622028, 1.6345337033791054 -25.499491805244055, 99.73046875 -25.499 M-99.73046875 -25.5 C-45.94810758628782 -25.499730361433983, 7.834253577424363 -25.49946072286797, 99.73046875 -25.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-99.73046875 -1.5 C-31.51706751464316 -1.499658011227209, 36.69633372071368 -1.4993160224544182, 99.73046875 -1.499 M-99.73046875 -1.5 C-41.02924659683644 -1.4997057006605459, 17.671975556327126 -1.4994114013210917, 99.73046875 -1.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g></g></g></g><defs><filter id="diagram-p19-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><defs><filter id="diagram-p19-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs></svg>
+</div>
+<details class="mermaid-src"><summary>View Mermaid source</summary>
+<pre><code>classDiagram
+  class CartItem {
+    product
+    quantity
+    +getPrice()
+  }
+  class CartItemDecorator {
+    +getPrice()
+  }
+  class Cart {
+    +addItem()
+    +removeItem()
+    +subtotal()
+  }
+  class PricingStep {
+    &lt;&lt;interface&gt;&gt;
+    +apply(runningTotal)
+  }
+  class Order {
+    totalPrice
+    status
+    +transitionTo(status)
+  }
+  class OrderState {
+    &lt;&lt;interface&gt;&gt;
+    +onPaid()
+    +onShipped()
+    +onDelivered()
+    +onCancelled()
+  }
+  class CheckoutService {
+    +checkout()
+    +confirmPayment()
+  }
+  CartItemDecorator ..|&gt; CartItem
+  Cart --&gt; &quot;*&quot; CartItem
+  Cart --&gt; PricingStep
+  CheckoutService --&gt; Cart
+  CheckoutService --&gt; Order
+  Order --&gt; OrderState</code></pre>
+</details>
+
+<h3 id="p19-k">K. Responsibility Mapping</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Does NOT Handle</th></tr>
+<tr><td>CartItemDecorator subtypes</td><td>One stackable add-on's price/behavior contribution</td><td>Pipeline-level pricing (tax/discount)</td></tr>
+<tr><td>PricingStep implementations</td><td>One pipeline stage's contribution to the total</td><td>Add-on behavior</td></tr>
+<tr><td>Cart</td><td>Mutable pre-checkout item collection</td><td>Inventory commitment, order creation</td></tr>
+<tr><td>Order</td><td>Immutable checkout snapshot and lifecycle status</td><td>Live cart/catalog state</td></tr>
+<tr><td>CheckoutService</td><td>Top-level orchestration, inventory decrement</td><td>Add-on/pipeline math, transition legality</td></tr>
+</table>
+
+<h3 id="p19-l">L. SOLID Analysis</h3>
+<table>
+<tr><th>Principle</th><th>How It's Applied</th><th>Naive Violation</th></tr>
+<tr><td>SRP</td><td><code>CartItemDecorator</code> owns add-on pricing; <code>PricingStep</code> owns one pipeline stage; <code>OrderState</code> owns transition legality</td><td>One <code>Cart.getTotal()</code> method computing add-ons, tax, discounts, and coupons all inline</td></tr>
+<tr><td>OCP</td><td>A new add-on is a new <code>CartItemDecorator</code>; a new pricing rule is a new <code>PricingStep</code></td><td>A total-price method with an ever-growing <code>if/else</code> chain for each new add-on or discount type</td></tr>
+<tr><td>LSP</td><td>Every <code>CartItemDecorator</code> honestly implements the same <code>getPrice()</code> contract as a plain <code>CartItem</code>, so decorators compose transparently in any order</td><td>A decorator that requires being applied first/last to work correctly, breaking substitutability</td></tr>
+<tr><td>ISP</td><td><code>PricingStep</code> stays a single-method interface</td><td>A combined "CheckoutPolicy" interface mixing pricing with inventory and shipping rules</td></tr>
+<tr><td>DIP</td><td><code>CheckoutService</code> depends on the <code>PricingStep</code> and <code>OrderState</code> abstractions, not hardcoded tax/discount math</td><td><code>Order.calculateTotal()</code> embedding a tax-rate table directly on the entity</td></tr>
+</table>
+
+<h3 id="p19-m">M. Design Patterns</h3>
+<table>
+<tr><th>Pattern</th><th>Problem It Solves</th><th>Where It Appears</th><th>When NOT to Use</th></tr>
+<tr><td>Decorator</td><td>Per-item add-ons stack arbitrarily and each contributes independently to price/behavior</td><td><code>CartItemDecorator</code> and subtypes</td><td>Skip if only one mutually-exclusive add-on can ever apply — that's Strategy's shape instead</td></tr>
+<tr><td>Strategy</td><td>Tax/discount/coupon rules are selected-and-applied-once at a fixed pipeline stage, not stacked</td><td><code>PricingStep</code></td><td>Skip if pricing is one flat formula with no variation</td></tr>
+<tr><td>State</td><td>Order lifecycle transitions genuinely depend on current status</td><td><code>OrderState</code></td><td>Skip if the round only needs a single "is this order done" boolean</td></tr>
+</table>
+<p><strong>Explicitly avoided:</strong> using Strategy to model stackable add-ons, or Decorator to model the pricing pipeline — see I for the full reasoning on why swapping these two patterns breaks the first time a real requirement (multiple simultaneous add-ons, or an ordered pipeline) surfaces.</p>
+
+<h3 id="p19-n">N. What Is Likely to Change?</h3>
+<table>
+<tr><th>Behavior</th><th>Current Design</th><th>Anticipated Change</th><th>Protecting Abstraction</th></tr>
+<tr><td>Add-on catalog</td><td>Gift wrap, engraving</td><td>New add-on types (rush processing, insurance)</td><td>New <code>CartItemDecorator</code> subtype, additive</td></tr>
+<tr><td>Pricing pipeline</td><td>Tax → discount → coupon</td><td>New pipeline stages (loyalty points, regional tax rules)</td><td>New <code>PricingStep</code>, inserted into the pipeline</td></tr>
+<tr><td>Order lifecycle</td><td>Placed/paid/shipped/delivered/cancelled/refunded</td><td>Add a "returned, awaiting inspection" state</td><td>New <code>OrderState</code> implementation, additive</td></tr>
+</table>
+
+<h3 id="p19-o">O. Design Evolution</h3>
+<ul>
+<li><strong>V1:</strong> a cart with no add-ons, one flat price, no tax/discount, synchronous checkout, no order lifecycle tracking.</li>
+<li><strong>V2:</strong> introduce <code>CartItemDecorator</code> the moment a second add-on type is requested — this is exactly when a single "addOnType" field would need to become a set, signaling the shift to a stackable Decorator chain.</li>
+<li><strong>V3:</strong> extract the <code>PricingStep</code> pipeline once tax and discounts both need to apply, in order.</li>
+<li><strong>V4:</strong> formalize <code>OrderState</code> once cancellation/refund and asynchronous payment confirmation are requested.</li>
+<li><strong>V5:</strong> add the idempotency key on checkout confirmation once payment moves from synchronous to webhook-based.</li>
+</ul>
+<p><strong>What stays stable:</strong> <code>CheckoutService</code>'s public checkout/confirm API. New add-ons and pricing stages are additive.</p>
+
+<h3 id="p19-p">P. API / Interface Design</h3>
+<pre><code>interface PricingStep {
+  Money apply(Money runningTotal, Cart cart);
+}
+
+class CheckoutService {
+  Order checkout(Cart cart, String couponCode);            // reserves inventory, returns PENDING_PAYMENT order
+  Order confirmPayment(String orderId, PaymentResult result, String idempotencyKey);
+}</code></pre>
+<p><strong>Ownership/validation notes:</strong> <code>checkout()</code> atomically decrements inventory for every line item before returning (see W for the concurrency detail), and <code>confirmPayment()</code> is idempotency-keyed exactly like Movie Ticket Booking's (Problem 17) payment confirmation, so a retried webhook cannot double-create or double-charge an order.</p>
+
+<h3 id="p19-q">Q. Pseudocode — Critical Logic</h3>
+<pre><code>CheckoutService.checkout(cart, couponCode):
+  orderedProductIds = sort(cart.items.map(i => i.product.id))   // canonical order, avoids cross-cart deadlock
+  reserved = []
+  try:
+    for productId in orderedProductIds:
+      lock(productId)
+      product = productFor(productId)
+      qty = cart.quantityFor(productId)
+      if product.stock < qty: rollback(reserved); reject "out of stock"
+      product.stock -= qty
+      reserved.append(productId)
+    total = cart.subtotal()   // includes decorator-priced add-ons
+    for step in pricingPipeline: total = step.apply(total, cart)
+    order = new Order(freeze(cart.items), total, status = PENDING_PAYMENT)
+    return order
+  finally:
+    for productId in reserved: unlock(productId)
+
+CheckoutService.confirmPayment(orderId, result, idempotencyKey):
+  if alreadyProcessed(idempotencyKey): return existingOrderFor(idempotencyKey)
+  order = orderFor(orderId)
+  if result.success: order.transitionTo(PAID)
+  else: order.transitionTo(CANCELLED); restoreInventory(order)
+  recordProcessed(idempotencyKey, order)
+  return order</code></pre>
+
+<h3 id="p19-r">R. End-to-End Use Case</h3>
+<pre>
+cart.addItem(Product("Watch"), qty=1).decorate(GiftWrap).decorate(Engraving)
+  │
+  ▼
+checkout(cart, coupon="SAVE10")
+  │  lock(product) → stock check → decrement → unlock
+  │  subtotal (base + gift wrap + engraving) → tax → discount → coupon → total
+  │  Order created, status = PENDING_PAYMENT
+  ▼
+payment webhook fires → confirmPayment(orderId, success, idempotencyKey)
+  │  order → PAID; retried webhook with same key returns the same Order, no double-charge
+</pre>
+
+<h3 id="p19-s">S. Data Structures</h3>
+<table>
+<tr><th>Structure</th><th>Used For</th><th>Why</th><th>Alternative &amp; Trade-off</th></tr>
+<tr><td>Linked chain of <code>CartItemDecorator</code> wrapping a base <code>CartItem</code></td><td>Composable add-on pricing</td><td><code>getPrice()</code> recurses through the chain, naturally summing every layer</td><td>A flat list of add-on flags on <code>CartItem</code> also works but scatters "does this add-on affect price/packaging/etc." logic outside the add-on itself</td></tr>
+<tr><td>Ordered list of <code>PricingStep</code></td><td>Deterministic pipeline application</td><td>Tax-before-or-after-discount is a real business rule, not an implementation detail — an ordered list makes the order explicit and testable</td><td>—</td></tr>
+<tr><td>Sorted product-id order before locking</td><td>Deadlock-free multi-item checkout</td><td>Same canonical-ordering technique as File System (Problem 9) and Movie Ticket Booking (Problem 17), applied to inventory rows instead of files or seats</td><td>—</td></tr>
+</table>
+
+<h3 id="p19-t">T. Complexity Analysis</h3>
+<table>
+<tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+<tr><td><code>CartItem.getPrice()</code> through k decorators</td><td>O(k)</td><td>O(k)</td></tr>
+<tr><td><code>checkout()</code> for n line items</td><td>O(n log n) for the sort + O(n) for locking/decrementing + O(pipeline stages)</td><td>O(n)</td></tr>
+<tr><td><code>confirmPayment()</code></td><td>O(1) idempotency check + O(1) transition</td><td>O(1)</td></tr>
+</table>
+
+<h3 id="p19-u">U. Testing Strategy</h3>
+<ul>
+<li><strong>Happy path:</strong> an item with two stacked add-ons prices as base + add-on A + add-on B, and the pipeline applies tax/discount/coupon in the documented order.</li>
+<li><strong>Edge cases:</strong> checking out a cart where one line item is out of stock rolls back <em>all</em> reservations made earlier in that same checkout, not just the failed one.</li>
+<li><strong>Idempotency tests:</strong> calling <code>confirmPayment()</code> twice with the same idempotency key produces exactly one PAID transition and one charge.</li>
+<li><strong>Concurrency tests:</strong> two customers concurrently checking out the last unit of the same product result in exactly one success and one clean "out of stock" rejection.</li>
+</ul>
+
+<h3 id="p19-v">V. Interviewer Follow-Ups</h3>
+<table>
+<tr><th>Follow-Up</th><th>Testing</th><th>Design Change</th><th>Classes Changed</th><th>Pattern/Trade-off</th></tr>
+<tr><td>"A customer wants to stack three add-ons on one item, and later remove just the middle one."</td><td>Whether add-ons were modeled as an arbitrarily-ordered stack or a fixed pair</td><td>Support arbitrary decorator chain length and removal by add-on type</td><td>CartItemDecorator only</td><td>Validates the Decorator choice from I actually holds up under real stacking</td></tr>
+<tr><td>"Add a loyalty-points redemption step to checkout."</td><td>Whether pricing logic was still isolated in the pipeline</td><td>New <code>PricingStep</code> inserted at the appropriate pipeline position</td><td>New strategy only</td><td>Validates the pipeline's extensibility</td></tr>
+<tr><td>"What if inventory needs to be reserved across two different products atomically for a bundle deal?"</td><td>Whether multi-item locking was already deadlock-free</td><td>None needed — canonical product-id ordering from Q already covers this</td><td>None</td><td>Confirms the File System/Movie Ticket lock-ordering lesson generalizes correctly</td></tr>
+</table>
+
+<h3 id="p19-w">W. Concurrency</h3>
+<p><strong>Shared mutable state:</strong> each <code>Product</code>'s stock count, particularly for a popular item near its last few units.</p>
+<ul>
+<li><strong>The check-then-act race, on inventory this time:</strong> reading "is there enough stock" and then decrementing it are two steps; without a lock (or an atomic conditional update) around the specific product, two concurrent checkouts could both read sufficient stock before either commits — the same bug shape as Parking Lot, Splitwise, ATM, Library, Hotel, and Movie Ticket Booking, now on inventory rows.</li>
+<li><strong>Multi-item checkout deadlock avoidance:</strong> a checkout touching several products must lock them in a fixed canonical order (sorted by product id) to avoid the same circular-wait deadlock already solved in File System (Problem 9) and Movie Ticket Booking (Problem 17).</li>
+<li><strong>Database-level alternative:</strong> a single atomic <code>UPDATE products SET stock = stock - qty WHERE id = ? AND stock >= qty</code> avoids application-level locking entirely for the single-product case — the affected-row-count tells the caller whether the decrement succeeded, pushing the race-free guarantee down to the database.</li>
+<li><strong>Idempotent payment confirmation:</strong> exactly the same idempotency-key discipline as Movie Ticket Booking (Problem 17) — a retried webhook must return the already-processed result, not reprocess it.</li>
+</ul>
+
+<h3 id="p19-x">X. Persistence</h3>
+<p>Orders and their frozen line items (including decorator-priced add-ons) are durable, legally significant records. Cart contents are more ephemeral — losing an unfinished cart on a crash is a UX annoyance, not a correctness failure — so a cart can reasonably live in a faster, less durable store than the order it eventually produces.</p>
+
+<h3 id="p19-y">Y. Scaling Boundary</h3>
+<table>
+<tr><th>Layer</th><th>What Belongs Here</th></tr>
+<tr><td><strong>LLD</strong></td><td>Decorator-based add-ons, pricing pipeline, order state machine, per-product locking/atomic decrement</td></tr>
+<tr><td><strong>HLD</strong></td><td>Distributed inventory across warehouses, cart-abandonment-recovery pipelines, fraud-detection integration at the payment layer</td></tr>
+<tr><td><strong>Explicitly out of scope</strong></td><td>Multi-warehouse inventory routing unless the round pivots there</td></tr>
+</table>
+
+<h3 id="p19-z">Z. Failure Scenarios</h3>
+<ul>
+<li><strong>Inventory is decremented but the order creation step fails afterward:</strong> the decrement and order creation must be transactionally consistent, or the decrement needs a compensating restore — the same commit-ordering discipline as ATM's (Problem 14) debit-before-dispense logic.</li>
+<li><strong>A payment fails after inventory was already reserved:</strong> <code>confirmPayment()</code>'s failure path must restore the reserved stock, not leave it permanently decremented for an order that was never actually paid for.</li>
+</ul>
+
+<h3 id="p19-aa">AA. Common Bad Designs</h3>
+<ul>
+<li><strong>Using Strategy to model add-ons, or Decorator to model the pricing pipeline</strong> — the defining pattern-boundary mistake for this problem; see I.</li>
+<li><strong>Checking stock and decrementing it as two separate, unlocked steps</strong> — reopens the classic check-then-act race even with a well-designed <code>Product</code> entity.</li>
+<li><strong>Locking multiple products in whatever order they appear in the cart</strong> instead of a canonical sorted order — the same deadlock trap as unordered multi-seat/multi-file locking.</li>
+<li><strong>Treating payment confirmation as safe to process more than once</strong> — without an idempotency key, a retried webhook can double-create an order or double-charge.</li>
+</ul>
+
+<h3 id="p19-ab">AB. Design Trade-Offs</h3>
+<table>
+<tr><th>Decision</th><th>Option A</th><th>Option B</th><th>Recommendation</th></tr>
+<tr><td>Inventory decrement mechanism</td><td>Application-level lock + re-check</td><td>Atomic conditional DB update (<code>WHERE stock >= qty</code>)</td><td>Atomic DB update where the schema allows it — removes an entire class of application-level locking bugs; describe the application-level lock version if the round is explicitly about in-memory design</td></tr>
+<tr><td>Failed-checkout inventory handling</td><td>Restore stock immediately on payment failure</td><td>Hold reserved stock for a grace period in case of a slow retry</td><td>A short grace period (mirroring Movie Ticket Booking's hold TTL) balances not permanently losing a sale to a slow retry against not starving other buyers indefinitely</td></tr>
+</table>
+
+<h3 id="p19-ac">AC. Interviewer Evaluation</h3>
+<p><strong>Strong signal:</strong> correctly choosing Decorator for add-ons and Strategy for the pricing pipeline, and being able to articulate <em>why</em> swapping them would break; independently identifying the inventory check-then-act race and the multi-item deadlock risk; flagging payment-confirmation idempotency without being prompted.</p>
+<p><strong>Red flag:</strong> modeling add-ons as a Strategy enum that can't stack; modeling the pricing pipeline as nested Decorators; unlocked stock check-then-decrement; unordered multi-item locking; non-idempotent payment confirmation.</p>
+
+<h3 id="p19-ad">AD. Interview Simulation</h3>
+<div class="dialog"><span class="who">Interviewer:</span> Design an e-commerce shopping cart and checkout flow. Items can have add-ons like gift wrap.</div>
+<div class="dialog"><span class="who">Candidate:</span> I'd model add-ons with Decorator, not Strategy — because add-ons stack. A watch can have gift wrap <em>and</em> engraving at once, each layering its own price contribution on top of the base item. Strategy would only fit if exactly one add-on could ever apply, which isn't the real requirement here.</div>
+<div class="dialog"><span class="who">Interviewer:</span> How do tax and discounts fit in, then?</div>
+<div class="dialog"><span class="who">Candidate:</span> Those are Strategy, not Decorator — each is one rule applied once, at a specific, meaningful position in an ordered pricing pipeline. Tax-before-or-after-discount is an actual business rule, so I'd make the pipeline an explicit ordered list of <code>PricingStep</code>s rather than implying an order through nested wrapping.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Two customers check out the last unit of a product at the same time.</div>
+<div class="dialog"><span class="who">Candidate:</span> Same check-then-act race as everywhere else in this document — lock the product, re-verify stock, then decrement. In production I'd actually push this to an atomic conditional update at the database level, so the race-free guarantee doesn't depend on application-level locking at all.</div>
+<div class="dialog"><span class="who">Interviewer:</span> What if the payment provider retries its confirmation webhook?</div>
+<div class="dialog"><span class="who">Candidate:</span> Idempotency-keyed confirmation, same as I'd do for the movie-ticket payment flow — a retried call with the same key returns the already-processed order instead of creating a second one or charging twice.</div>
+
+<h3 id="p19-ae">AE. Online Solution Comparison</h3>
+<table>
+<tr><th>Source</th><th>Approach</th><th>Strength</th><th>Weakness</th><th>Worth Learning</th></tr>
+<tr><td><a href="https://www.geeksforgeeks.org/system-design/design-amazon-e-commerce-system-design/" target="_blank">GeeksforGeeks — Design Amazon (E-commerce System Design)</a></td><td>Broad requirements-and-class walkthrough covering catalog, cart, checkout, and order tracking</td><td>Good functional breadth across the full e-commerce surface</td><td>Add-ons and the pricing pipeline are generally not distinguished as separate pattern concerns — both tend to collapse into ad hoc total-calculation logic</td><td>Useful for the overall functional scope; this document's explicit Decorator/Strategy boundary and inventory-race handling are the depth worth adding</td></tr>
+<tr><td><a href="https://github.com/ashishps1/awesome-low-level-design" target="_blank">ashishps1/awesome-low-level-design (GitHub)</a></td><td>A curated open-source repository of worked LLD problems, including shopping-cart/order-style systems</td><td>Real, runnable code for cross-checking class shapes against an independent source</td><td>Breadth-over-depth — individual problems get a working solution without the same depth of concurrency/idempotency/pattern-boundary analysis</td><td>Good for spot-checking entity boundaries against a widely-referenced independent implementation</td></tr>
+</table>
+
+<h3 id="p19-af">AF. Interview Cheat Sheet</h3>
+<table>
+<tr><td><strong>Problem</strong></td><td>E-commerce Shopping Cart &amp; Checkout</td></tr>
+<tr><td><strong>Difficulty</strong></td><td>Intermediate → Advanced</td></tr>
+<tr><td><strong>Core requirements</strong></td><td>Cart with stackable add-ons, coupon/tax/discount pricing, checkout with inventory decrement, order lifecycle</td></tr>
+<tr><td><strong>Key clarifications</strong></td><td>Add-ons stackable? Pipeline order for tax/discount/coupon? Hard inventory limit? Sync or webhook payment?</td></tr>
+<tr><td><strong>Core entities</strong></td><td>Product, CartItem, CartItemDecorator, Cart, PricingStep, Order, OrderState, CheckoutService</td></tr>
+<tr><td><strong>Key relationships</strong></td><td>Decorator for add-ons vs. Strategy for pricing pipeline; Cart/Order mutable-vs-frozen split; State for order lifecycle</td></tr>
+<tr><td><strong>Key patterns</strong></td><td>Decorator, Strategy, State</td></tr>
+<tr><td><strong>Most important decision</strong></td><td>Choosing Decorator for stackable add-ons and Strategy for the ordered pricing pipeline — not the reverse</td></tr>
+<tr><td><strong>Likely-changing behavior</strong></td><td>Add-on catalog, pricing pipeline stages, additional order lifecycle states</td></tr>
+<tr><td><strong>Concurrency concern</strong></td><td>Check-then-act inventory decrement race; multi-item checkout deadlock; idempotent payment confirmation</td></tr>
+<tr><td><strong>Top follow-ups</strong></td><td>Arbitrary add-on stacking/removal, new pipeline stages, atomic multi-product bundle checkout</td></tr>
+<tr><td><strong>Common mistakes</strong></td><td>Swapping Decorator/Strategy roles; unlocked stock check-then-decrement; unordered multi-item locking; non-idempotent payment confirmation</td></tr>
+<tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design multi-warehouse inventory routing or fraud detection unless asked</td></tr>
+</table><div class="prevnext"><a class="prevnext-link prev" href="p18.html">&larr; 18. Restaurant / Food Delivery System</a><a class="prevnext-link next" href="p20.html">20. Chat Application (WhatsApp-style) &rarr;</a></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

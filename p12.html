@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('lld-theme') || 'light');</script>
+<title>12. Tic-Tac-Toe / Board Game Engine — LLD Handbook</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+</head>
+<body>
+<button id="menu-toggle" aria-label="Toggle menu">&#9776;</button>
+<nav id="sidebar">
+  <div class="sidebar-top">
+    <a class="brand" href="index.html">LLD Handbook</a>
+    <button id="theme-toggle" aria-label="Toggle dark mode">&#127769;</button>
+  </div>
+  <div class="search-wrap">
+    <input id="search-box" type="text" placeholder="Search problems &amp; sections...">
+    <div id="search-results"></div>
+  </div>
+  <ul class="nav-list">
+    <li><a href="index.html" data-page="index.html">Home</a></li>
+    <li><a href="p1.html" data-page="p1.html">1. Parking Lot</a></li>
+    <li><a href="p2.html" data-page="p2.html">2. LRU Cache</a></li>
+    <li><a href="p3.html" data-page="p3.html">3. Rate Limiter</a></li>
+    <li><a href="p4.html" data-page="p4.html">4. Splitwise (Expense Sharing)</a></li>
+    <li><a href="p5.html" data-page="p5.html">5. Ride-Sharing Service (Uber/Lyft)</a></li>
+    <li><a href="p6.html" data-page="p6.html">6. Logging Framework</a></li>
+    <li><a href="p7.html" data-page="p7.html">7. Notification System</a></li>
+    <li><a href="p8.html" data-page="p8.html">8. Coffee Vending Machine</a></li>
+    <li><a href="p9.html" data-page="p9.html">9. File System</a></li>
+    <li><a href="p10.html" data-page="p10.html">10. Pub-Sub / Message Queue</a></li>
+    <li><a href="p11.html" data-page="p11.html">11. Elevator System</a></li>
+    <li><a href="p12.html" data-page="p12.html">12. Tic-Tac-Toe / Board Game Engine</a></li>
+    <li><a href="p13.html" data-page="p13.html">13. Chess Game</a></li>
+    <li><a href="p14.html" data-page="p14.html">14. ATM Machine</a></li>
+    <li><a href="p15.html" data-page="p15.html">15. Library Management System</a></li>
+    <li><a href="p16.html" data-page="p16.html">16. Hotel Reservation System</a></li>
+    <li><a href="p17.html" data-page="p17.html">17. Movie Ticket Booking System</a></li>
+    <li><a href="p18.html" data-page="p18.html">18. Restaurant / Food Delivery System</a></li>
+    <li><a href="p19.html" data-page="p19.html">19. E-commerce Shopping Cart &amp; Checkout</a></li>
+    <li><a href="p20.html" data-page="p20.html">20. Chat Application (WhatsApp-style)</a></li>
+    <li><a href="synthesis.html" data-page="synthesis.html">Cross-Problem Synthesis</a></li>
+  </ul>
+</nav>
+<main id="content">
+<h1 class="problem-title">12. Tic-Tac-Toe / Board Game Engine <span class="badge">Beginner → Intermediate (Pattern Showcase)</span></h1>
+
+<div class="section-toc">
+<a href="#p12-a">A. Interview Prompt</a><a href="#p12-b">B. Difficulty</a><a href="#p12-c">C. What It Tests</a>
+<a href="#p12-d">D. Requirements</a><a href="#p12-e">E. Clarifying Questions</a><a href="#p12-f">F. Assumptions</a>
+<a href="#p12-g">G. Actors</a><a href="#p12-h">H. Core Entities</a><a href="#p12-i">I. Relationships</a>
+<a href="#p12-j">J. Class Diagram</a><a href="#p12-k">K. Responsibility Map</a><a href="#p12-l">L. SOLID Analysis</a>
+<a href="#p12-m">M. Design Patterns</a><a href="#p12-n">N. What Changes?</a><a href="#p12-o">O. Design Evolution</a>
+<a href="#p12-p">P. API Design</a><a href="#p12-q">Q. Pseudocode</a><a href="#p12-r">R. End-to-End Flow</a>
+<a href="#p12-s">S. Data Structures</a><a href="#p12-t">T. Complexity</a><a href="#p12-u">U. Testing Strategy</a>
+<a href="#p12-v">V. Interviewer Follow-Ups</a><a href="#p12-w">W. Concurrency</a><a href="#p12-x">X. Persistence</a>
+<a href="#p12-y">Y. Scaling Boundary</a><a href="#p12-z">Z. Failure Scenarios</a><a href="#p12-aa">AA. Bad Designs</a>
+<a href="#p12-ab">AB. Trade-Offs</a><a href="#p12-ac">AC. Interviewer Evaluation</a><a href="#p12-ad">AD. Simulation</a>
+<a href="#p12-ae">AE. Source Comparison</a><a href="#p12-af">AF. Cheat Sheet</a>
+</div>
+
+<h3 id="p12-a">A. Realistic Interview Prompt</h3>
+<div class="prompt">"Design a Tic-Tac-Toe game for two players. Then generalize it: support an arbitrary board size and an arbitrary number of symbols in a row to win, and support both human and computer-controlled players."</div>
+
+<h3 id="p12-b">B. Difficulty</h3>
+<p><strong>Beginner → Intermediate.</strong> Trivial if hardcoded to a 3×3 board with 8 fixed win-lines; the entire value of this problem, as an interview signal, is in the generalization the interviewer almost always asks for next.</p>
+
+<h3 id="p12-c">C. What This Problem Tests</h3>
+<ul>
+<li>Whether the win-check is a generic algorithm over rows/columns/diagonals of any size, or 8 hardcoded coordinate triples</li>
+<li>Cleanly polymorphic players (human vs. AI) via Strategy, rather than an <code>isAI</code> boolean with branching move logic</li>
+<li>Recognizing the turn-based game loop itself as a reusable skeleton (Template Method) across an entire family of board games, not something specific to Tic-Tac-Toe</li>
+<li>Resisting over-engineering — this problem rewards clean simplicity, not pattern-stacking for its own sake</li>
+</ul>
+
+<h3 id="p12-d">D. Requirements</h3>
+<p><strong>Functional</strong></p>
+<ol>
+<li>Support an N×N board (default 3×3)</li>
+<li>Support K-in-a-row win condition (default 3), checked across rows, columns, and both diagonal directions</li>
+<li>Support 2+ players, each assigned a distinct symbol</li>
+<li>Support both human players (external move input) and computer players (internally decided moves)</li>
+<li>Detect a win, a draw (board full, no winner), and reject illegal moves (occupied cell, out-of-turn, out-of-bounds)</li>
+</ol>
+<p><strong>Non-Functional</strong></p>
+<ul>
+<li>Adding a new board size or win-length must require zero changes to the win-checking algorithm's code, only its parameters</li>
+<li>Adding a new AI difficulty must not require changes to the game loop or board</li>
+</ul>
+
+<h3 id="p12-e">E. Clarifying Questions</h3>
+<table>
+<tr><th>#</th><th>Question</th><th>Why It Matters</th><th>Design Decision Affected</th></tr>
+<tr><td>1</td><td>Fixed 3×3, or should the board size and win-length be generalized?</td><td>Determines whether a generic line-scan win checker is required from the start or can be added later</td><td>Design of <code>WinningStrategy</code></td></tr>
+<tr><td>2</td><td>Should the engine support other turn-based grid games (Connect Four, Gomoku) later?</td><td>Determines whether the game loop should be a reusable Template Method now</td><td>Scope of <code>TurnBasedGame</code> base class</td></tr>
+<tr><td>3</td><td>Does the computer player need real strategy (minimax) or just legal random moves?</td><td>Affects how much of the AI Strategy hierarchy is worth building out</td><td>Depth of <code>MoveStrategy</code> implementations</td></tr>
+<tr><td>4</td><td>More than 2 players?</td><td>Some generalized variants support 3+ symbols on a larger board</td><td>Whether <code>Player</code> collection is fixed-size or a list</td></tr>
+</table>
+
+<h3 id="p12-f">F. Assumptions</h3>
+<ul>
+<li><strong>Confirmed:</strong> N×N board, K-in-a-row win, human and computer players, turn-based.</li>
+<li><strong>Assumption:</strong> default 2 players unless asked for more — the design supports a list of players either way, so this is a configuration detail, not a structural one.</li>
+<li><strong>Assumption:</strong> "computer player" means at least a legal-random-move strategy; a full minimax/alpha-beta implementation is discussed as a swappable <code>MoveStrategy</code> but not required to be exhaustive.</li>
+</ul>
+
+<h3 id="p12-g">G. Actors</h3>
+<table>
+<tr><th>Actor</th><th>Responsibility</th></tr>
+<tr><td>Player (human or AI)</td><td>Produces a move each turn</td></tr>
+<tr><td>GameController (facade)</td><td>Runs the game loop, enforces turn order and legality</td></tr>
+</table>
+
+<h3 id="p12-h">H. Core Domain Entities</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Key Attributes</th><th>Key Methods</th><th>Does NOT Handle</th></tr>
+<tr><td><code>Board</code></td><td>Owns the grid and cell occupancy</td><td>N×N grid of <code>Symbol</code></td><td><code>placeMark(row, col, symbol)</code>, <code>isFull()</code>, <code>isValidMove()</code></td><td>Deciding whether a placement wins — that's <code>WinningStrategy</code>'s job</td></tr>
+<tr><td><code>Symbol</code> (value)</td><td>A player's mark (X, O, or generalized)</td><td>—</td><td>—</td><td>—</td></tr>
+<tr><td><code>Player</code> (abstract)</td><td>Common identity for anything that produces a move</td><td>id, symbol</td><td><code>getMove(board)</code></td><td>How the move is decided — delegated to subclass/strategy</td></tr>
+<tr><td><code>HumanPlayer</code></td><td>Returns externally-supplied input as the move</td><td>—</td><td><code>getMove(board)</code></td><td>Any move computation</td></tr>
+<tr><td><code>AIPlayer</code></td><td>Delegates move selection to a <code>MoveStrategy</code></td><td>MoveStrategy</td><td><code>getMove(board)</code></td><td>The algorithm itself</td></tr>
+<tr><td><code>MoveStrategy</code> (interface)</td><td>One algorithm for choosing the AI's next move</td><td>—</td><td><code>decideMove(board, symbol)</code></td><td>—</td></tr>
+<tr><td><code>WinningStrategy</code> (interface)</td><td>Generic K-in-a-row check over the current board</td><td>—</td><td><code>checkWinner(board, lastMove)</code></td><td>Anything about turn order</td></tr>
+<tr><td><code>TurnBasedGame</code> (abstract, Template Method)</td><td>The shared skeleton of any turn-based grid game</td><td>board, players, winningStrategy</td><td><code>play()</code> (template), hooks: <code>setupBoard()</code>, <code>declareResult()</code></td><td>Game-specific win rules — a hook, not hardcoded</td></tr>
+<tr><td><code>GameController</code> (facade)</td><td>Public API to start/query a game</td><td>TurnBasedGame instance</td><td><code>startGame()</code>, <code>makeMove()</code></td><td>—</td></tr>
+</table>
+
+<h3 id="p12-i">I. Class Relationships</h3>
+<ul>
+<li><strong>Strategy for both AI move selection and win-checking:</strong> both are algorithms an interviewer expects generalized or swapped — "make the AI harder" is a new <code>MoveStrategy</code>; "support Connect Four's 4-in-a-row on a taller board" is a parameterized <code>WinningStrategy</code>, not new code.</li>
+<li><strong>Why win-checking must not be 8 hardcoded coordinate triples:</strong> the single most common naive shape for this exact problem is a literal list of the 3×3 board's 8 winning lines. It works for the demo and breaks the instant the board size changes. A generic <code>WinningStrategy</code> scans every row, column, and both diagonal directions through the just-played cell, checking for K consecutive matching symbols — this is the direct generalization interviewers are testing for.</li>
+<li><strong>Why Template Method for the game loop:</strong> "initialize board → loop (get move → validate → place → check win/draw → switch turn) → declare result" is the same skeleton for Tic-Tac-Toe, Connect Four, and Gomoku — only <code>setupBoard()</code> (board dimensions) and the winning strategy actually differ. This is the genuine case for Template Method that Coffee Vending Machine's brewing steps (Problem 8) explicitly were <em>not</em> — there, "the recipe" was just varying data over one fixed algorithm; here, subclasses truly do plug in different structural pieces (board shape, win rule) into a shared control flow.</li>
+<li><strong>Player as abstract base, not a boolean flag:</strong> <code>HumanPlayer</code> vs. <code>AIPlayer</code> as real polymorphic types (rather than one <code>Player</code> class with an <code>isAI</code> flag and an <code>if</code> in <code>getMove()</code>) is what lets a new player type (e.g. a remote/networked player) slot in with zero changes to <code>TurnBasedGame</code>.</li>
+</ul>
+
+<h3 id="p12-j">J. Class Diagram</h3>
+<div class="diagram-card">
+<svg id="diagram-p12" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="classDiagram" style="max-width: 805.162px; background-color: white;" viewBox="4 4 805.162109375 787" role="graphics-document document" aria-roledescription="classDiagram"><style>#diagram-p12{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;fill:#1a1f26;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#diagram-p12 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#diagram-p12 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#diagram-p12 .error-icon{fill:#fff7e6;}#diagram-p12 .error-text{fill:#000819;stroke:#000819;}#diagram-p12 .edge-thickness-normal{stroke-width:1px;}#diagram-p12 .edge-thickness-thick{stroke-width:3.5px;}#diagram-p12 .edge-pattern-solid{stroke-dasharray:0;}#diagram-p12 .edge-thickness-invisible{stroke-width:0;fill:none;}#diagram-p12 .edge-pattern-dashed{stroke-dasharray:3;}#diagram-p12 .edge-pattern-dotted{stroke-dasharray:2;}#diagram-p12 .marker{fill:#334155;stroke:#334155;}#diagram-p12 .marker.cross{stroke:#334155;}#diagram-p12 svg{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;}#diagram-p12 p{margin:0;}#diagram-p12 g.classGroup text{fill:#2563eb;stroke:none;font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:10px;}#diagram-p12 g.classGroup text .title{font-weight:bolder;}#diagram-p12 .cluster-label text{fill:#000819;}#diagram-p12 .cluster-label span{color:#000819;}#diagram-p12 .cluster-label span p{background-color:transparent;}#diagram-p12 .cluster rect{fill:#f4f6f8;stroke:#d8dee5;stroke-width:1px;}#diagram-p12 .cluster text{fill:#000819;}#diagram-p12 .cluster span{color:#000819;}#diagram-p12 .nodeLabel,#diagram-p12 .edgeLabel{color:#0f2540;}#diagram-p12 .noteLabel .nodeLabel,#diagram-p12 .noteLabel .edgeLabel{color:#333;}#diagram-p12 .edgeLabel .label rect{fill:#eef6ff;}#diagram-p12 .label text{fill:#0f2540;}#diagram-p12 .labelBkg{background:#eef6ff;}#diagram-p12 .edgeLabel .label span{background:#eef6ff;}#diagram-p12 .classTitle{font-weight:bolder;}#diagram-p12 .node rect,#diagram-p12 .node circle,#diagram-p12 .node ellipse,#diagram-p12 .node polygon,#diagram-p12 .node path{fill:#eef6ff;stroke:#2563eb;stroke-width:1;}#diagram-p12 .divider{stroke:#2563eb;stroke-width:1;}#diagram-p12 g.clickable{cursor:pointer;}#diagram-p12 g.classGroup rect{fill:#eef6ff;stroke:#2563eb;}#diagram-p12 g.classGroup line{stroke:#2563eb;stroke-width:1;}#diagram-p12 .classLabel .box{stroke:none;stroke-width:0;fill:#eef6ff;opacity:0.5;}#diagram-p12 .classLabel .label{fill:#2563eb;font-size:10px;}#diagram-p12 .relation{stroke:#334155;stroke-width:1;fill:none;}#diagram-p12 .dashed-line{stroke-dasharray:3;}#diagram-p12 .dotted-line{stroke-dasharray:1 2;}#diagram-p12 [id$="-compositionStart"],#diagram-p12 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p12 [id$="-compositionEnd"],#diagram-p12 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p12 [id$="-dependencyStart"],#diagram-p12 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p12 [id$="-dependencyEnd"],#diagram-p12 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p12 [id$="-extensionStart"],#diagram-p12 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p12 [id$="-extensionEnd"],#diagram-p12 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p12 [id$="-aggregationStart"],#diagram-p12 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p12 [id$="-aggregationEnd"],#diagram-p12 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p12 [id$="-lollipopStart"],#diagram-p12 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p12 [id$="-lollipopEnd"],#diagram-p12 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p12 .edgeTerminals{font-size:11px;line-height:initial;}#diagram-p12 .classTitleText{text-anchor:middle;font-size:18px;fill:#1a1f26;}#diagram-p12 .edgeLabel[data-look="neo"]{background-color:#ffffff;text-align:center;}#diagram-p12 .edgeLabel[data-look="neo"] p{background-color:#ffffff;}#diagram-p12 .edgeLabel[data-look="neo"] rect{opacity:0.5;background-color:#ffffff;fill:#ffffff;}#diagram-p12 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#diagram-p12 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#diagram-p12 .node .neo-node{stroke:#2563eb;}#diagram-p12 [data-look="neo"].node rect,#diagram-p12 [data-look="neo"].cluster rect,#diagram-p12 [data-look="neo"].node polygon{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p12 [data-look="neo"].swimlane.cluster rect{filter:none;}#diagram-p12 [data-look="neo"].node path{stroke:#2563eb;stroke-width:1px;}#diagram-p12 [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p12 [data-look="neo"].node .neo-line path{stroke:#2563eb;filter:none;}#diagram-p12 [data-look="neo"].node circle{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p12 [data-look="neo"].node circle .state-start{fill:#000000;}#diagram-p12 [data-look="neo"].icon-shape .icon{fill:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p12 [data-look="neo"].icon-shape .icon-neo path{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p12 .classGroup text{font-size:14px!important;}#diagram-p12 .classGroup .title{font-size:16px!important;font-weight:700;}#diagram-p12 .classLabel .label{font-size:14px!important;}#diagram-p12 .edgeLabel,#diagram-p12 .edgeLabel .label{font-size:13px!important;}#diagram-p12 .relationshipLabelBox{font-size:13px!important;}#diagram-p12 .nodeLabel,#diagram-p12 .cluster-label{font-size:14px!important;}#diagram-p12 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><defs><marker id="diagram-p12_classDiagram-aggregationStart" class="marker aggregation classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p12_classDiagram-aggregationEnd" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p12_classDiagram-aggregationStart-margin" class="marker aggregation classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p12_classDiagram-aggregationEnd-margin" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p12_classDiagram-extensionStart" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,7 L18,13 V 1 Z"/></marker></defs><defs><marker id="diagram-p12_classDiagram-extensionEnd" class="marker extension classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,1 V 13 L18,7 Z"/></marker></defs><marker id="diagram-p12_classDiagram-extensionStart-margin" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,7 18,13 18,1" style="stroke-width: 2; stroke-dasharray: 0;"/></marker><defs><marker id="diagram-p12_classDiagram-extensionEnd-margin" class="marker extension classDiagram" refX="9" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,1 10,13 18,7" style="stroke-width: 2; stroke-dasharray: 0;"/></marker></defs><defs><marker id="diagram-p12_classDiagram-compositionStart" class="marker composition classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p12_classDiagram-compositionEnd" class="marker composition classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p12_classDiagram-compositionStart-margin" class="marker composition classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path viewBox="0 0 15 15" d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p12_classDiagram-compositionEnd-margin" class="marker composition classDiagram" refX="3.5" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p12_classDiagram-dependencyStart" class="marker dependency classDiagram" refX="6" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p12_classDiagram-dependencyEnd" class="marker dependency classDiagram" refX="13" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p12_classDiagram-dependencyStart-margin" class="marker dependency classDiagram" refX="4" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p12_classDiagram-dependencyEnd-margin" class="marker dependency classDiagram" refX="16" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p12_classDiagram-lollipopStart" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p12_classDiagram-lollipopEnd" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p12_classDiagram-lollipopStart-margin" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><defs><marker id="diagram-p12_classDiagram-lollipopEnd-margin" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><g class="root"><g class="clusters"/><g class="edges edgePaths"><path d="M287.189453125,210L287.189453125,222.92893218813452Q287.189453125,230 280.1183853131345,230L87.08984375,230Q80.08984375,230 80.08984375,237L80.08984375,244" id="diagram-p12-id_TurnBasedGame_Board_1" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 235.79808044433594 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_TurnBasedGame_Board_1" data-points="W3sieCI6Mjg3LjE4OTQ1MzEyNSwieSI6MjEwfSx7IngiOjI4Ny4xODk0NTMxMjUsInkiOjIzMH0seyJ4Ijo4MC4wODk4NDM3NSwieSI6MjMwfSx7IngiOjgwLjA4OTg0Mzc1LCJ5IjoyNTB9XQ==" data-look="neo" marker-end="url(#diagram-p12_classDiagram-dependencyEnd-margin)"/><path d="M326.97265625,210L326.97265625,244" id="diagram-p12-id_TurnBasedGame_WinningStrategy_2" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 34 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_TurnBasedGame_WinningStrategy_2" data-points="W3sieCI6MzI2Ljk3MjY1NjI1LCJ5IjoyMTB9LHsieCI6MzI2Ljk3MjY1NjI1LCJ5IjoyNTB9XQ==" data-look="neo" marker-end="url(#diagram-p12_classDiagram-dependencyEnd-margin)"/><path d="M563.6666666666666,444.25L563.6666666666666,445.625Q563.6666666666666,447 562.2916666666666,447L506.5573959368655,447Q499.486328125,447 499.486328125,454.0710678118655L499.486328125,467" id="diagram-p12-id_Player_HumanPlayer_3" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 83.74821472167969 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Player_HumanPlayer_3" data-points="W3sieCI6NTYzLjY2NjY2NjY2NjY2NjYsInkiOjQyN30seyJ4Ijo1NjMuNjY2NjY2NjY2NjY2NiwieSI6NDQ3fSx7IngiOjQ5OS40ODYzMjgxMjUsInkiOjQ0N30seyJ4Ijo0OTkuNDg2MzI4MTI1LCJ5Ijo0Njd9XQ==" data-look="neo" marker-start="url(#diagram-p12_classDiagram-extensionStart-margin)"/><path d="M611.5677083333334,444.25L611.5677083333334,445.625Q611.5677083333334,447 612.9427083333334,447L668.6769790631345,447Q675.748046875,447 675.748046875,454.0710678118655L675.748046875,467" id="diagram-p12-id_Player_AIPlayer_4" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 83.74818420410156 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Player_AIPlayer_4" data-points="W3sieCI6NjExLjU2NzcwODMzMzMzMzQsInkiOjQyN30seyJ4Ijo2MTEuNTY3NzA4MzMzMzMzNCwieSI6NDQ3fSx7IngiOjY3NS43NDgwNDY4NzUsInkiOjQ0N30seyJ4Ijo2NzUuNzQ4MDQ2ODc1LCJ5Ijo0Njd9XQ==" data-look="neo" marker-start="url(#diagram-p12_classDiagram-extensionStart-margin)"/><path d="M675.748046875,602L675.748046875,636" id="diagram-p12-id_AIPlayer_MoveStrategy_5" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 34 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_AIPlayer_MoveStrategy_5" data-points="W3sieCI6Njc1Ljc0ODA0Njg3NSwieSI6NjAyfSx7IngiOjY3NS43NDgwNDY4NzUsInkiOjY0Mn1d" data-look="neo" marker-end="url(#diagram-p12_classDiagram-dependencyEnd-margin)"/><path d="M366.755859375,210L366.755859375,222.92893218813452Q366.755859375,230 373.8269271868655,230L580.6171875,230Q587.6171875,230 587.6171875,237L587.6171875,244" id="diagram-p12-id_TurnBasedGame_Player_6" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 249.5598602294922 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_TurnBasedGame_Player_6" data-points="W3sieCI6MzY2Ljc1NTg1OTM3NSwieSI6MjEwfSx7IngiOjM2Ni43NTU4NTkzNzUsInkiOjIzMH0seyJ4Ijo1ODcuNjE3MTg3NSwieSI6MjMwfSx7IngiOjU4Ny42MTcxODc1LCJ5IjoyNTB9XQ==" data-look="neo" marker-end="url(#diagram-p12_classDiagram-dependencyEnd-margin)"/></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="id_TurnBasedGame_Player_6" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeTerminals" transform="translate(587.11718947, 226.0000009600001)"><g class="inner" transform="translate(-2.53125, -9.75)"/><foreignObject width="5.0625" height="19.5" style="width: 9px; height: 12px;"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="edgeLabel"><p>*</p></span></div></foreignObject></g></g><g class="nodes"><g class="node default" id="diagram-p12-classId-TurnBasedGame-0" data-look="neo" transform="translate(326.97265625, 111)"><g class="basic label-container outer-path"><path d="M-89.56640625 -99 L89.56640625 -99 L89.56640625 99 L-89.56640625 99" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-89.56640625 -99 C-24.345286501026152 -99, 40.875833247947696 -99, 89.56640625 -99 M-89.56640625 -99 C-36.61265778461723 -99, 16.341090680765546 -99, 89.56640625 -99 M89.56640625 -99 C89.56640625 -54.48796025632009, 89.56640625 -9.975920512640187, 89.56640625 99 M89.56640625 -99 C89.56640625 -51.928743924026996, 89.56640625 -4.857487848053992, 89.56640625 99 M89.56640625 99 C22.045848078292096 99, -45.47471009341581 99, -89.56640625 99 M89.56640625 99 C50.8031208075695 99, 12.039835365138998 99, -89.56640625 99 M-89.56640625 99 C-89.56640625 56.070878625168426, -89.56640625 13.141757250336852, -89.56640625 -99 M-89.56640625 99 C-89.56640625 21.057214523656015, -89.56640625 -56.88557095268797, -89.56640625 -99" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -75)"/><g class="label-group text" transform="translate(-55.5078125, -75)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="111.015625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 158px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>TurnBasedGame</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-77.56640625, -30)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="35.8125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 87px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>board</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="45.140625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 96px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>players</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="99.625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 156px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>winningStrategy</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-77.56640625, 57)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="43.1875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 102px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+play()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="89.109375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 147px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+setupBoard()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-89.56640625 -54 C-40.01431566469437 -53.999723377923374, 9.537774920611255 -53.999446755846755, 89.56640625 -53.999 M-89.56640625 -54 C-39.033102336278525 -53.99971790034886, 11.500201577442951 -53.999435800697725, 89.56640625 -53.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-89.56640625 33 C-27.910875617044226 33.000344188927606, 33.74465501591155 33.000688377855205, 89.56640625 33.001 M-89.56640625 33 C-40.2627204921605 33.00027523536905, 9.040965265679006 33.000550470738105, 89.56640625 33.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p12-classId-Board-1" data-look="neo" transform="translate(80.08984375, 338.5)"><g class="basic label-container outer-path"><path d="M-68.08984375 -88.5 L68.08984375 -88.5 L68.08984375 88.5 L-68.08984375 88.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-68.08984375 -88.5 C-14.395999624736291 -88.5, 39.29784450052742 -88.5, 68.08984375 -88.5 M-68.08984375 -88.5 C-35.87929225605768 -88.5, -3.6687407621153625 -88.5, 68.08984375 -88.5 M68.08984375 -88.5 C68.08984375 -40.33811818006463, 68.08984375 7.823763639870734, 68.08984375 88.5 M68.08984375 -88.5 C68.08984375 -50.08967077850233, 68.08984375 -11.679341557004662, 68.08984375 88.5 M68.08984375 88.5 C15.070616602686577 88.5, -37.948610544626845 88.5, -68.08984375 88.5 M68.08984375 88.5 C19.60376020637885 88.5, -28.882323337242298 88.5, -68.08984375 88.5 M-68.08984375 88.5 C-68.08984375 43.58263313168384, -68.08984375 -1.334733736632316, -68.08984375 -88.5 M-68.08984375 88.5 C-68.08984375 26.23128024657258, -68.08984375 -36.03743950685484, -68.08984375 -88.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -64.5)"/><g class="label-group text" transform="translate(-20.2265625, -64.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="40.453125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 89px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Board</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-56.08984375, -19.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="23.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 76px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>grid</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-56.08984375, 25.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="82.09375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 143px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+placeMark()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="91.953125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 156px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+isValidMove()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="50.171875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 111px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+isFull()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-68.08984375 -43.5 C-15.795423011711677 -43.49961598956718, 36.49899772657665 -43.49923197913436, 68.08984375 -43.499 M-68.08984375 -43.5 C-30.4145998335108 -43.499723341677395, 7.260644082978402 -43.49944668335479, 68.08984375 -43.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-68.08984375 1.5 C-24.240436453302486 1.500321996680281, 19.608970843395028 1.5006439933605618, 68.08984375 1.501 M-68.08984375 1.5 C-15.490953962188563 1.500386246221837, 37.107935825622874 1.5007724924436738, 68.08984375 1.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p12-classId-WinningStrategy-2" data-look="neo" transform="translate(326.97265625, 320.5)"><g class="basic label-container outer-path"><path d="M-138.79296875 -70.5 L138.79296875 -70.5 L138.79296875 70.5 L-138.79296875 70.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-138.79296875 -70.5 C-67.85336338560556 -70.5, 3.086241978788877 -70.5, 138.79296875 -70.5 M-138.79296875 -70.5 C-38.249994668913175 -70.5, 62.29297941217365 -70.5, 138.79296875 -70.5 M138.79296875 -70.5 C138.79296875 -31.2941168008771, 138.79296875 7.911766398245803, 138.79296875 70.5 M138.79296875 -70.5 C138.79296875 -40.35531341517097, 138.79296875 -10.21062683034193, 138.79296875 70.5 M138.79296875 70.5 C46.38325825505545 70.5, -46.026452239889096 70.5, -138.79296875 70.5 M138.79296875 70.5 C51.85394985735698 70.5, -35.08506903528604 70.5, -138.79296875 70.5 M-138.79296875 70.5 C-138.79296875 41.62461907867276, -138.79296875 12.749238157345516, -138.79296875 -70.5 M-138.79296875 70.5 C-138.79296875 22.491472694723228, -138.79296875 -25.517054610553544, -138.79296875 -70.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-34.640625, -46.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="69.28125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«interface»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-55.5546875, -25.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="111.109375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 159px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>WinningStrategy</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-126.79296875, 19.5)"/><g class="methods-group text" transform="translate(-126.79296875, 49.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="198.03125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 263px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+checkWinner(board, lastMove)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-138.79296875 -4.5 C-33.432284292669536 -4.499620439401915, 71.92840016466093 -4.499240878803831, 138.79296875 -4.499 M-138.79296875 -4.5 C-72.6641344435996 -4.499761771670056, -6.535300137199187 -4.499523543340113, 138.79296875 -4.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-138.79296875 19.5 C-71.96589026559207 19.500240743746193, -5.138811781184131 19.500481487492387, 138.79296875 19.501 M-138.79296875 19.5 C-68.70127107984477 19.50025250449753, 1.3904265903104545 19.500505008995063, 138.79296875 19.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p12-classId-Player-3" data-look="neo" transform="translate(587.6171875, 338.5)"><g class="basic label-container outer-path"><path d="M-81.8515625 -88.5 L81.8515625 -88.5 L81.8515625 88.5 L-81.8515625 88.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-81.8515625 -88.5 C-19.2749754021846 -88.5, 43.3016116956308 -88.5, 81.8515625 -88.5 M-81.8515625 -88.5 C-41.16968943400748 -88.5, -0.4878163680149612 -88.5, 81.8515625 -88.5 M81.8515625 -88.5 C81.8515625 -18.1155001884908, 81.8515625 52.2689996230184, 81.8515625 88.5 M81.8515625 -88.5 C81.8515625 -23.04023970862238, 81.8515625 42.41952058275524, 81.8515625 88.5 M81.8515625 88.5 C21.78648437483654 88.5, -38.27859375032692 88.5, -81.8515625 88.5 M81.8515625 88.5 C48.42986758494912 88.5, 15.008172669898244 88.5, -81.8515625 88.5 M-81.8515625 88.5 C-81.8515625 33.76800988517321, -81.8515625 -20.963980229653586, -81.8515625 -88.5 M-81.8515625 88.5 C-81.8515625 24.924029331195314, -81.8515625 -38.65194133760937, -81.8515625 -88.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-32.6875, -64.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="65.375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 116px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«abstract»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-21.0234375, -43.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="42.046875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 91px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Player</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-69.8515625, 1.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="10.90625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 62px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>id</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="44.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 97px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>symbol</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-69.8515625, 67.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="107.015625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 167px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+getMove(board)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-81.8515625 -22.5 C-42.93009776203578 -22.499762243605687, -4.008633024071557 -22.49952448721137, 81.8515625 -22.499 M-81.8515625 -22.5 C-40.26528023954403 -22.49974596525106, 1.3210020209119335 -22.499491930502113, 81.8515625 -22.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-81.8515625 43.5 C-48.3865370157332 43.50020442508647, -14.921511531466393 43.500408850172946, 81.8515625 43.501 M-81.8515625 43.5 C-40.55262824082642 43.50025227944952, 0.7463060183471555 43.50050455889903, 81.8515625 43.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p12-classId-AIPlayer-4" data-look="neo" transform="translate(675.748046875, 534.5)"><g class="basic label-container outer-path"><path d="M-79.51953125 -67.5 L79.51953125 -67.5 L79.51953125 67.5 L-79.51953125 67.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-79.51953125 -67.5 C-32.26832116791954 -67.5, 14.982888914160924 -67.5, 79.51953125 -67.5 M-79.51953125 -67.5 C-46.46974923749063 -67.5, -13.419967224981264 -67.5, 79.51953125 -67.5 M79.51953125 -67.5 C79.51953125 -17.14401257869396, 79.51953125 33.21197484261208, 79.51953125 67.5 M79.51953125 -67.5 C79.51953125 -16.15906411811794, 79.51953125 35.18187176376412, 79.51953125 67.5 M79.51953125 67.5 C21.87473967505423 67.5, -35.77005189989154 67.5, -79.51953125 67.5 M79.51953125 67.5 C43.95312199031928 67.5, 8.386712730638564 67.5, -79.51953125 67.5 M-79.51953125 67.5 C-79.51953125 35.490981437989056, -79.51953125 3.4819628759781125, -79.51953125 -67.5 M-79.51953125 67.5 C-79.51953125 32.18608926105068, -79.51953125 -3.1278214778986353, -79.51953125 -67.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -43.5)"/><g class="label-group text" transform="translate(-28.0234375, -43.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="56.046875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 108px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>AIPlayer</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-67.51953125, 1.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="86.375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 139px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>moveStrategy</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-67.51953125, 46.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="107.015625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 167px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+getMove(board)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-79.51953125 -22.5 C-16.689615488805664 -22.499604940353812, 46.14030027238867 -22.499209880707625, 79.51953125 -22.499 M-79.51953125 -22.5 C-25.04663403223745 -22.499657487309335, 29.4262631855251 -22.49931497461867, 79.51953125 -22.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-79.51953125 22.5 C-29.326083929907874 22.50031560452213, 20.867363390184252 22.500631209044258, 79.51953125 22.501 M-79.51953125 22.5 C-42.28154392387264 22.50023414365465, -5.04355659774528 22.500468287309303, 79.51953125 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p12-classId-MoveStrategy-5" data-look="neo" transform="translate(675.748046875, 712.5)"><g class="basic label-container outer-path"><path d="M-125.4140625 -70.5 L125.4140625 -70.5 L125.4140625 70.5 L-125.4140625 70.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-125.4140625 -70.5 C-60.13580906451085 -70.5, 5.142444370978296 -70.5, 125.4140625 -70.5 M-125.4140625 -70.5 C-44.925826669918735 -70.5, 35.56240916016253 -70.5, 125.4140625 -70.5 M125.4140625 -70.5 C125.4140625 -27.531870825415048, 125.4140625 15.436258349169904, 125.4140625 70.5 M125.4140625 -70.5 C125.4140625 -40.56126012499287, 125.4140625 -10.622520249985733, 125.4140625 70.5 M125.4140625 70.5 C27.76825791658699 70.5, -69.87754666682602 70.5, -125.4140625 70.5 M125.4140625 70.5 C51.08044925139593 70.5, -23.253163997208134 70.5, -125.4140625 70.5 M-125.4140625 70.5 C-125.4140625 40.19614339563877, -125.4140625 9.892286791277542, -125.4140625 -70.5 M-125.4140625 70.5 C-125.4140625 32.01079077043314, -125.4140625 -6.478418459133721, -125.4140625 -70.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-34.640625, -46.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="69.28125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«interface»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-45.90625, -25.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="91.8125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 141px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>MoveStrategy</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-113.4140625, 19.5)"/><g class="methods-group text" transform="translate(-113.4140625, 49.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="180.921875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 245px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+decideMove(board, symbol)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-125.4140625 -4.5 C-29.387836221975604 -4.49961716324165, 66.63839005604879 -4.4992343264832995, 125.4140625 -4.499 M-125.4140625 -4.5 C-29.539244925234698 -4.499617766876921, 66.3355726495306 -4.499235533753842, 125.4140625 -4.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-125.4140625 19.5 C-51.149572707825584 19.500296077203433, 23.114917084348832 19.500592154406867, 125.4140625 19.501 M-125.4140625 19.5 C-37.99841039488979 19.50034850817509, 49.417241710220424 19.50069701635018, 125.4140625 19.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p12-classId-HumanPlayer-6" data-look="neo" transform="translate(499.486328125, 507.5)"><g class="basic label-container outer-path"><path d="M-56.7421875 -40.5 L56.7421875 -40.5 L56.7421875 40.5 L-56.7421875 40.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-56.7421875 -40.5 C-17.16983274278998 -40.5, 22.402522014420043 -40.5, 56.7421875 -40.5 M-56.7421875 -40.5 C-23.92811748535032 -40.5, 8.88595252929936 -40.5, 56.7421875 -40.5 M56.7421875 -40.5 C56.7421875 -12.943833082783115, 56.7421875 14.61233383443377, 56.7421875 40.5 M56.7421875 -40.5 C56.7421875 -8.264471711455997, 56.7421875 23.971056577088007, 56.7421875 40.5 M56.7421875 40.5 C20.786584056463724 40.5, -15.169019387072552 40.5, -56.7421875 40.5 M56.7421875 40.5 C26.099937781207622 40.5, -4.542311937584756 40.5, -56.7421875 40.5 M-56.7421875 40.5 C-56.7421875 21.489301639576798, -56.7421875 2.478603279153596, -56.7421875 -40.5 M-56.7421875 40.5 C-56.7421875 9.41114362131448, -56.7421875 -21.67771275737104, -56.7421875 -40.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -16.5)"/><g class="label-group text" transform="translate(-44.7421875, -16.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="89.484375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 138px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>HumanPlayer</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-44.7421875, 28.5)"/><g class="methods-group text" transform="translate(-44.7421875, 58.5)"/><g class="divider neo-line" style=""><path d="M-56.7421875 4.5 C-32.27725371018332 4.500215579755273, -7.81231992036664 4.500431159510546, 56.7421875 4.501 M-56.7421875 4.5 C-20.964089485713806 4.500315268934726, 14.814008528572387 4.500630537869452, 56.7421875 4.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-56.7421875 22.5 C-28.74865699662805 22.50024667299356, -0.7551264932560997 22.500493345987117, 56.7421875 22.501 M-56.7421875 22.5 C-18.112916329605362 22.50034039286175, 20.516354840789276 22.500680785723507, 56.7421875 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g></g></g></g><defs><filter id="diagram-p12-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><defs><filter id="diagram-p12-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs></svg>
+</div>
+<details class="mermaid-src"><summary>View Mermaid source</summary>
+<pre><code>classDiagram
+  class TurnBasedGame {
+    board
+    players
+    winningStrategy
+    +play()
+    +setupBoard()
+  }
+  class Board {
+    grid
+    +placeMark()
+    +isValidMove()
+    +isFull()
+  }
+  class WinningStrategy {
+    &lt;&lt;interface&gt;&gt;
+    +checkWinner(board, lastMove)
+  }
+  class Player {
+    &lt;&lt;abstract&gt;&gt;
+    id
+    symbol
+    +getMove(board)
+  }
+  class AIPlayer {
+    moveStrategy
+    +getMove(board)
+  }
+  class MoveStrategy {
+    &lt;&lt;interface&gt;&gt;
+    +decideMove(board, symbol)
+  }
+  TurnBasedGame --&gt; Board
+  TurnBasedGame --&gt; WinningStrategy
+  Player &lt;|-- HumanPlayer
+  Player &lt;|-- AIPlayer
+  AIPlayer --&gt; MoveStrategy
+  TurnBasedGame --&gt; &quot;*&quot; Player</code></pre>
+</details>
+
+<h3 id="p12-k">K. Responsibility Mapping</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Does NOT Handle</th></tr>
+<tr><td>Board</td><td>Grid state, cell validity</td><td>Win detection, turn order</td></tr>
+<tr><td>WinningStrategy implementations</td><td>K-in-a-row detection for any board size</td><td>Placing marks, turn order</td></tr>
+<tr><td>Player implementations</td><td>Producing one move given the current board</td><td>Validating or applying that move</td></tr>
+<tr><td>TurnBasedGame</td><td>Loop skeleton: turn order, validation, win/draw checks</td><td>Board-specific win rules (hook, not hardcoded)</td></tr>
+</table>
+
+<h3 id="p12-l">L. SOLID Analysis</h3>
+<table>
+<tr><th>Principle</th><th>How It's Applied</th><th>Naive Violation</th></tr>
+<tr><td>SRP</td><td><code>Board</code> owns grid state; <code>WinningStrategy</code> owns win logic; <code>Player</code> owns move production</td><td>One <code>Game</code> class owning the grid, the win-check, and the turn loop inline</td></tr>
+<tr><td>OCP</td><td>A new AI difficulty is a new <code>MoveStrategy</code>; a new board game reusing the loop is a new <code>TurnBasedGame</code> subclass</td><td>Branching on a difficulty enum inside one giant <code>getAIMove()</code> method</td></tr>
+<tr><td>LSP</td><td><code>HumanPlayer</code> and <code>AIPlayer</code> both honestly return a legal move from <code>getMove()</code>; callers never care which</td><td>An <code>AIPlayer.getMove()</code> that occasionally blocks waiting for console input it doesn't actually have</td></tr>
+<tr><td>ISP</td><td><code>MoveStrategy</code> and <code>WinningStrategy</code> stay single-method interfaces</td><td>A combined "GameRules" interface mixing win-checking with move validation and scoring</td></tr>
+<tr><td>DIP</td><td><code>TurnBasedGame</code> depends on the <code>WinningStrategy</code> abstraction, not a concrete 3×3 checker</td><td><code>TurnBasedGame.checkWin()</code> hardcoding 8 coordinate triples inline</td></tr>
+</table>
+
+<h3 id="p12-m">M. Design Patterns</h3>
+<table>
+<tr><th>Pattern</th><th>Problem It Solves</th><th>Where It Appears</th><th>When NOT to Use</th></tr>
+<tr><td>Strategy</td><td>AI move selection and win-checking are both algorithms expected to vary/generalize</td><td><code>MoveStrategy</code>, <code>WinningStrategy</code></td><td>Skip <code>MoveStrategy</code> variety if the round only ever needs "legal random move"</td></tr>
+<tr><td>Template Method</td><td>The turn-based loop skeleton is identical across a family of grid games; only specific steps differ</td><td><code>TurnBasedGame.play()</code></td><td>Skip entirely if only one single game will ever exist — then a plain loop in <code>GameController</code> is simpler and this is a real case where Template Method is <em>not</em> needed (contrast with the reasoning in I)</td></tr>
+</table>
+<p><strong>Explicitly avoided:</strong> hardcoded win-line enumeration — the most common shortcut for exactly this problem, and precisely what a generic line-scan <code>WinningStrategy</code> replaces.</p>
+
+<h3 id="p12-n">N. What Is Likely to Change?</h3>
+<table>
+<tr><th>Behavior</th><th>Current Design</th><th>Anticipated Change</th><th>Protecting Abstraction</th></tr>
+<tr><td>Board size / win length</td><td>3×3, 3-in-a-row</td><td>Any N×N, any K-in-a-row (Gomoku-style)</td><td><code>WinningStrategy</code> parameterized by K, scans generically</td></tr>
+<tr><td>AI difficulty</td><td>Random legal move</td><td>Minimax/alpha-beta lookahead</td><td>New <code>MoveStrategy</code> implementation, zero change to <code>AIPlayer</code></td></tr>
+<tr><td>Game family</td><td>Tic-Tac-Toe only</td><td>Connect Four (gravity-constrained drops), Gomoku</td><td>New <code>TurnBasedGame</code> subclass reusing the same loop</td></tr>
+</table>
+
+<h3 id="p12-o">O. Design Evolution</h3>
+<ul>
+<li><strong>V1:</strong> 3×3 board, 8 hardcoded win-line checks, two hardcoded players.</li>
+<li><strong>V2:</strong> replace hardcoded lines with a generic line-scan <code>WinningStrategy</code> the moment board size is generalized — the central lesson of this problem.</li>
+<li><strong>V3:</strong> extract <code>Player</code> as an abstract base once a computer opponent is requested, avoiding an <code>isAI</code> flag.</li>
+<li><strong>V4:</strong> extract <code>MoveStrategy</code> once a second AI difficulty is requested.</li>
+<li><strong>V5:</strong> extract <code>TurnBasedGame</code> as a Template Method only if a second game (Connect Four) is actually requested — not preemptively.</li>
+</ul>
+<p><strong>What stays stable:</strong> <code>Board</code>'s cell-level API. Generalizing size/win-length/game-family are all additive changes behind existing interfaces.</p>
+
+<h3 id="p12-p">P. API / Interface Design</h3>
+<pre><code>interface WinningStrategy {
+  boolean checkWinner(Board board, Move lastMove);
+}
+
+interface MoveStrategy {
+  Move decideMove(Board board, Symbol symbol);
+}
+
+abstract class TurnBasedGame {
+  void play();                       // template method
+  protected abstract void setupBoard();
+}
+
+class GameController {
+  void startGame();
+  MoveResult makeMove(String playerId, int row, int col);
+}</code></pre>
+<p><strong>Ownership/validation notes:</strong> <code>Board.isValidMove()</code> checks bounds and occupancy before <code>placeMark()</code> ever mutates state; <code>WinningStrategy.checkWinner()</code> is only ever invoked against the cell that was <em>just</em> played, not the whole board, keeping each check O(K) instead of rescanning everything.</p>
+
+<h3 id="p12-q">Q. Pseudocode — Critical Logic</h3>
+<pre><code>LineScanWinningStrategy.checkWinner(board, lastMove):
+  symbol = board.get(lastMove.row, lastMove.col)
+  for each direction in [horizontal, vertical, diagonal, anti-diagonal]:
+    count = 1
+    count += countMatching(board, lastMove, direction, symbol)
+    count += countMatching(board, lastMove, oppositeOf(direction), symbol)
+    if count >= K: return true
+  return false
+
+TurnBasedGame.play():
+  setupBoard()
+  while true:
+    player = nextPlayer()
+    move = player.getMove(board)
+    if not board.isValidMove(move): continue   // human retries; AI never produces one
+    board.placeMark(move, player.symbol)
+    if winningStrategy.checkWinner(board, move): declareResult(WINNER, player); return
+    if board.isFull(): declareResult(DRAW); return</code></pre>
+
+<h3 id="p12-r">R. End-to-End Use Case</h3>
+<pre>
+startGame() — 3×3 board, K=3, Player X (human), Player O (AI, RandomMoveStrategy)
+  │
+  ▼
+makeMove(X, 0, 0) → valid → board updated → checkWinner (count=1) → no win → switch turn
+  │
+  ▼
+AIPlayer.getMove() → RandomMoveStrategy picks (1,1) → board updated → checkWinner → no win
+  │
+  ▼
+... turns continue until X completes a diagonal ...
+  ▼
+checkWinner(board, lastMove) scans diagonal through last move → count=3 → declareResult(WINNER, X)
+</pre>
+
+<h3 id="p12-s">S. Data Structures</h3>
+<table>
+<tr><th>Structure</th><th>Used For</th><th>Why</th><th>Alternative &amp; Trade-off</th></tr>
+<tr><td>2D array/grid of <code>Symbol</code></td><td>Board storage</td><td>O(1) cell access by (row, col)</td><td>A sparse map works too but adds overhead with no benefit on a dense, small grid</td></tr>
+<tr><td>Direction-vector scan around <code>lastMove</code></td><td>Win-checking</td><td>Only checks the K-neighborhood of the just-played cell instead of rescanning the whole board every turn</td><td>Rescanning the entire board each move is simpler to write but wastefully re-derives information the previous checks already had</td></tr>
+</table>
+
+<h3 id="p12-t">T. Complexity Analysis</h3>
+<table>
+<tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+<tr><td><code>placeMark()</code> / <code>isValidMove()</code></td><td>O(1)</td><td>O(1)</td></tr>
+<tr><td><code>checkWinner()</code> (incremental, around last move)</td><td>O(K) per direction, O(1) directions</td><td>O(1)</td></tr>
+<tr><td>Random AI move</td><td>O(N²) worst case scanning for an empty cell</td><td>O(1)</td></tr>
+</table>
+
+<h3 id="p12-u">U. Testing Strategy</h3>
+<ul>
+<li><strong>Happy path:</strong> a completed row/column/diagonal of length K is detected as a win regardless of board size.</li>
+<li><strong>Edge cases:</strong> a full board with no K-in-a-row is a draw, not silently unresolved; an out-of-turn or occupied-cell move is rejected without mutating the board.</li>
+<li><strong>Generalization tests:</strong> the same <code>WinningStrategy</code> correctly handles a 5×5 board with K=4 without any code change — only the constructor parameter changes.</li>
+<li><strong>Polymorphism tests:</strong> swapping an <code>AIPlayer</code>'s <code>MoveStrategy</code> at runtime changes its behavior without touching <code>TurnBasedGame</code>.</li>
+</ul>
+
+<h3 id="p12-v">V. Interviewer Follow-Ups</h3>
+<table>
+<tr><th>Follow-Up</th><th>Testing</th><th>Design Change</th><th>Classes Changed</th><th>Pattern/Trade-off</th></tr>
+<tr><td>"Generalize to any board size and win length."</td><td>Whether win-checking was ever hardcoded</td><td>None if <code>WinningStrategy</code> was already generic — just new constructor parameters</td><td>None (validates M)</td><td>The single most common follow-up for this exact problem</td></tr>
+<tr><td>"Add a smarter AI."</td><td>Whether AI logic was isolated behind a Strategy</td><td>New <code>MinimaxMoveStrategy</code></td><td>New class only</td><td>Validates the <code>MoveStrategy</code> boundary</td></tr>
+<tr><td>"Now build Connect Four, reusing what you can."</td><td>Whether the game loop was genuinely reusable</td><td>New <code>ConnectFourGame extends TurnBasedGame</code> with a gravity-constrained <code>Board</code> variant</td><td>New subclass + board variant</td><td>Validates the Template Method boundary drawn in M — or reveals it was premature if a lot has to change anyway</td></tr>
+</table>
+
+<h3 id="p12-w">W. Concurrency</h3>
+<p>This problem is turn-based and single-threaded by nature — only one player acts at a time, and there is no shared-resource race analogous to the ones in Parking Lot or Elevator. The one legitimate concern is a networked/remote human player submitting a move for a turn that is no longer theirs (a stale-turn check), which is a validation concern in <code>TurnBasedGame.play()</code>, not a locking concern.</p>
+
+<h3 id="p12-x">X. Persistence</h3>
+<p>Not required for a live single-session game. If game history/replays are requested, each move is naturally an append-only log entry (player, cell, timestamp) — a simple repository behind the existing API, no change to <code>Board</code> or <code>TurnBasedGame</code>.</p>
+
+<h3 id="p12-y">Y. Scaling Boundary</h3>
+<table>
+<tr><th>Layer</th><th>What Belongs Here</th></tr>
+<tr><td><strong>LLD</strong></td><td>Board/win-check/player/game-loop class design and generalization</td></tr>
+<tr><td><strong>HLD</strong></td><td>Matchmaking, real-time multiplayer sync across clients, leaderboards</td></tr>
+<tr><td><strong>Explicitly out of scope</strong></td><td>Networked multiplayer infrastructure unless the round pivots there</td></tr>
+</table>
+
+<h3 id="p12-z">Z. Failure Scenarios</h3>
+<ul>
+<li><strong>A human player's move arrives out of turn (e.g. a delayed network message):</strong> rejected by the turn-order check in <code>TurnBasedGame</code> before it ever reaches <code>Board</code>.</li>
+<li><strong>An AI's <code>MoveStrategy</code> returns an already-occupied cell (a bug in that strategy):</strong> <code>Board.isValidMove()</code> still rejects it — validation is never skipped just because the mover is a computer.</li>
+</ul>
+
+<h3 id="p12-aa">AA. Common Bad Designs</h3>
+<ul>
+<li><strong>8 hardcoded 3×3 win-line coordinate triples</strong> — the single most common shortcut for this problem, and the first thing a "generalize the board size" follow-up breaks.</li>
+<li><strong>One <code>Player</code> class with an <code>isAI</code> boolean</strong> and a branch in <code>getMove()</code> instead of real polymorphism.</li>
+<li><strong>Building a full <code>TurnBasedGame</code> Template Method hierarchy for a round that only ever asks for Tic-Tac-Toe</strong> — this problem is one of the few in this document where under-engineering is the safer default; add the abstraction only once a second game is actually requested (see O, M).</li>
+</ul>
+
+<h3 id="p12-ab">AB. Design Trade-Offs</h3>
+<table>
+<tr><th>Decision</th><th>Option A</th><th>Option B</th><th>Recommendation</th></tr>
+<tr><td>Win-check scope</td><td>Full-board rescan every move</td><td>Incremental scan around only the last-played cell</td><td>Incremental — same correctness, strictly less work, and it's the natural implementation once you're scanning directions instead of enumerating lines</td></tr>
+<tr><td>Template Method timing</td><td>Build <code>TurnBasedGame</code> upfront "in case" of future games</td><td>Build a plain loop now, extract the Template Method only when a second game is actually requested</td><td>Option B — see AA; this is a rare case in this document where premature abstraction is the more likely mistake, not premature concreteness</td></tr>
+</table>
+
+<h3 id="p12-ac">AC. Interviewer Evaluation</h3>
+<p><strong>Strong signal:</strong> writing the win-check as a direction-scan from the start rather than enumerating lines; cleanly polymorphic <code>Player</code> subclasses; correctly judging <em>not</em> to build Template Method until a second game is actually on the table.</p>
+<p><strong>Red flag:</strong> hardcoded win-lines that silently break the moment board size is generalized; an <code>isAI</code> flag with branching logic; reflexively building a multi-game framework for a problem that only asked for Tic-Tac-Toe.</p>
+
+<h3 id="p12-ad">AD. Interview Simulation</h3>
+<div class="dialog"><span class="who">Interviewer:</span> Design Tic-Tac-Toe.</div>
+<div class="dialog"><span class="who">Candidate:</span> A 3×3 grid, two players with distinct symbols, and a win-check. I'd write the win-check as a generic scan — for the cell just played, count consecutive matches in each of the four line directions — rather than listing the eight specific winning lines, since that generalizes for free.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Good. Now generalize it to any board size and any number-in-a-row to win.</div>
+<div class="dialog"><span class="who">Candidate:</span> That's exactly why I avoided hardcoding the lines — the same scan works unchanged, I'd just parameterize K and the board dimension.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Add a computer player.</div>
+<div class="dialog"><span class="who">Candidate:</span> I'd make <code>Player</code> an abstract type with <code>HumanPlayer</code> and <code>AIPlayer</code> subclasses rather than a flag, and give <code>AIPlayer</code> a swappable <code>MoveStrategy</code> so a smarter AI later is a new class, not a rewrite.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Would you build out a whole reusable game-engine framework here?</div>
+<div class="dialog"><span class="who">Candidate:</span> Not unless a second game is actually requested — right now that would be speculative abstraction. I'd keep the loop simple and only extract a Template Method base class if Connect Four or something similar actually comes up.</div>
+
+<h3 id="p12-ae">AE. Online Solution Comparison</h3>
+<table>
+<tr><th>Source</th><th>Approach</th><th>Strength</th><th>Weakness</th><th>Worth Learning</th></tr>
+<tr><td><a href="https://www.geeksforgeeks.org/system-design/low-level-design-of-tic-tac-toe-system-design/" target="_blank">GeeksforGeeks — Low-Level Design of Tic-Tac-Toe</a></td><td>Class-based design with separate Player and Board classes, functional/non-functional requirements laid out explicitly before the class diagram</td><td>Good requirements-first structure; clean SRP split between Board and game-flow control</td><td>Win-check in the public version is board-size-specific rather than presented as a generalized direction-scan</td><td>The requirements-first framing is worth adopting broadly, even outside this one problem</td></tr>
+<tr><td><a href="https://algomaster.io/learn/lld/design-tic-tac-toe" target="_blank">AlgoMaster.io — Design Tic-Tac-Toe</a></td><td>Object-oriented breakdown emphasizing Player abstraction and board state management as a stepping-stone LLD problem</td><td>Confirms Player-as-abstraction (not a boolean) as the expected shape</td><td>Public outline doesn't emphasize the generalized K-in-a-row scan as the central lesson</td><td>Validates the Player/Board split; this document's addition is treating win-check generality as the headline signal</td></tr>
+</table>
+
+<h3 id="p12-af">AF. Interview Cheat Sheet</h3>
+<table>
+<tr><td><strong>Problem</strong></td><td>Tic-Tac-Toe / Board Game Engine</td></tr>
+<tr><td><strong>Difficulty</strong></td><td>Beginner → Intermediate (Pattern Showcase)</td></tr>
+<tr><td><strong>Core requirements</strong></td><td>N×N board, K-in-a-row win, human + AI players, draw detection</td></tr>
+<tr><td><strong>Key clarifications</strong></td><td>Fixed 3×3 or generalized? Reusable engine for other games? AI sophistication? Player count?</td></tr>
+<tr><td><strong>Core entities</strong></td><td>Board, Symbol, Player, HumanPlayer, AIPlayer, MoveStrategy, WinningStrategy, TurnBasedGame</td></tr>
+<tr><td><strong>Key relationships</strong></td><td>Strategy for AI moves and win-checking; Template Method for the loop, only once a second game is real</td></tr>
+<tr><td><strong>Key patterns</strong></td><td>Strategy (headline), Template Method (conditional, situational)</td></tr>
+<tr><td><strong>Most important decision</strong></td><td>Generic direction-scan win-check, never hardcoded win-lines</td></tr>
+<tr><td><strong>Likely-changing behavior</strong></td><td>Board size/win length, AI difficulty, game family</td></tr>
+<tr><td><strong>Concurrency concern</strong></td><td>None beyond stale-turn validation for remote players</td></tr>
+<tr><td><strong>Top follow-ups</strong></td><td>Generalize board/win-length, smarter AI, build a second game reusing the engine</td></tr>
+<tr><td><strong>Common mistakes</strong></td><td>Hardcoded win-lines; isAI boolean instead of Player subclasses; premature Template Method framework for one game</td></tr>
+<tr><td><strong>What NOT to over-engineer</strong></td><td>Don't build a multi-game engine or networked multiplayer unless actually asked</td></tr>
+</table><div class="prevnext"><a class="prevnext-link prev" href="p11.html">&larr; 11. Elevator System</a><a class="prevnext-link next" href="p13.html">13. Chess Game &rarr;</a></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

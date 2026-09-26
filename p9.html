@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('lld-theme') || 'light');</script>
+<title>9. File System — LLD Handbook</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+</head>
+<body>
+<button id="menu-toggle" aria-label="Toggle menu">&#9776;</button>
+<nav id="sidebar">
+  <div class="sidebar-top">
+    <a class="brand" href="index.html">LLD Handbook</a>
+    <button id="theme-toggle" aria-label="Toggle dark mode">&#127769;</button>
+  </div>
+  <div class="search-wrap">
+    <input id="search-box" type="text" placeholder="Search problems &amp; sections...">
+    <div id="search-results"></div>
+  </div>
+  <ul class="nav-list">
+    <li><a href="index.html" data-page="index.html">Home</a></li>
+    <li><a href="p1.html" data-page="p1.html">1. Parking Lot</a></li>
+    <li><a href="p2.html" data-page="p2.html">2. LRU Cache</a></li>
+    <li><a href="p3.html" data-page="p3.html">3. Rate Limiter</a></li>
+    <li><a href="p4.html" data-page="p4.html">4. Splitwise (Expense Sharing)</a></li>
+    <li><a href="p5.html" data-page="p5.html">5. Ride-Sharing Service (Uber/Lyft)</a></li>
+    <li><a href="p6.html" data-page="p6.html">6. Logging Framework</a></li>
+    <li><a href="p7.html" data-page="p7.html">7. Notification System</a></li>
+    <li><a href="p8.html" data-page="p8.html">8. Coffee Vending Machine</a></li>
+    <li><a href="p9.html" data-page="p9.html">9. File System</a></li>
+    <li><a href="p10.html" data-page="p10.html">10. Pub-Sub / Message Queue</a></li>
+    <li><a href="p11.html" data-page="p11.html">11. Elevator System</a></li>
+    <li><a href="p12.html" data-page="p12.html">12. Tic-Tac-Toe / Board Game Engine</a></li>
+    <li><a href="p13.html" data-page="p13.html">13. Chess Game</a></li>
+    <li><a href="p14.html" data-page="p14.html">14. ATM Machine</a></li>
+    <li><a href="p15.html" data-page="p15.html">15. Library Management System</a></li>
+    <li><a href="p16.html" data-page="p16.html">16. Hotel Reservation System</a></li>
+    <li><a href="p17.html" data-page="p17.html">17. Movie Ticket Booking System</a></li>
+    <li><a href="p18.html" data-page="p18.html">18. Restaurant / Food Delivery System</a></li>
+    <li><a href="p19.html" data-page="p19.html">19. E-commerce Shopping Cart &amp; Checkout</a></li>
+    <li><a href="p20.html" data-page="p20.html">20. Chat Application (WhatsApp-style)</a></li>
+    <li><a href="synthesis.html" data-page="synthesis.html">Cross-Problem Synthesis</a></li>
+  </ul>
+</nav>
+<main id="content">
+<h1 class="problem-title">9. File System <span class="badge">Intermediate → Advanced</span></h1>
+
+<div class="section-toc">
+<a href="#p9-a">A. Interview Prompt</a><a href="#p9-b">B. Difficulty</a><a href="#p9-c">C. What It Tests</a>
+<a href="#p9-d">D. Requirements</a><a href="#p9-e">E. Clarifying Questions</a><a href="#p9-f">F. Assumptions</a>
+<a href="#p9-g">G. Actors</a><a href="#p9-h">H. Core Entities</a><a href="#p9-i">I. Relationships</a>
+<a href="#p9-j">J. Class Diagram</a><a href="#p9-k">K. Responsibility Map</a><a href="#p9-l">L. SOLID Analysis</a>
+<a href="#p9-m">M. Design Patterns</a><a href="#p9-n">N. What Changes?</a><a href="#p9-o">O. Design Evolution</a>
+<a href="#p9-p">P. API Design</a><a href="#p9-q">Q. Pseudocode</a><a href="#p9-r">R. End-to-End Flow</a>
+<a href="#p9-s">S. Data Structures</a><a href="#p9-t">T. Complexity</a><a href="#p9-u">U. Testing Strategy</a>
+<a href="#p9-v">V. Interviewer Follow-Ups</a><a href="#p9-w">W. Concurrency</a><a href="#p9-x">X. Persistence</a>
+<a href="#p9-y">Y. Scaling Boundary</a><a href="#p9-z">Z. Failure Scenarios</a><a href="#p9-aa">AA. Bad Designs</a>
+<a href="#p9-ab">AB. Trade-Offs</a><a href="#p9-ac">AC. Interviewer Evaluation</a><a href="#p9-ad">AD. Simulation</a>
+<a href="#p9-ae">AE. Source Comparison</a><a href="#p9-af">AF. Cheat Sheet</a>
+</div>
+
+<h3 id="p9-a">A. Realistic Interview Prompt</h3>
+<div class="prompt">"Design an in-memory file system supporting files and directories. Support creating, deleting, moving, reading, and writing files; listing directory contents; searching for files by name or extension; and computing disk usage for any directory."</div>
+
+<h3 id="p9-b">B. Difficulty</h3>
+<p><strong>Intermediate → Advanced.</strong> The tree structure itself is not hard — the difficulty is entirely in what a naive candidate bolts onto the base node type (every possible read-only operation, permission logic, locking) versus what a mature candidate keeps separate via Composite + Visitor + a disciplined locking protocol.</p>
+
+<h3 id="p9-c">C. What This Problem Tests</h3>
+<ul>
+<li>Recognizing files and directories as a classic Composite — a directory holds children uniformly, whether they're files or more directories</li>
+<li>ISP judgment: resisting the urge to add <code>size()</code>, <code>search()</code>, <code>countFiles()</code> etc. directly to the base node interface, and reaching for Visitor instead</li>
+<li>Iterator design trade-offs when a directory's contents can change mid-traversal (fail-fast vs. snapshot)</li>
+<li>Lock-ordering discipline for a cross-directory <code>move()</code> — the same multi-resource deadlock shape as Splitwise's multi-pair settle-up, applied to a tree instead of a ledger</li>
+</ul>
+
+<h3 id="p9-d">D. Requirements</h3>
+<p><strong>Functional</strong></p>
+<ol>
+<li>Create/delete files and directories (deleting a non-empty directory requires an explicit recursive flag)</li>
+<li>Read/write file contents</li>
+<li>Move/rename a file or directory, including across different parent directories</li>
+<li>List a directory's immediate contents</li>
+<li>Search for files by name, extension, or size under a given subtree</li>
+<li>Compute total disk usage of any directory (recursive size)</li>
+</ol>
+<p><strong>Non-Functional</strong></p>
+<ul>
+<li>Concurrent reads must be safe and non-blocking against each other; a write must be exclusive against both other writes and reads to the same node</li>
+<li>A <code>move()</code> must never deadlock against a concurrent <code>move()</code> elsewhere in the tree</li>
+<li>A directory cannot be moved into its own subtree (no cycles)</li>
+</ul>
+
+<h3 id="p9-e">E. Clarifying Questions</h3>
+<table>
+<tr><th>#</th><th>Question</th><th>Why It Matters</th><th>Design Decision Affected</th></tr>
+<tr><td>1</td><td>In-memory only, or must it eventually persist to real disk?</td><td>Determines whether a pluggable <code>StorageBackend</code> boundary is needed now or can be deferred</td><td>Scope of X (Persistence)</td></tr>
+<tr><td>2</td><td>Is per-user permission enforcement required, or just structural correctness?</td><td>Determines whether a Proxy access-control layer is in scope</td><td>Presence of <code>SecureFileSystemProxy</code></td></tr>
+<tr><td>3</td><td>Will this be accessed by multiple threads concurrently?</td><td>Determines whether locking is a core requirement or a stretch extension</td><td>Scope of W (Concurrency)</td></tr>
+<tr><td>4</td><td>Are symbolic or hard links in scope?</td><td>Links reintroduce exactly the cycle risk that plain moves must already prevent, at a much larger scale</td><td>Excluded by assumption (see F)</td></tr>
+<tr><td>5</td><td>Does search need wildcard/regex matching, or is exact/substring matching enough?</td><td>Affects whether search is a linear Visitor pass or needs a name index</td><td>Scope of <code>SearchVisitor</code> vs. an indexed alternative</td></tr>
+</table>
+
+<h3 id="p9-f">F. Assumptions</h3>
+<ul>
+<li><strong>Confirmed:</strong> in-memory tree of files and directories; CRUD, move, list, search, disk usage.</li>
+<li><strong>Assumption:</strong> single-process, multi-threaded access (not a distributed filesystem) — GFS/HDFS-style metadata services and chunk replication are explicitly out of scope (see Y).</li>
+<li><strong>Assumption:</strong> no symbolic or hard links — every node has exactly one parent, which is what makes "can't move a directory into its own descendant" a simple ancestry check rather than general cycle detection on an arbitrary graph.</li>
+<li><strong>Assumption:</strong> permissions, if present at all, are a simple owner-based check rather than full POSIX-style ACLs.</li>
+</ul>
+
+<h3 id="p9-g">G. Actors</h3>
+<table>
+<tr><th>Actor</th><th>Responsibility</th></tr>
+<tr><td>Client</td><td>Calls <code>FileSystem</code> operations (create, read, write, move, search)</td></tr>
+<tr><td>FileSystem</td><td>Facade; resolves paths, coordinates locking, delegates to nodes</td></tr>
+</table>
+
+<h3 id="p9-h">H. Core Domain Entities</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Key Attributes</th><th>Key Methods</th><th>Does NOT Handle</th></tr>
+<tr><td><code>FileSystemNode</code> (abstract)</td><td>Common identity for anything in the tree</td><td>name, parent</td><td><code>accept(visitor)</code></td><td>Any read-only aggregate operation — that's a Visitor's job (see I)</td></tr>
+<tr><td><code>File</code> (leaf)</td><td>Holds content, reports its own size</td><td>content, size</td><td><code>read()</code>, <code>write(data)</code></td><td>Anything about children — it has none</td></tr>
+<tr><td><code>Directory</code> (composite)</td><td>Holds children uniformly</td><td><code>Map&lt;String, FileSystemNode&gt;</code> children</td><td><code>addChild()</code>, <code>removeChild()</code>, <code>getChild(name)</code></td><td>Recursive size/search — delegated to whichever Visitor is passed in</td></tr>
+<tr><td><code>Path</code> (value object)</td><td>Normalized location, independent of the live tree</td><td>List&lt;String&gt; segments</td><td><code>resolve()</code>, <code>parent()</code></td><td>Anything about whether the path actually exists</td></tr>
+<tr><td><code>NodeVisitor</code> (interface)</td><td>One read-only operation applied across the tree</td><td>—</td><td><code>visitFile(f)</code>, <code>visitDirectory(d)</code></td><td>Mutation — visitors in this design are read-only by convention</td></tr>
+<tr><td><code>DirectoryIterator</code></td><td>Traverses a directory's children</td><td>—</td><td><code>hasNext()</code>, <code>next()</code></td><td>Deciding fail-fast vs. snapshot semantics — that's a documented policy choice, not hidden behavior (see AB)</td></tr>
+<tr><td><code>FileSystem</code> (facade)</td><td>Path resolution, lock acquisition/ordering, top-level API</td><td>root Directory</td><td><code>createFile()</code>, <code>createDirectory()</code>, <code>delete()</code>, <code>move()</code>, <code>read()</code>, <code>write()</code>, <code>list()</code>, <code>search()</code>, <code>diskUsage()</code></td><td>Node-level storage details</td></tr>
+</table>
+
+<h3 id="p9-i">I. Class Relationships</h3>
+<ul>
+<li><strong>Composite (headline):</strong> <code>File</code> and <code>Directory</code> both extend <code>FileSystemNode</code>; a <code>Directory</code> holds a uniform collection of <code>FileSystemNode</code> — client code walking the tree never needs an <code>instanceof</code> check or an <code>isDirectory()</code> boolean scattered through every call site. This is the direct cure for the most common naive design in this problem (see AA).</li>
+<li><strong>Why Visitor over methods on <code>FileSystemNode</code>:</strong> disk usage, search-by-extension, and count-files-under-subtree are all read-only aggregate operations, and there will always be another one an interviewer asks for next. Adding each as a new method on <code>FileSystemNode</code> (and its <code>File</code>/<code>Directory</code> overrides) violates ISP — every node is forced to implement every operation whether it's relevant or not, and the base interface grows without bound. A <code>NodeVisitor</code> with <code>visitFile()</code>/<code>visitDirectory()</code>, dispatched via a single stable <code>accept(visitor)</code> method, lets new read-only operations (<code>DiskUsageVisitor</code>, <code>SearchVisitor</code>) be added as entirely new classes with zero changes to <code>FileSystemNode</code>, <code>File</code>, or <code>Directory</code> — a direct OCP payoff.</li>
+<li><strong>Iterator:</strong> <code>DirectoryIterator</code> decouples "how children are traversed" from <code>Directory</code>'s internal storage — see AB for the fail-fast-vs-snapshot policy trade-off this pattern forces into the open.</li>
+<li><strong>Why Proxy, not Decorator, for permission checks (if in scope):</strong> a permission-checking wrapper around <code>FileSystemNode</code> looks structurally identical to a Decorator, but the intent is different — Decorator composes additional <em>behavior</em> onto a base object (e.g. Problem 5's surge-pricing decorator adds a computation), while a permission check is <em>access control</em ­­>: it decides whether the real call happens at all, not how to embellish its result. That's exactly what Proxy names. Calling it a Decorator would describe the shape correctly but the intent wrongly — worth stating explicitly if asked.</li>
+</ul>
+
+<h3 id="p9-j">J. Class Diagram</h3>
+<div class="diagram-card">
+<svg id="diagram-p9" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="classDiagram" style="max-width: 326.117px; background-color: white;" viewBox="4 4 326.1171875 1286" role="graphics-document document" aria-roledescription="classDiagram"><style>#diagram-p9{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;fill:#1a1f26;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#diagram-p9 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#diagram-p9 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#diagram-p9 .error-icon{fill:#fff7e6;}#diagram-p9 .error-text{fill:#000819;stroke:#000819;}#diagram-p9 .edge-thickness-normal{stroke-width:1px;}#diagram-p9 .edge-thickness-thick{stroke-width:3.5px;}#diagram-p9 .edge-pattern-solid{stroke-dasharray:0;}#diagram-p9 .edge-thickness-invisible{stroke-width:0;fill:none;}#diagram-p9 .edge-pattern-dashed{stroke-dasharray:3;}#diagram-p9 .edge-pattern-dotted{stroke-dasharray:2;}#diagram-p9 .marker{fill:#334155;stroke:#334155;}#diagram-p9 .marker.cross{stroke:#334155;}#diagram-p9 svg{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;}#diagram-p9 p{margin:0;}#diagram-p9 g.classGroup text{fill:#2563eb;stroke:none;font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:10px;}#diagram-p9 g.classGroup text .title{font-weight:bolder;}#diagram-p9 .cluster-label text{fill:#000819;}#diagram-p9 .cluster-label span{color:#000819;}#diagram-p9 .cluster-label span p{background-color:transparent;}#diagram-p9 .cluster rect{fill:#f4f6f8;stroke:#d8dee5;stroke-width:1px;}#diagram-p9 .cluster text{fill:#000819;}#diagram-p9 .cluster span{color:#000819;}#diagram-p9 .nodeLabel,#diagram-p9 .edgeLabel{color:#0f2540;}#diagram-p9 .noteLabel .nodeLabel,#diagram-p9 .noteLabel .edgeLabel{color:#333;}#diagram-p9 .edgeLabel .label rect{fill:#eef6ff;}#diagram-p9 .label text{fill:#0f2540;}#diagram-p9 .labelBkg{background:#eef6ff;}#diagram-p9 .edgeLabel .label span{background:#eef6ff;}#diagram-p9 .classTitle{font-weight:bolder;}#diagram-p9 .node rect,#diagram-p9 .node circle,#diagram-p9 .node ellipse,#diagram-p9 .node polygon,#diagram-p9 .node path{fill:#eef6ff;stroke:#2563eb;stroke-width:1;}#diagram-p9 .divider{stroke:#2563eb;stroke-width:1;}#diagram-p9 g.clickable{cursor:pointer;}#diagram-p9 g.classGroup rect{fill:#eef6ff;stroke:#2563eb;}#diagram-p9 g.classGroup line{stroke:#2563eb;stroke-width:1;}#diagram-p9 .classLabel .box{stroke:none;stroke-width:0;fill:#eef6ff;opacity:0.5;}#diagram-p9 .classLabel .label{fill:#2563eb;font-size:10px;}#diagram-p9 .relation{stroke:#334155;stroke-width:1;fill:none;}#diagram-p9 .dashed-line{stroke-dasharray:3;}#diagram-p9 .dotted-line{stroke-dasharray:1 2;}#diagram-p9 [id$="-compositionStart"],#diagram-p9 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p9 [id$="-compositionEnd"],#diagram-p9 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p9 [id$="-dependencyStart"],#diagram-p9 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p9 [id$="-dependencyEnd"],#diagram-p9 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p9 [id$="-extensionStart"],#diagram-p9 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p9 [id$="-extensionEnd"],#diagram-p9 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p9 [id$="-aggregationStart"],#diagram-p9 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p9 [id$="-aggregationEnd"],#diagram-p9 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p9 [id$="-lollipopStart"],#diagram-p9 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p9 [id$="-lollipopEnd"],#diagram-p9 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p9 .edgeTerminals{font-size:11px;line-height:initial;}#diagram-p9 .classTitleText{text-anchor:middle;font-size:18px;fill:#1a1f26;}#diagram-p9 .edgeLabel[data-look="neo"]{background-color:#ffffff;text-align:center;}#diagram-p9 .edgeLabel[data-look="neo"] p{background-color:#ffffff;}#diagram-p9 .edgeLabel[data-look="neo"] rect{opacity:0.5;background-color:#ffffff;fill:#ffffff;}#diagram-p9 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#diagram-p9 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#diagram-p9 .node .neo-node{stroke:#2563eb;}#diagram-p9 [data-look="neo"].node rect,#diagram-p9 [data-look="neo"].cluster rect,#diagram-p9 [data-look="neo"].node polygon{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p9 [data-look="neo"].swimlane.cluster rect{filter:none;}#diagram-p9 [data-look="neo"].node path{stroke:#2563eb;stroke-width:1px;}#diagram-p9 [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p9 [data-look="neo"].node .neo-line path{stroke:#2563eb;filter:none;}#diagram-p9 [data-look="neo"].node circle{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p9 [data-look="neo"].node circle .state-start{fill:#000000;}#diagram-p9 [data-look="neo"].icon-shape .icon{fill:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p9 [data-look="neo"].icon-shape .icon-neo path{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p9 .classGroup text{font-size:14px!important;}#diagram-p9 .classGroup .title{font-size:16px!important;font-weight:700;}#diagram-p9 .classLabel .label{font-size:14px!important;}#diagram-p9 .edgeLabel,#diagram-p9 .edgeLabel .label{font-size:13px!important;}#diagram-p9 .relationshipLabelBox{font-size:13px!important;}#diagram-p9 .nodeLabel,#diagram-p9 .cluster-label{font-size:14px!important;}#diagram-p9 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><defs><marker id="diagram-p9_classDiagram-aggregationStart" class="marker aggregation classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p9_classDiagram-aggregationEnd" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p9_classDiagram-aggregationStart-margin" class="marker aggregation classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p9_classDiagram-aggregationEnd-margin" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p9_classDiagram-extensionStart" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,7 L18,13 V 1 Z"/></marker></defs><defs><marker id="diagram-p9_classDiagram-extensionEnd" class="marker extension classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,1 V 13 L18,7 Z"/></marker></defs><marker id="diagram-p9_classDiagram-extensionStart-margin" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,7 18,13 18,1" style="stroke-width: 2; stroke-dasharray: 0;"/></marker><defs><marker id="diagram-p9_classDiagram-extensionEnd-margin" class="marker extension classDiagram" refX="9" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,1 10,13 18,7" style="stroke-width: 2; stroke-dasharray: 0;"/></marker></defs><defs><marker id="diagram-p9_classDiagram-compositionStart" class="marker composition classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p9_classDiagram-compositionEnd" class="marker composition classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p9_classDiagram-compositionStart-margin" class="marker composition classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path viewBox="0 0 15 15" d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p9_classDiagram-compositionEnd-margin" class="marker composition classDiagram" refX="3.5" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p9_classDiagram-dependencyStart" class="marker dependency classDiagram" refX="6" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p9_classDiagram-dependencyEnd" class="marker dependency classDiagram" refX="13" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p9_classDiagram-dependencyStart-margin" class="marker dependency classDiagram" refX="4" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p9_classDiagram-dependencyEnd-margin" class="marker dependency classDiagram" refX="16" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p9_classDiagram-lollipopStart" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p9_classDiagram-lollipopEnd" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p9_classDiagram-lollipopStart-margin" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><defs><marker id="diagram-p9_classDiagram-lollipopEnd-margin" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><g class="root"><g class="clusters"/><g class="edges edgePaths"><path d="M98.90104166666666,759.25L98.90104166666666,760.625Q98.90104166666666,762 97.52604166666666,762L74.25856781186548,762Q67.1875,762 67.1875,769.0710678118655L67.1875,782" id="diagram-p9-id_FileSystemNode_File_1" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 51.28139877319336 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_FileSystemNode_File_1" data-points="W3sieCI6OTguOTAxMDQxNjY2NjY2NjYsInkiOjc0Mn0seyJ4Ijo5OC45MDEwNDE2NjY2NjY2NiwieSI6NzYyfSx7IngiOjY3LjE4NzUsInkiOjc2Mn0seyJ4Ijo2Ny4xODc1LCJ5Ijo3ODJ9XQ==" data-look="neo" marker-start="url(#diagram-p9_classDiagram-extensionStart-margin)"/><path d="M150.16145833333331,568.75L150.16145833333331,536.25L150.16145833333331,507.7630208333333Q150.16145833333331,506.5 148.8984375,506.5L148.8984375,506.5Q147.63541666666666,506.5 147.63541666666666,505.2369791666667L147.63541666666666,486.5" id="diagram-p9-id_FileSystemNode_Directory_2" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 83.82437896728516 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_FileSystemNode_Directory_2" data-points="W3sieCI6MTUwLjE2MTQ1ODMzMzMzMzMxLCJ5Ijo1ODZ9LHsieCI6MTUwLjE2MTQ1ODMzMzMzMzMxLCJ5Ijo1MzYuMjV9LHsieCI6MTUwLjE2MTQ1ODMzMzMzMzMxLCJ5Ijo1MDYuNX0seyJ4IjoxNDcuNjM1NDE2NjY2NjY2NjYsInkiOjUwNi41fSx7IngiOjE0Ny42MzU0MTY2NjY2NjY2NiwieSI6NDg2LjV9XQ==" data-look="neo" marker-start="url(#diagram-p9_classDiagram-extensionStart-margin)"/><path d="M101.42708333333333,486.5L101.42708333333333,505.2369791666667Q101.42708333333333,506.5 100.1640625,506.5L100.1640625,506.5Q98.90104166666666,506.5 98.90104166666666,507.7630208333333L98.90104166666666,580" id="diagram-p9-id_Directory_FileSystemNode_3" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 95.07437133789062 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Directory_FileSystemNode_3" data-points="W3sieCI6MTAxLjQyNzA4MzMzMzMzMzMzLCJ5Ijo0ODYuNX0seyJ4IjoxMDEuNDI3MDgzMzMzMzMzMzMsInkiOjUwNi41fSx7IngiOjk4LjkwMTA0MTY2NjY2NjY2LCJ5Ijo1MDYuNX0seyJ4Ijo5OC45MDEwNDE2NjY2NjY2NiwieSI6NTg2fV0=" data-look="neo" marker-end="url(#diagram-p9_classDiagram-dependencyEnd-margin)"/><path d="M124.53125,210L124.53125,303.5" id="diagram-p9-id_FileSystem_Directory_4" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 93.5 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_FileSystem_Directory_4" data-points="W3sieCI6MTI0LjUzMTI1LCJ5IjoyMTB9LHsieCI6MTI0LjUzMTI1LCJ5IjozMDkuNX1d" data-look="neo" marker-end="url(#diagram-p9_classDiagram-dependencyEnd-margin)"/><path d="M157.11328125,1178.25L157.11328125,1179.625Q157.11328125,1181 155.73828125,1181L105.71169281186548,1181Q98.640625,1181 98.640625,1188.0710678118655L98.640625,1201" id="diagram-p9-id_NodeVisitor_DiskUsageVisitor_5" class="edge-thickness-normal edge-pattern-dashed relation" style="stroke-dasharray: 0 0 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_NodeVisitor_DiskUsageVisitor_5" data-points="W3sieCI6MTU3LjExMzI4MTI1LCJ5IjoxMTYxfSx7IngiOjE1Ny4xMTMyODEyNSwieSI6MTE4MX0seyJ4Ijo5OC42NDA2MjUsInkiOjExODF9LHsieCI6OTguNjQwNjI1LCJ5IjoxMjAxfV0=" data-look="neo" marker-start="url(#diagram-p9_classDiagram-extensionStart-margin)"/><path d="M206.63671875,1178.25L206.63671875,1179.625Q206.63671875,1181 208.01171875,1181L258.0383071881345,1181Q265.109375,1181 265.109375,1188.0710678118655L265.109375,1201" id="diagram-p9-id_NodeVisitor_SearchVisitor_6" class="edge-thickness-normal edge-pattern-dashed relation" style="stroke-dasharray: 0 0 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_NodeVisitor_SearchVisitor_6" data-points="W3sieCI6MjA2LjYzNjcxODc1LCJ5IjoxMTYxfSx7IngiOjIwNi42MzY3MTg3NSwieSI6MTE4MX0seyJ4IjoyNjUuMTA5Mzc1LCJ5IjoxMTgxfSx7IngiOjI2NS4xMDkzNzUsInkiOjEyMDF9XQ==" data-look="neo" marker-start="url(#diagram-p9_classDiagram-extensionStart-margin)"/><path d="M150.16145833333331,742L150.16145833333331,754.9289321881345Q150.16145833333331,762 157.2325261451988,762L174.80393218813452,762Q181.875,762 181.875,769.0710678118655L181.875,993" id="diagram-p9-id_FileSystemNode_NodeVisitor_7" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 277.38525390625 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_FileSystemNode_NodeVisitor_7" data-points="W3sieCI6MTUwLjE2MTQ1ODMzMzMzMzMxLCJ5Ijo3NDJ9LHsieCI6MTUwLjE2MTQ1ODMzMzMzMzMxLCJ5Ijo3NjJ9LHsieCI6MTgxLjg3NSwieSI6NzYyfSx7IngiOjE4MS44NzUsInkiOjk5OX1d" data-look="neo" marker-end="url(#diagram-p9_classDiagram-dependencyEnd-margin)"/></g><g class="edgeLabels"><g class="edgeLabel" transform="translate(98.66666666666666, 536.25)"><g class="label" data-id="id_Directory_FileSystemNode_3" transform="translate(-22.765625, -9.75)"><foreignObject width="45.53125" height="19.5"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>children</p></span></div></foreignObject></g></g><g class="edgeTerminals" transform="translate(108.90104083333331, 563.4999992857142)"><g class="inner" transform="translate(-2.53125, -9.75)"/><foreignObject width="5.0625" height="19.5" style="width: 9px; height: 12px;"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="edgeLabel"><p>*</p></span></div></foreignObject></g><g class="edgeLabel" transform="translate(124.234375, 259.75)"><g class="label" data-id="id_FileSystem_Directory_4" transform="translate(-11.203125, -9.75)"><foreignObject width="22.40625" height="19.5"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>root</p></span></div></foreignObject></g></g><g class="edgeLabel" transform="translate(181.53125, 870.5)"><g class="label" data-id="id_FileSystemNode_NodeVisitor_7" transform="translate(-19.15625, -9.75)"><foreignObject width="38.3125" height="19.5"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"><p>accept</p></span></div></foreignObject></g></g></g><g class="nodes"><g class="node default" id="diagram-p9-classId-FileSystemNode-0" data-look="neo" transform="translate(124.53124999999999, 664)"><g class="basic label-container outer-path"><path d="M-86.890625 -78 L86.890625 -78 L86.890625 78 L-86.890625 78" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-86.890625 -78 C-40.89662697797319 -78, 5.097371044053617 -78, 86.890625 -78 M-86.890625 -78 C-50.79624651997919 -78, -14.701868039958384 -78, 86.890625 -78 M86.890625 -78 C86.890625 -24.013222944888625, 86.890625 29.97355411022275, 86.890625 78 M86.890625 -78 C86.890625 -29.851406549031815, 86.890625 18.29718690193637, 86.890625 78 M86.890625 78 C47.96896471950682 78, 9.047304439013644 78, -86.890625 78 M86.890625 78 C20.618090367771515 78, -45.65444426445697 78, -86.890625 78 M-86.890625 78 C-86.890625 40.167857117694915, -86.890625 2.3357142353898297, -86.890625 -78 M-86.890625 78 C-86.890625 42.43188626445182, -86.890625 6.863772528903638, -86.890625 -78" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -54)"/><g class="label-group text" transform="translate(-54.46875, -54)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="108.9375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 157px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>FileSystemNode</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-74.890625, -9)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="35.03125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 85px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>name</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="39.703125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 90px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>parent</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-74.890625, 57)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="95.3125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 156px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+accept(visitor)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-86.890625 -33 C-20.25181633922935 -32.99961653625658, 46.3869923215413 -32.999233072513164, 86.890625 -32.999 M-86.890625 -33 C-30.14792618448947 -32.999673482042425, 26.59477263102106 -32.99934696408484, 86.890625 -32.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-86.890625 33 C-51.78437444269629 33.00020201402946, -16.67812388539258 33.000404028058924, 86.890625 33.001 M-86.890625 33 C-22.31984190229815 33.000371563578334, 42.2509411954037 33.00074312715667, 86.890625 33.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p9-classId-File-1" data-look="neo" transform="translate(67.1875, 870.5)"><g class="basic label-container outer-path"><path d="M-55.1875 -88.5 L55.1875 -88.5 L55.1875 88.5 L-55.1875 88.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-55.1875 -88.5 C-29.400117996549223 -88.5, -3.612735993098447 -88.5, 55.1875 -88.5 M-55.1875 -88.5 C-25.364957254618634 -88.5, 4.457585490762732 -88.5, 55.1875 -88.5 M55.1875 -88.5 C55.1875 -43.675343437018924, 55.1875 1.149313125962152, 55.1875 88.5 M55.1875 -88.5 C55.1875 -25.030772592801142, 55.1875 38.438454814397716, 55.1875 88.5 M55.1875 88.5 C17.738849273630507 88.5, -19.709801452738986 88.5, -55.1875 88.5 M55.1875 88.5 C20.07533981826986 88.5, -15.03682036346028 88.5, -55.1875 88.5 M-55.1875 88.5 C-55.1875 32.946944029294976, -55.1875 -22.60611194141005, -55.1875 -88.5 M-55.1875 88.5 C-55.1875 51.741841495215496, -55.1875 14.983682990430992, -55.1875 -88.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -64.5)"/><g class="label-group text" transform="translate(-12.0625, -64.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="24.125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 75px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>File</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-43.1875, -19.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="45.9375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 97px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>content</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="24.90625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 75px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>size</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-43.1875, 46.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="45.53125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 102px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+read()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="74.3125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 134px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+write(data)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-55.1875 -43.5 C-17.62685070184689 -43.49965969966661, 19.933798596306218 -43.49931939933322, 55.1875 -43.499 M-55.1875 -43.5 C-14.130478169470734 -43.49962802245227, 26.92654366105853 -43.49925604490454, 55.1875 -43.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-55.1875 22.5 C-31.372531056779547 22.500215764158035, -7.557562113559094 22.50043152831607, 55.1875 22.501 M-55.1875 22.5 C-31.16361174192201 22.50021765697176, -7.139723483844023 22.500435313943523, 55.1875 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p9-classId-Directory-2" data-look="neo" transform="translate(124.53125, 398)"><g class="basic label-container outer-path"><path d="M-79.3125 -88.5 L79.3125 -88.5 L79.3125 88.5 L-79.3125 88.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-79.3125 -88.5 C-29.376172393466085 -88.5, 20.56015521306783 -88.5, 79.3125 -88.5 M-79.3125 -88.5 C-28.187945284580138 -88.5, 22.936609430839724 -88.5, 79.3125 -88.5 M79.3125 -88.5 C79.3125 -51.02955717191148, 79.3125 -13.559114343822955, 79.3125 88.5 M79.3125 -88.5 C79.3125 -46.42945604787843, 79.3125 -4.358912095756864, 79.3125 88.5 M79.3125 88.5 C31.54720995723489 88.5, -16.218080085530218 88.5, -79.3125 88.5 M79.3125 88.5 C39.04189489740122 88.5, -1.228710205197558 88.5, -79.3125 88.5 M-79.3125 88.5 C-79.3125 42.84403794555678, -79.3125 -2.811924108886444, -79.3125 -88.5 M-79.3125 88.5 C-79.3125 38.9169862681552, -79.3125 -10.666027463689602, -79.3125 -88.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -64.5)"/><g class="label-group text" transform="translate(-30.734375, -64.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="61.46875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 111px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Directory</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-67.3125, -19.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="49.03125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 102px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>children</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-67.3125, 25.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="72.765625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 133px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+addChild()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="96.09375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 158px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+removeChild()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="103.890625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 164px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+getChild(name)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-79.3125 -43.5 C-47.41330483817482 -43.49979890184295, -15.514109676349634 -43.4995978036859, 79.3125 -43.499 M-79.3125 -43.5 C-24.402358742789787 -43.49965383677694, 30.507782514420427 -43.49930767355389, 79.3125 -43.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-79.3125 1.5 C-47.52164220493695 1.500200415179165, -15.730784409873898 1.50040083035833, 79.3125 1.501 M-79.3125 1.5 C-19.30301104518169 1.5003783104110626, 40.70647790963662 1.5007566208221252, 79.3125 1.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p9-classId-NodeVisitor-3" data-look="neo" transform="translate(181.875, 1080)"><g class="basic label-container outer-path"><path d="M-84.28515625 -81 L84.28515625 -81 L84.28515625 81 L-84.28515625 81" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-84.28515625 -81 C-45.878655237664866 -81, -7.4721542253297315 -81, 84.28515625 -81 M-84.28515625 -81 C-43.10103627944489 -81, -1.9169163088897818 -81, 84.28515625 -81 M84.28515625 -81 C84.28515625 -44.064033469546764, 84.28515625 -7.128066939093529, 84.28515625 81 M84.28515625 -81 C84.28515625 -35.426877080556324, 84.28515625 10.146245838887353, 84.28515625 81 M84.28515625 81 C20.194166296839498 81, -43.896823656321004 81, -84.28515625 81 M84.28515625 81 C27.18920898691161 81, -29.90673827617678 81, -84.28515625 81 M-84.28515625 81 C-84.28515625 39.47153285468551, -84.28515625 -2.0569342906289734, -84.28515625 -81 M-84.28515625 81 C-84.28515625 17.097289448316765, -84.28515625 -46.80542110336647, -84.28515625 -81" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-34.640625, -57)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="69.28125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«interface»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-39.1640625, -36)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="78.328125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 128px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>NodeVisitor</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-72.28515625, 9)"/><g class="methods-group text" transform="translate(-72.28515625, 39)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="68.0625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 132px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+visitFile(f)</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="105.40625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 171px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+visitDirectory(d)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-84.28515625 -15 C-49.22181299340195 -14.999791995739127, -14.158469736803895 -14.999583991478255, 84.28515625 -14.999 M-84.28515625 -15 C-34.92775754317537 -14.99970719993352, 14.429641163649265 -14.999414399867037, 84.28515625 -14.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-84.28515625 9 C-18.802943168970998 9.00038845637829, 46.679269912058004 9.00077691275658, 84.28515625 9.001 M-84.28515625 9 C-20.289337207152485 9.000379638728159, 43.70648183569503 9.000759277456318, 84.28515625 9.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p9-classId-FileSystem-4" data-look="neo" transform="translate(124.53125, 111)"><g class="basic label-container outer-path"><path d="M-71.921875 -99 L71.921875 -99 L71.921875 99 L-71.921875 99" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-71.921875 -99 C-42.134434600326 -99, -12.346994200651999 -99, 71.921875 -99 M-71.921875 -99 C-33.764580586295274 -99, 4.392713827409452 -99, 71.921875 -99 M71.921875 -99 C71.921875 -40.92705228995772, 71.921875 17.145895420084557, 71.921875 99 M71.921875 -99 C71.921875 -50.724358873413834, 71.921875 -2.4487177468276684, 71.921875 99 M71.921875 99 C14.900781207737282 99, -42.120312584525436 99, -71.921875 99 M71.921875 99 C37.605556927809516 99, 3.2892388556190326 99, -71.921875 99 M-71.921875 99 C-71.921875 21.251641317194455, -71.921875 -56.49671736561109, -71.921875 -99 M-71.921875 99 C-71.921875 54.041812574914815, -71.921875 9.08362514982963, -71.921875 -99" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -75)"/><g class="label-group text" transform="translate(-36.96875, -75)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="73.9375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>FileSystem</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-59.921875, -30)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="24.125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 76px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>root</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-59.921875, 15)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="78.96875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 137px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+createFile()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="51.734375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 110px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+move()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="59.53125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 115px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+search()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,52.5)"><foreignObject width="82.875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 141px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+diskUsage()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-71.921875 -54 C-15.954641022137338 -53.99961091647028, 40.012592955725324 -53.99922183294056, 71.921875 -53.999 M-71.921875 -54 C-19.10193221365798 -53.999632796400356, 33.71801057268404 -53.99926559280071, 71.921875 -53.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-71.921875 -9 C-14.577761338089147 -8.99960134441947, 42.76635232382171 -8.99920268883894, 71.921875 -8.999 M-71.921875 -9 C-17.06010827373219 -8.999618601665166, 37.80165845253562 -8.999237203330333, 71.921875 -8.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p9-classId-DiskUsageVisitor-5" data-look="neo" transform="translate(98.640625, 1241.5)"><g class="basic label-container outer-path"><path d="M-69.4609375 -40.5 L69.4609375 -40.5 L69.4609375 40.5 L-69.4609375 40.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-69.4609375 -40.5 C-37.76956927637366 -40.5, -6.078201052747318 -40.5, 69.4609375 -40.5 M-69.4609375 -40.5 C-32.80360838189972 -40.5, 3.8537207362005574 -40.5, 69.4609375 -40.5 M69.4609375 -40.5 C69.4609375 -20.02680122439066, 69.4609375 0.44639755121868063, 69.4609375 40.5 M69.4609375 -40.5 C69.4609375 -12.36913862374217, 69.4609375 15.76172275251566, 69.4609375 40.5 M69.4609375 40.5 C22.129955402754867 40.5, -25.201026694490267 40.5, -69.4609375 40.5 M69.4609375 40.5 C32.586645999572454 40.5, -4.287645500855092 40.5, -69.4609375 40.5 M-69.4609375 40.5 C-69.4609375 23.473643683737052, -69.4609375 6.447287367474104, -69.4609375 -40.5 M-69.4609375 40.5 C-69.4609375 23.60152337845745, -69.4609375 6.703046756914901, -69.4609375 -40.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -16.5)"/><g class="label-group text" transform="translate(-57.4609375, -16.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="114.921875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 164px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>DiskUsageVisitor</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-57.4609375, 28.5)"/><g class="methods-group text" transform="translate(-57.4609375, 58.5)"/><g class="divider neo-line" style=""><path d="M-69.4609375 4.5 C-21.428491830428136 4.5003457514928416, 26.603953839143728 4.500691502985683, 69.4609375 4.501 M-69.4609375 4.5 C-21.43003051723734 4.500345740416927, 26.600876465525317 4.500691480833854, 69.4609375 4.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-69.4609375 22.5 C-26.83693746870418 22.500306819930493, 15.787062562591643 22.500613639860983, 69.4609375 22.501 M-69.4609375 22.5 C-21.308774404113798 22.500346613253644, 26.843388691772404 22.500693226507288, 69.4609375 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p9-classId-SearchVisitor-6" data-look="neo" transform="translate(265.109375, 1241.5)"><g class="basic label-container outer-path"><path d="M-57.0078125 -40.5 L57.0078125 -40.5 L57.0078125 40.5 L-57.0078125 40.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-57.0078125 -40.5 C-27.521931710511296 -40.5, 1.9639490789774072 -40.5, 57.0078125 -40.5 M-57.0078125 -40.5 C-22.606019584085793 -40.5, 11.795773331828414 -40.5, 57.0078125 -40.5 M57.0078125 -40.5 C57.0078125 -11.710933495256555, 57.0078125 17.07813300948689, 57.0078125 40.5 M57.0078125 -40.5 C57.0078125 -10.213067166150854, 57.0078125 20.073865667698293, 57.0078125 40.5 M57.0078125 40.5 C17.547138233680613 40.5, -21.913536032638774 40.5, -57.0078125 40.5 M57.0078125 40.5 C21.84118866315285 40.5, -13.325435173694302 40.5, -57.0078125 40.5 M-57.0078125 40.5 C-57.0078125 20.736040662205827, -57.0078125 0.9720813244116542, -57.0078125 -40.5 M-57.0078125 40.5 C-57.0078125 9.290642753670713, -57.0078125 -21.918714492658573, -57.0078125 -40.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -16.5)"/><g class="label-group text" transform="translate(-45.0078125, -16.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="90.015625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 137px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>SearchVisitor</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-45.0078125, 28.5)"/><g class="methods-group text" transform="translate(-45.0078125, 58.5)"/><g class="divider neo-line" style=""><path d="M-57.0078125 4.5 C-26.57698518921973 4.500266900499916, 3.8538421215605396 4.500533800999833, 57.0078125 4.501 M-57.0078125 4.5 C-19.192450284335237 4.500331668244731, 18.622911931329526 4.500663336489462, 57.0078125 4.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-57.0078125 22.5 C-21.676741033448778 22.50030987920705, 13.654330433102444 22.500619758414103, 57.0078125 22.501 M-57.0078125 22.5 C-20.20439458367848 22.500322792756837, 16.599023332643043 22.500645585513677, 57.0078125 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g></g></g></g><defs><filter id="diagram-p9-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><defs><filter id="diagram-p9-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs></svg>
+</div>
+<details class="mermaid-src"><summary>View Mermaid source</summary>
+<pre><code>classDiagram
+  class FileSystemNode {
+    name
+    parent
+    +accept(visitor)
+  }
+  class File {
+    content
+    size
+    +read()
+    +write(data)
+  }
+  class Directory {
+    children
+    +addChild()
+    +removeChild()
+    +getChild(name)
+  }
+  class NodeVisitor {
+    &lt;&lt;interface&gt;&gt;
+    +visitFile(f)
+    +visitDirectory(d)
+  }
+  class FileSystem {
+    root
+    +createFile()
+    +move()
+    +search()
+    +diskUsage()
+  }
+  FileSystemNode &lt;|-- File
+  FileSystemNode &lt;|-- Directory
+  Directory --&gt; &quot;*&quot; FileSystemNode : children
+  FileSystem --&gt; Directory : root
+  NodeVisitor &lt;|.. DiskUsageVisitor
+  NodeVisitor &lt;|.. SearchVisitor
+  FileSystemNode --&gt; NodeVisitor : accept</code></pre>
+</details>
+
+<h3 id="p9-k">K. Responsibility Mapping</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Does NOT Handle</th></tr>
+<tr><td>FileSystemNode</td><td>Identity, dispatch to visitors</td><td>Any aggregate computation</td></tr>
+<tr><td>File</td><td>Own content and size</td><td>Anything about siblings/children</td></tr>
+<tr><td>Directory</td><td>Own children map</td><td>Recursive aggregation (Visitor's job)</td></tr>
+<tr><td>NodeVisitor implementations</td><td>One specific read-only computation over the tree</td><td>Mutating the tree</td></tr>
+<tr><td>FileSystem</td><td>Path resolution, lock acquisition order, top-level orchestration</td><td>Node-internal storage</td></tr>
+</table>
+
+<h3 id="p9-l">L. SOLID Analysis</h3>
+<table>
+<tr><th>Principle</th><th>How It's Applied</th><th>Naive Violation</th></tr>
+<tr><td>SRP</td><td><code>File</code> owns content; <code>Directory</code> owns children; visitors own aggregate logic</td><td>One <code>Node</code> class with an <code>isDirectory</code> flag, content field, <em>and</em> a children list, all always present, most always unused</td></tr>
+<tr><td>OCP</td><td>New read-only operation = new <code>NodeVisitor</code> implementation, zero changes to node classes</td><td>Adding <code>countImages()</code> as yet another method on <code>FileSystemNode</code>, forcing every existing node subclass to be touched again</td></tr>
+<tr><td>LSP</td><td><code>File</code> and <code>Directory</code> both honestly implement <code>accept(visitor)</code>; a <code>File</code> visited by <code>visitFile()</code> never needs to fake directory behavior</td><td>Calling <code>listChildren()</code> on a <code>File</code> node and having it silently return an empty list instead of the operation being structurally unavailable</td></tr>
+<tr><td>ISP</td><td><code>NodeVisitor</code> stays a two-method interface; new capabilities are new visitor classes, not new methods forced onto <code>FileSystemNode</code></td><td>A fat <code>FileSystemNode</code> interface with <code>size()</code>, <code>search()</code>, <code>countFiles()</code>, <code>checksum()</code> all bolted on directly</td></tr>
+<tr><td>DIP</td><td><code>FileSystem</code> depends on <code>FileSystemNode</code>/<code>NodeVisitor</code> abstractions, not concrete <code>File</code>/<code>Directory</code> branches</td><td><code>FileSystem.diskUsage()</code> doing its own <code>instanceof Directory</code> recursion inline instead of delegating to a visitor</td></tr>
+</table>
+
+<h3 id="p9-m">M. Design Patterns</h3>
+<table>
+<tr><th>Pattern</th><th>Problem It Solves</th><th>Where It Appears</th><th>When NOT to Use</th></tr>
+<tr><td>Composite</td><td>Files and directories need uniform treatment despite structural differences</td><td><code>FileSystemNode</code>/<code>File</code>/<code>Directory</code></td><td>Skip only if the filesystem is provably flat forever (unrealistic for this prompt)</td></tr>
+<tr><td>Visitor</td><td>New read-only aggregate operations keep arriving, and shouldn't force changes to node classes</td><td><code>NodeVisitor</code>, <code>DiskUsageVisitor</code>, <code>SearchVisitor</code></td><td>Skip if the operation set is genuinely closed and small — then a couple of direct methods are simpler and Visitor is overkill</td></tr>
+<tr><td>Iterator</td><td>Directory traversal shouldn't leak the internal children storage structure</td><td><code>DirectoryIterator</code></td><td>Skip if listing is always "materialize the whole list," with no need to abstract traversal itself</td></tr>
+<tr><td>Proxy (optional)</td><td>Permission checks or lazy content loading should sit in front of a node without changing its interface</td><td>An optional <code>SecureFileSystemProxy</code> wrapping <code>FileSystem</code></td><td>Skip if the round has no permission requirement at all</td></tr>
+</table>
+<p><strong>Explicitly avoided:</strong> Decorator for permission checks — see I for why Proxy is the semantically correct pattern (access control) even though the class shape looks similar to a Decorator (behavior augmentation).</p>
+
+<h3 id="p9-n">N. What Is Likely to Change?</h3>
+<table>
+<tr><th>Behavior</th><th>Current Design</th><th>Anticipated Change</th><th>Protecting Abstraction</th></tr>
+<tr><td>Storage backend</td><td>In-memory map-based tree</td><td>Real disk-backed or cloud blob-store persistence</td><td><code>StorageBackend</code> interface behind <code>File.read()/write()</code>, same DIP boundary as elsewhere in this document</td></tr>
+<tr><td>Permission model</td><td>None, or simple owner check</td><td>Full ACL / role-based access</td><td>Proxy layer, not baked into <code>FileSystemNode</code> itself</td></tr>
+<tr><td>Search</td><td>Linear <code>SearchVisitor</code> pass</td><td>Indexed search (e.g. trie by name, or an inverted index by extension)</td><td>Search stays behind the same top-level <code>FileSystem.search()</code> signature regardless of internal implementation</td></tr>
+<tr><td>Links</td><td>Strict one-parent tree</td><td>Symbolic links (a node can be reachable from multiple paths)</td><td>Would require revisiting the "single parent = no cycles" assumption entirely — flagged explicitly as a scope-expanding change, not a drop-in one</td></tr>
+</table>
+
+<h3 id="p9-o">O. Design Evolution</h3>
+<ul>
+<li><strong>V1:</strong> plain tree, no locking, <code>isDirectory</code> boolean and inline recursion for size/search.</li>
+<li><strong>V2:</strong> replace the boolean flag with real <code>File</code>/<code>Directory</code> subclasses under Composite once the inline <code>instanceof</code> branching starts spreading across call sites.</li>
+<li><strong>V3:</strong> extract <code>NodeVisitor</code> once a second read-only operation (search, after disk-usage) is requested — the point where hardcoding each as a new node method would start hurting.</li>
+<li><strong>V4:</strong> add <code>DirectoryIterator</code> with an explicit fail-fast-vs-snapshot decision.</li>
+<li><strong>V5:</strong> add per-node readers-writer locks and a canonical-path lock-ordering protocol for <code>move()</code>.</li>
+<li><strong>V6:</strong> optional Proxy layer for permissions; pluggable <code>StorageBackend</code> for real persistence.</li>
+</ul>
+<p><strong>What stays stable:</strong> <code>FileSystem</code>'s top-level API signatures. New aggregate operations are pure additions (new visitor classes); persistence and permissions slot in behind existing interfaces without touching <code>File</code>/<code>Directory</code>.</p>
+
+<h3 id="p9-p">P. API / Interface Design</h3>
+<pre><code>interface NodeVisitor {
+  void visitFile(File f);
+  void visitDirectory(Directory d);
+}
+
+abstract class FileSystemNode {
+  String name;
+  Directory parent;
+  abstract void accept(NodeVisitor v);
+}
+
+class FileSystem {
+  void createFile(Path path);
+  void createDirectory(Path path);
+  void delete(Path path, boolean recursive);
+  void move(Path source, Path destination);
+  byte[] read(Path path);
+  void write(Path path, byte[] data);
+  List&lt;String&gt; list(Path directoryPath);
+  List&lt;Path&gt; search(Path root, SearchCriteria criteria);
+  long diskUsage(Path root);
+}</code></pre>
+<p><strong>Ownership/validation notes:</strong> <code>move()</code> resolves both the source and destination parent directories, verifies the destination is not a descendant of the source (cycle check), then acquires both parents' locks in canonical-path order before mutating either — never partially detach a node without knowing the reattachment will succeed.</p>
+
+<h3 id="p9-q">Q. Pseudocode — Critical Logic</h3>
+<pre><code>FileSystem.move(source, destination):
+  srcParent = resolveParent(source)
+  destParent = resolveParent(destination)
+  node = srcParent.getChild(source.lastSegment)
+
+  if node is Directory and destination.isDescendantOf(source):
+    throw IllegalMoveException("cannot move a directory into its own subtree")
+
+  // lock ordering: always acquire in canonical-path order to prevent
+  // an ABBA deadlock against a concurrent move() going the other direction
+  (first, second) = orderByCanonicalPath(srcParent, destParent)
+  lock(first); lock(second)
+  try:
+    srcParent.removeChild(node.name)
+    node.parent = destParent
+    destParent.addChild(node)
+  finally:
+    unlock(second); unlock(first)
+
+DiskUsageVisitor.visitDirectory(d):
+  total = 0
+  for child in d.children.values():
+    child.accept(this)          // recurses; visitFile adds file.size directly
+    total += this.lastSize
+  this.lastSize = total</code></pre>
+
+<h3 id="p9-r">R. End-to-End Use Case</h3>
+<pre>
+createDirectory("/docs")
+createFile("/docs/report.txt"); write("/docs/report.txt", data)
+createDirectory("/archive")
+  │
+  ▼
+move("/docs/report.txt", "/archive/report.txt")
+  │  resolveParent("/docs") and resolveParent("/archive")
+  │  cycle check: "/archive" is not a descendant of "/docs/report.txt" ✓
+  │  lock both parents in canonical order → detach → reattach → unlock
+  ▼
+diskUsage("/")
+  │  DiskUsageVisitor recurses: "/docs" (0 bytes now) + "/archive" (report.txt's size)
+  ▼
+Total returned
+</pre>
+
+<h3 id="p9-s">S. Data Structures</h3>
+<table>
+<tr><th>Structure</th><th>Used For</th><th>Why</th><th>Alternative &amp; Trade-off</th></tr>
+<tr><td><code>Map&lt;String, FileSystemNode&gt;</code> per <code>Directory</code></td><td>Child lookup by name</td><td>O(1) resolution of each path segment</td><td>A sorted structure (e.g. TreeMap) would give ordered listing for free at a small insert/lookup cost</td></tr>
+<tr><td><code>List&lt;String&gt;</code> segments in <code>Path</code></td><td>Normalized, comparable location</td><td>Enables the canonical-path ordering used for deadlock-free locking in <code>move()</code></td><td>A raw string path works but requires re-normalizing (resolving <code>..</code>/<code>.</code>) on every comparison</td></tr>
+<tr><td>Readers-writer lock per node</td><td>Concurrent reads, exclusive writes/structural changes</td><td>Matches the actual access pattern — reads (list, read content) vastly outnumber writes in most filesystems</td><td>A single global lock is simpler but serializes unrelated subtrees needlessly at scale</td></tr>
+</table>
+
+<h3 id="p9-t">T. Complexity Analysis</h3>
+<table>
+<tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+<tr><td>Path resolution (create/delete/read/write)</td><td>O(depth of path)</td><td>O(1) extra</td></tr>
+<tr><td><code>diskUsage()</code> / <code>search()</code></td><td>O(n) nodes in the subtree — no shortcut without caching or indexing</td><td>O(depth) for recursion stack</td></tr>
+<tr><td><code>move()</code></td><td>O(depth of source) + O(depth of destination) for resolution and the cycle check</td><td>O(1)</td></tr>
+</table>
+
+<h3 id="p9-u">U. Testing Strategy</h3>
+<ul>
+<li><strong>Happy path:</strong> create → write → read round-trips content exactly; <code>list()</code> reflects exactly the current children.</li>
+<li><strong>Edge cases:</strong> deleting a non-empty directory without the recursive flag is rejected; deleting an empty directory succeeds without it.</li>
+<li><strong>Cycle prevention:</strong> attempting to move a directory into its own descendant is rejected before any locks are acquired or any node is mutated.</li>
+<li><strong>Concurrency tests:</strong> two concurrent <code>move()</code> calls that would lock the same two directories in opposite orders must not deadlock (verifies the canonical-order fix actually works); many concurrent readers of the same file never block each other; a writer blocks and is blocked by both readers and other writers on that same node.</li>
+<li><strong>Iterator semantics:</strong> a directory mutated mid-iteration behaves according to whichever policy was chosen (fail-fast throws cleanly; snapshot silently reflects the pre-mutation state) — the test asserts the chosen policy, not "some" behavior.</li>
+</ul>
+
+<h3 id="p9-v">V. Interviewer Follow-Ups</h3>
+<table>
+<tr><th>Follow-Up</th><th>Testing</th><th>Design Change</th><th>Classes Changed</th><th>Pattern/Trade-off</th></tr>
+<tr><td>"Add a `find files larger than X modified in the last week` query."</td><td>Recognizing this as another Visitor, not a new node method</td><td>New <code>SearchVisitor</code> with richer <code>SearchCriteria</code></td><td>New class only</td><td>Validates the Visitor investment from M</td></tr>
+<tr><td>"This needs to run across a cluster of machines, not one process."</td><td>LLD/HLD boundary awareness</td><td>N/A at the LLD layer — candidate should name GFS/HDFS-style metadata-service + chunk-replication concerns and explicitly place them at HLD</td><td>N/A</td><td>Recognizing the boundary is the actual signal, not attempting to design a distributed FS live</td></tr>
+<tr><td>"Two clients try to move overlapping subtrees at the same time — walk me through what happens."</td><td>Deadlock and lock-ordering reasoning</td><td>None if canonical ordering is already in place — candidate should trace through it</td><td>N/A</td><td>Directly exercises the W/Q lock-ordering design</td></tr>
+<tr><td>"Add symbolic links."</td><td>Testing whether the candidate recognizes this breaks the single-parent assumption</td><td>Would require general cycle detection instead of a simple ancestry check, and reference-counted targets</td><td>Significant — new node type, revisit move/delete semantics</td><td>A strong candidate flags this as a real scope expansion, not a small add-on</td></tr>
+</table>
+
+<h3 id="p9-w">W. Concurrency</h3>
+<p><strong>Shared mutable state:</strong> every <code>Directory</code>'s children map; every <code>File</code>'s content.</p>
+<ul>
+<li><strong>Readers-writer lock per node:</strong> concurrent <code>read()</code>/<code>list()</code> calls proceed without blocking each other; a <code>write()</code>, <code>addChild()</code>, or <code>removeChild()</code> takes an exclusive lock.</li>
+<li><strong>Lock ordering for cross-directory <code>move()</code>:</strong> moving a node touches two directories (source parent, destination parent). Locking them in call order (source first, then destination) is exactly how two concurrent moves going in opposite directions deadlock — the same ABBA shape as Splitwise's multi-pair settle-up. The fix is identical in spirit: always acquire locks in one fixed global order (e.g. canonical path string comparison), regardless of which one is logically the "source" for a given call.</li>
+<li><strong>Cycle check happens before any lock is taken:</strong> validating that the destination isn't a descendant of the source is a pure read against the current tree shape; doing it first avoids holding locks during a check that might reject the whole operation anyway.</li>
+</ul>
+
+<h3 id="p9-x">X. Persistence</h3>
+<p>The prompt is explicitly in-memory, but the design should not hardcode that assumption into <code>File</code> itself: a <code>StorageBackend</code> interface behind <code>read()</code>/<code>write()</code> (in-memory byte array today, real disk or blob-store tomorrow) keeps persistence swappable without touching the tree structure, Composite hierarchy, or any visitor — the same DIP boundary used for payment gateways and cache backends elsewhere in this document.</p>
+
+<h3 id="p9-y">Y. Scaling Boundary</h3>
+<table>
+<tr><th>Layer</th><th>What Belongs Here</th></tr>
+<tr><td><strong>LLD</strong></td><td>Composite tree, Visitor operations, Iterator, per-node locking, lock-ordering protocol for <code>move()</code></td></tr>
+<tr><td><strong>HLD</strong></td><td>Distributed metadata service, chunk/block servers, replication, consistency model across machines (GFS/HDFS/S3-style)</td></tr>
+<tr><td><strong>Distributed Systems</strong></td><td>Explicitly named but out of scope for this round unless the interviewer pivots there directly — a strong candidate draws this line rather than either ignoring scale entirely or over-designing a distributed FS unprompted</td></tr>
+</table>
+
+<h3 id="p9-z">Z. Failure Scenarios</h3>
+<ul>
+<li><strong>A node is deleted while a visitor is mid-traversal of that subtree:</strong> the fail-fast-vs-snapshot iterator policy (see AB) determines whether this throws cleanly or completes against a consistent pre-deletion view — either is acceptable, but it must be a deliberate choice, not undefined behavior.</li>
+<li><strong>`move()` fails partway (e.g. destination lock acquisition fails after the cycle check passed):</strong> the pseudocode in Q never detaches the node from its source until <em>both</em> locks are held, so a failure before that point leaves the tree untouched — no orphaned nodes.</li>
+<li><strong>Delete while a file handle is still open (POSIX-style unlink semantics):</strong> a reference-counted handle model means <code>delete()</code> unlinks the node from the directory tree immediately (it disappears from <code>list()</code>) but the underlying content isn't actually freed until the last open handle closes — the same "logically gone, physically pending" split real filesystems use.</li>
+</ul>
+
+<h3 id="p9-aa">AA. Common Bad Designs</h3>
+<ul>
+<li><strong>A single <code>Node</code> class with an <code>isDirectory</code> boolean</strong> and scattered <code>if</code>/<code>instanceof</code> checks at every call site instead of Composite polymorphism — the single most common naive shape for this problem.</li>
+<li><strong>Every new query (size, search, count, checksum) added as a direct method on the base node interface</strong> — grows the interface without bound and violates ISP; this is exactly what Visitor exists to prevent.</li>
+<li><strong>A single global filesystem-wide lock</strong> — correct but needlessly serializes completely unrelated subtrees under any real load.</li>
+<li><strong>Locking <code>move()</code>'s two directories in call order instead of a fixed canonical order</strong> — passes every single-threaded test and deadlocks the first time two moves cross paths concurrently.</li>
+</ul>
+
+<h3 id="p9-ab">AB. Design Trade-Offs</h3>
+<table>
+<tr><th>Decision</th><th>Option A</th><th>Option B</th><th>Recommendation</th></tr>
+<tr><td>Directory iteration semantics</td><td>Fail-fast (throw if the directory changes mid-iteration)</td><td>Snapshot (iterate a point-in-time copy)</td><td>Fail-fast surfaces bugs immediately and matches Java's own collection convention; snapshot is friendlier for long-running reports (like disk-usage scans) that shouldn't abort because of unrelated concurrent writes — state the choice explicitly rather than leaving it implicit</td></tr>
+<tr><td>Directory size</td><td>Cached, invalidated bottom-up on writes</td><td>Recomputed on every <code>diskUsage()</code> call</td><td>Cache only if <code>diskUsage()</code> is called far more often than the tree is mutated; otherwise the invalidation bookkeeping costs more than it saves</td></tr>
+<tr><td>Locking granularity</td><td>Per-node locks</td><td>Per-subtree (coarser) locks</td><td>Per-node for realistic concurrent workloads; coarser locks are simpler to reason about but reintroduce the "unrelated operations block each other" problem the global lock has</td></tr>
+</table>
+
+<h3 id="p9-ac">AC. Interviewer Evaluation</h3>
+<p><strong>Strong signal:</strong> reaching for Composite immediately and unprompted for the file/directory split; independently proposing Visitor once asked for a second read-only operation, with a clear ISP-based justification for why it's not just another node method; naming the lock-ordering fix for <code>move()</code> without being walked into the deadlock first.</p>
+<p><strong>Red flag:</strong> an <code>isDirectory</code> boolean surviving past the first design pass; adding every new query directly to the node interface; proposing a single global lock as the final answer rather than a deliberately simple starting point; not noticing the cycle risk in <code>move()</code> until explicitly prompted.</p>
+
+<h3 id="p9-ad">AD. Interview Simulation</h3>
+<div class="dialog"><span class="who">Interviewer:</span> Design an in-memory file system.</div>
+<div class="dialog"><span class="who">Candidate:</span> Files and directories need to be treated uniformly by anything walking the tree, but a directory has children and a file doesn't — that's a textbook Composite: both extend a common <code>FileSystemNode</code>, and client code never needs to check which one it has.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Now add a way to compute total disk usage under any directory.</div>
+<div class="dialog"><span class="who">Candidate:</span> I wouldn't add a <code>size()</code> method to every node type for this — there will always be another aggregate query after this one. I'd add a <code>NodeVisitor</code> interface and a <code>DiskUsageVisitor</code> implementation, dispatched through one stable <code>accept()</code> method on the nodes.</div>
+<div class="dialog"><span class="who">Interviewer:</span> What about moving a file between two directories while other operations are happening concurrently?</div>
+<div class="dialog"><span class="who">Candidate:</span> That needs locks on both the source and destination parent directories. If I lock them in call order, two concurrent moves crossing in opposite directions can deadlock — so I'd always acquire locks in a fixed canonical order, like comparing normalized path strings, regardless of which is logically the source.</div>
+<div class="dialog"><span class="who">Interviewer:</span> What stops someone from moving a directory into its own subtree?</div>
+<div class="dialog"><span class="who">Candidate:</span> An explicit ancestry check — is the destination a descendant of the source — done before any locks are taken, since it's a pure read that can reject the operation for free.</div>
+
+<h3 id="p9-ae">AE. Online Solution Comparison</h3>
+<table>
+<tr><th>Source</th><th>Approach</th><th>Strength</th><th>Weakness</th><th>Worth Learning</th></tr>
+<tr><td><a href="https://officialcto.com/interview-section/lld/file-system" target="_blank">OfficialCTO — LLD: File System</a></td><td>Composite-based File/Directory hierarchy with a shared abstract node; recursive size computation walked directly rather than via a separate visitor object</td><td>Clean, correct Composite structure — validates this document's headline pattern choice</td><td>No concurrency handling at all (single-threaded assumption throughout) and no Visitor abstraction — every new aggregate query would mean touching the node classes directly, which this document explicitly treats as an ISP violation</td><td>The base Composite shape itself; the concurrency and Visitor gaps are exactly what this document adds on top</td></tr>
+<tr><td><a href="https://algomaster.io/learn/lld/design-in-memory-file-system" target="_blank">AlgoMaster.io — Design an In-Memory File System</a></td><td>Not independently verifiable — the page is paywalled/premium content behind a login, so only the course structure and pattern-name outline is publicly visible</td><td>Publicly visible outline lists Composite as the headline pattern, consistent with the approach here</td><td>Cannot verify locking strategy, Visitor usage, or move-cycle handling beyond the outline</td><td>Nothing beyond a weak cross-check that Composite is the expected headline pattern — cited honestly rather than fabricating unseen content</td></tr>
+</table>
+
+<h3 id="p9-af">AF. Interview Cheat Sheet</h3>
+<table>
+<tr><td><strong>Problem</strong></td><td>File System</td></tr>
+<tr><td><strong>Difficulty</strong></td><td>Intermediate → Advanced</td></tr>
+<tr><td><strong>Core requirements</strong></td><td>Create/delete/move files and directories, read/write content, list, search, disk usage</td></tr>
+<tr><td><strong>Key clarifications</strong></td><td>In-memory only? Permissions in scope? Multi-threaded? Symlinks? Search matching style?</td></tr>
+<tr><td><strong>Core entities</strong></td><td>FileSystemNode, File, Directory, Path, NodeVisitor, DirectoryIterator, FileSystem</td></tr>
+<tr><td><strong>Key relationships</strong></td><td>Composite unifies File/Directory; Visitor keeps aggregate queries off the node interface (ISP); Iterator abstracts traversal</td></tr>
+<tr><td><strong>Key patterns</strong></td><td>Composite (headline), Visitor, Iterator, optional Proxy for permissions</td></tr>
+<tr><td><strong>Most important decision</strong></td><td>Canonical-path lock ordering for cross-directory <code>move()</code> to prevent deadlock</td></tr>
+<tr><td><strong>Likely-changing behavior</strong></td><td>Storage backend, permission model, search implementation, link support</td></tr>
+<tr><td><strong>Concurrency concern</strong></td><td>Readers-writer lock per node; ABBA deadlock risk on <code>move()</code> without fixed lock ordering</td></tr>
+<tr><td><strong>Top follow-ups</strong></td><td>New aggregate query, distributed-FS pivot (LLD/HLD boundary), concurrent-move deadlock trace, symlinks</td></tr>
+<tr><td><strong>Common mistakes</strong></td><td>isDirectory boolean instead of Composite; growing the base node interface per query instead of Visitor; call-order (not canonical-order) locking in move()</td></tr>
+<tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design a distributed metadata/chunk-server system when the prompt says in-memory; don't add symlink/ACL complexity unless asked</td></tr>
+</table><div class="prevnext"><a class="prevnext-link prev" href="p8.html">&larr; 8. Coffee Vending Machine</a><a class="prevnext-link next" href="p10.html">10. Pub-Sub / Message Queue &rarr;</a></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('lld-theme') || 'light');</script>
+<title>3. Rate Limiter — LLD Handbook</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+</head>
+<body>
+<button id="menu-toggle" aria-label="Toggle menu">&#9776;</button>
+<nav id="sidebar">
+  <div class="sidebar-top">
+    <a class="brand" href="index.html">LLD Handbook</a>
+    <button id="theme-toggle" aria-label="Toggle dark mode">&#127769;</button>
+  </div>
+  <div class="search-wrap">
+    <input id="search-box" type="text" placeholder="Search problems &amp; sections...">
+    <div id="search-results"></div>
+  </div>
+  <ul class="nav-list">
+    <li><a href="index.html" data-page="index.html">Home</a></li>
+    <li><a href="p1.html" data-page="p1.html">1. Parking Lot</a></li>
+    <li><a href="p2.html" data-page="p2.html">2. LRU Cache</a></li>
+    <li><a href="p3.html" data-page="p3.html">3. Rate Limiter</a></li>
+    <li><a href="p4.html" data-page="p4.html">4. Splitwise (Expense Sharing)</a></li>
+    <li><a href="p5.html" data-page="p5.html">5. Ride-Sharing Service (Uber/Lyft)</a></li>
+    <li><a href="p6.html" data-page="p6.html">6. Logging Framework</a></li>
+    <li><a href="p7.html" data-page="p7.html">7. Notification System</a></li>
+    <li><a href="p8.html" data-page="p8.html">8. Coffee Vending Machine</a></li>
+    <li><a href="p9.html" data-page="p9.html">9. File System</a></li>
+    <li><a href="p10.html" data-page="p10.html">10. Pub-Sub / Message Queue</a></li>
+    <li><a href="p11.html" data-page="p11.html">11. Elevator System</a></li>
+    <li><a href="p12.html" data-page="p12.html">12. Tic-Tac-Toe / Board Game Engine</a></li>
+    <li><a href="p13.html" data-page="p13.html">13. Chess Game</a></li>
+    <li><a href="p14.html" data-page="p14.html">14. ATM Machine</a></li>
+    <li><a href="p15.html" data-page="p15.html">15. Library Management System</a></li>
+    <li><a href="p16.html" data-page="p16.html">16. Hotel Reservation System</a></li>
+    <li><a href="p17.html" data-page="p17.html">17. Movie Ticket Booking System</a></li>
+    <li><a href="p18.html" data-page="p18.html">18. Restaurant / Food Delivery System</a></li>
+    <li><a href="p19.html" data-page="p19.html">19. E-commerce Shopping Cart &amp; Checkout</a></li>
+    <li><a href="p20.html" data-page="p20.html">20. Chat Application (WhatsApp-style)</a></li>
+    <li><a href="synthesis.html" data-page="synthesis.html">Cross-Problem Synthesis</a></li>
+  </ul>
+</nav>
+<main id="content">
+<h1 class="problem-title">3. Rate Limiter <span class="badge">Intermediate → Advanced+Distributed</span></h1>
+
+<div class="section-toc">
+<a href="#p3-a">A. Interview Prompt</a><a href="#p3-b">B. Difficulty</a><a href="#p3-c">C. What It Tests</a>
+<a href="#p3-d">D. Requirements</a><a href="#p3-e">E. Clarifying Questions</a><a href="#p3-f">F. Assumptions</a>
+<a href="#p3-g">G. Actors</a><a href="#p3-h">H. Core Entities</a><a href="#p3-i">I. Relationships</a>
+<a href="#p3-j">J. Class Diagram</a><a href="#p3-k">K. Responsibility Map</a><a href="#p3-l">L. SOLID Analysis</a>
+<a href="#p3-m">M. Design Patterns</a><a href="#p3-n">N. What Changes?</a><a href="#p3-o">O. Design Evolution</a>
+<a href="#p3-p">P. API Design</a><a href="#p3-q">Q. Pseudocode</a><a href="#p3-r">R. End-to-End Flow</a>
+<a href="#p3-s">S. Data Structures</a><a href="#p3-t">T. Complexity</a><a href="#p3-u">U. Testing Strategy</a>
+<a href="#p3-v">V. Interviewer Follow-Ups</a><a href="#p3-w">W. Concurrency</a><a href="#p3-x">X. Persistence</a>
+<a href="#p3-y">Y. Scaling Boundary</a><a href="#p3-z">Z. Failure Scenarios</a><a href="#p3-aa">AA. Bad Designs</a>
+<a href="#p3-ab">AB. Trade-Offs</a><a href="#p3-ac">AC. Interviewer Evaluation</a><a href="#p3-ad">AD. Simulation</a>
+<a href="#p3-ae">AE. Source Comparison</a><a href="#p3-af">AF. Cheat Sheet</a>
+</div>
+
+<h3 id="p3-a">A. Realistic Interview Prompt</h3>
+<div class="prompt">"Design a rate limiter that restricts how many requests a client can make to an API within a given time window. It should support multiple limiting algorithms and different limits for different clients or endpoints."</div>
+
+<h3 id="p3-b">B. Difficulty</h3>
+<p><strong>Intermediate</strong> for a single-process, single-algorithm version. Escalates to <strong>Advanced + Distributed Systems</strong> the moment the interviewer asks "now run this across many servers" — at which point the interesting problem stops being OOD and becomes "how do multiple processes atomically share one counter."</p>
+
+<h3 id="p3-c">C. What This Problem Tests</h3>
+<ul>
+<li>Strategy pattern — this is arguably the single most natural Strategy example in all of LLD, since the algorithm (token bucket vs. sliding window vs. fixed window) is explicitly expected to vary</li>
+<li>Factory pattern for producing the right configured limiter per endpoint/client tier</li>
+<li>Testability discipline — passing time in rather than reading a wall clock internally</li>
+<li>Concurrency — atomic check-and-decrement under a shared counter</li>
+<li>Recognizing the LLD→distributed-systems boundary</li>
+</ul>
+
+<h3 id="p3-d">D. Requirements</h3>
+<p><strong>Functional</strong></p>
+<ol>
+<li>Accept a request identified by client ID (and optionally endpoint)</li>
+<li>Decide allow/deny based on a configured limit and algorithm</li>
+<li>Support multiple algorithms (token bucket, sliding window, fixed window) interchangeably</li>
+<li>Return enough information for the caller to act: allowed/denied, remaining quota, retry-after</li>
+</ol>
+<p><strong>Non-Functional</strong></p>
+<ul>
+<li>Decision latency must be low — this sits on the hot path of every request</li>
+<li>Thread-safe under concurrent requests from the same client</li>
+<li>Extensible to new algorithms without touching the calling code</li>
+<li>Bounded memory even with millions of distinct clients (stale state must be reclaimable)</li>
+</ul>
+
+<h3 id="p3-e">E. Clarifying Questions</h3>
+<table>
+<tr><th>#</th><th>Question</th><th>Why It Matters</th><th>Design Decision Affected</th></tr>
+<tr><td>1</td><td>Is limiting per-client, per-client-per-endpoint, per-IP, or global?</td><td>Defines the key granularity for tracked state</td><td>The composite key used in the bucket store</td></tr>
+<tr><td>2</td><td>Which algorithm(s) must be supported — token bucket, sliding window, fixed window, leaky bucket?</td><td>Different algorithms have different burst/precision/memory trade-offs</td><td>Strategy interface shape</td></tr>
+<tr><td>3</td><td>Can different endpoints/clients have different limits and different algorithms?</td><td>Drives whether configuration is global or per-key</td><td>Factory + config design</td></tr>
+<tr><td>4</td><td>Is this a single process, or must it work correctly across multiple servers behind a load balancer?</td><td><strong>The single biggest scoping question</strong> — changes this from an LLD problem to a distributed-systems one</td><td>In-memory map vs. shared store (Redis)</td></tr>
+<tr><td>5</td><td>On deny, should the request be rejected outright, or queued/delayed?</td><td>Affects whether the API is purely synchronous allow/deny</td><td>Method signature — blocking vs. non-blocking</td></tr>
+<tr><td>6</td><td>Should the response expose remaining quota and retry-after?</td><td>Common real-world requirement (HTTP 429 headers)</td><td>Return type richness (<code>RateLimitResult</code> vs. plain boolean)</td></tr>
+<tr><td>7</td><td>Should the clock be injectable rather than read internally?</td><td>Determines whether algorithms are deterministically testable</td><td>Method signature includes a timestamp parameter</td></tr>
+<tr><td>8</td><td>What's the default policy for a brand-new/unknown client?</td><td>Fail-open (unlimited until first violation) vs. fail-closed (deny by default)</td><td>Default config lookup behavior</td></tr>
+<tr><td>9</td><td>Must limits be updatable at runtime without a restart?</td><td>Affects whether config is baked in at construction or re-read per request</td><td>Hot-reloadable config store</td></tr>
+<tr><td>10</td><td>Is short-burst traffic acceptable, or must throughput be perfectly smooth?</td><td>Token bucket allows bursts; sliding window is stricter</td><td>Default algorithm choice</td></tr>
+<tr><td>11</td><td>How many distinct clients must be tracked simultaneously?</td><td>Millions of clients means per-client state must be evictable</td><td>TTL/eviction on idle client buckets</td></tr>
+</table>
+
+<h3 id="p3-f">F. Assumptions</h3>
+<ul>
+<li><strong>Confirmed:</strong> must support multiple algorithms interchangeably; different clients/endpoints can have different limits.</li>
+<li><strong>Assumption:</strong> per-client-per-endpoint granularity as the default key.</li>
+<li><strong>Assumption:</strong> single-process, in-memory design first (V1–V5); distributed sharing of state is an explicit extension (V6), not baked in from the start.</li>
+<li><strong>Assumption:</strong> timestamps are passed into algorithm methods (server-generated, never trusted from the client) rather than read from a wall clock internally, for testability and to prevent client clock manipulation.</li>
+<li><strong>Assumption:</strong> idle client state is evicted after a TTL to bound memory.</li>
+</ul>
+
+<h3 id="p3-g">G. Actors</h3>
+<table>
+<tr><th>Actor</th><th>Responsibility</th></tr>
+<tr><td>Client</td><td>Sends requests; is the subject being rate-limited</td></tr>
+<tr><td>API Gateway / Service</td><td>Calls the rate limiter before processing each request; acts on allow/deny</td></tr>
+<tr><td>Admin/Operator</td><td>Configures per-client/per-endpoint limits (outside the hot path)</td></tr>
+</table>
+
+<h3 id="p3-h">H. Core Domain Entities</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Key Attributes</th><th>Key Methods</th><th>Does NOT Handle</th></tr>
+<tr><td><code>RateLimiter</code> (facade)</td><td>Public entry point; resolves the right algorithm + config for a key and delegates</td><td>—</td><td><code>check(clientId, endpoint, now)</code></td><td>Algorithm math itself</td></tr>
+<tr><td><code>RateLimitAlgorithm</code> (interface)</td><td>Decides allow/deny for one client key, given a timestamp</td><td>—</td><td><code>allowRequest(key, now)</code></td><td>Knowing about other clients/endpoints</td></tr>
+<tr><td><code>TokenBucketLimiter</code> / <code>SlidingWindowLimiter</code> / <code>FixedWindowLimiter</code></td><td>Concrete algorithm implementations</td><td>capacity, refill rate / window size</td><td><code>allowRequest()</code></td><td>Configuration resolution, HTTP concerns</td></tr>
+<tr><td><code>RateLimiterFactory</code></td><td>Produces the correctly configured algorithm instance per endpoint</td><td>—</td><td><code>getLimiter(endpoint)</code></td><td>Making the allow/deny decision itself</td></tr>
+<tr><td><code>RateLimitConfig</code></td><td>Declarative limit definition (capacity, window, algorithm type) per endpoint/tier</td><td>—</td><td>—</td><td>Any behavior — pure data</td></tr>
+<tr><td><code>RateLimitResult</code></td><td>Structured decision returned to the caller</td><td>allowed, remaining, retryAfterMs</td><td>—</td><td>Any behavior — pure data</td></tr>
+</table>
+
+<h3 id="p3-i">I. Class Relationships</h3>
+<ul>
+<li><strong>Dependency (interface):</strong> <code>RateLimiter → RateLimitAlgorithm</code>. The facade never knows which concrete algorithm it's talking to.</li>
+<li><strong>Creation:</strong> <code>RateLimiterFactory</code> builds algorithm instances from <code>RateLimitConfig</code> — this is where "which algorithm for which endpoint" is decided, kept out of both the facade and the algorithms themselves.</li>
+<li><strong>Composition:</strong> each algorithm instance owns its own per-client state map — state and algorithm travel together, since token bucket state (tokens, lastRefill) is structurally different from sliding-window state (a timestamp deque).</li>
+<li><strong>Why not one shared generic "Bucket" object across all algorithms?</strong> Because the state shape genuinely differs per algorithm (a single counter vs. a queue of timestamps vs. two rolling counters) — forcing a common state class would either bloat it with unused fields or leak abstraction, similar to the LRU/LFU issue in Problem 2.</li>
+</ul>
+
+<h3 id="p3-j">J. Class Diagram</h3>
+<div class="diagram-card">
+<svg id="diagram-p3" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="classDiagram" style="max-width: 883.426px; background-color: white;" viewBox="4 4 883.42578125 513" role="graphics-document document" aria-roledescription="classDiagram"><style>#diagram-p3{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;fill:#1a1f26;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#diagram-p3 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#diagram-p3 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#diagram-p3 .error-icon{fill:#fff7e6;}#diagram-p3 .error-text{fill:#000819;stroke:#000819;}#diagram-p3 .edge-thickness-normal{stroke-width:1px;}#diagram-p3 .edge-thickness-thick{stroke-width:3.5px;}#diagram-p3 .edge-pattern-solid{stroke-dasharray:0;}#diagram-p3 .edge-thickness-invisible{stroke-width:0;fill:none;}#diagram-p3 .edge-pattern-dashed{stroke-dasharray:3;}#diagram-p3 .edge-pattern-dotted{stroke-dasharray:2;}#diagram-p3 .marker{fill:#334155;stroke:#334155;}#diagram-p3 .marker.cross{stroke:#334155;}#diagram-p3 svg{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;}#diagram-p3 p{margin:0;}#diagram-p3 g.classGroup text{fill:#2563eb;stroke:none;font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:10px;}#diagram-p3 g.classGroup text .title{font-weight:bolder;}#diagram-p3 .cluster-label text{fill:#000819;}#diagram-p3 .cluster-label span{color:#000819;}#diagram-p3 .cluster-label span p{background-color:transparent;}#diagram-p3 .cluster rect{fill:#f4f6f8;stroke:#d8dee5;stroke-width:1px;}#diagram-p3 .cluster text{fill:#000819;}#diagram-p3 .cluster span{color:#000819;}#diagram-p3 .nodeLabel,#diagram-p3 .edgeLabel{color:#0f2540;}#diagram-p3 .noteLabel .nodeLabel,#diagram-p3 .noteLabel .edgeLabel{color:#333;}#diagram-p3 .edgeLabel .label rect{fill:#eef6ff;}#diagram-p3 .label text{fill:#0f2540;}#diagram-p3 .labelBkg{background:#eef6ff;}#diagram-p3 .edgeLabel .label span{background:#eef6ff;}#diagram-p3 .classTitle{font-weight:bolder;}#diagram-p3 .node rect,#diagram-p3 .node circle,#diagram-p3 .node ellipse,#diagram-p3 .node polygon,#diagram-p3 .node path{fill:#eef6ff;stroke:#2563eb;stroke-width:1;}#diagram-p3 .divider{stroke:#2563eb;stroke-width:1;}#diagram-p3 g.clickable{cursor:pointer;}#diagram-p3 g.classGroup rect{fill:#eef6ff;stroke:#2563eb;}#diagram-p3 g.classGroup line{stroke:#2563eb;stroke-width:1;}#diagram-p3 .classLabel .box{stroke:none;stroke-width:0;fill:#eef6ff;opacity:0.5;}#diagram-p3 .classLabel .label{fill:#2563eb;font-size:10px;}#diagram-p3 .relation{stroke:#334155;stroke-width:1;fill:none;}#diagram-p3 .dashed-line{stroke-dasharray:3;}#diagram-p3 .dotted-line{stroke-dasharray:1 2;}#diagram-p3 [id$="-compositionStart"],#diagram-p3 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p3 [id$="-compositionEnd"],#diagram-p3 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p3 [id$="-dependencyStart"],#diagram-p3 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p3 [id$="-dependencyEnd"],#diagram-p3 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p3 [id$="-extensionStart"],#diagram-p3 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p3 [id$="-extensionEnd"],#diagram-p3 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p3 [id$="-aggregationStart"],#diagram-p3 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p3 [id$="-aggregationEnd"],#diagram-p3 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p3 [id$="-lollipopStart"],#diagram-p3 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p3 [id$="-lollipopEnd"],#diagram-p3 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p3 .edgeTerminals{font-size:11px;line-height:initial;}#diagram-p3 .classTitleText{text-anchor:middle;font-size:18px;fill:#1a1f26;}#diagram-p3 .edgeLabel[data-look="neo"]{background-color:#ffffff;text-align:center;}#diagram-p3 .edgeLabel[data-look="neo"] p{background-color:#ffffff;}#diagram-p3 .edgeLabel[data-look="neo"] rect{opacity:0.5;background-color:#ffffff;fill:#ffffff;}#diagram-p3 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#diagram-p3 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#diagram-p3 .node .neo-node{stroke:#2563eb;}#diagram-p3 [data-look="neo"].node rect,#diagram-p3 [data-look="neo"].cluster rect,#diagram-p3 [data-look="neo"].node polygon{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p3 [data-look="neo"].swimlane.cluster rect{filter:none;}#diagram-p3 [data-look="neo"].node path{stroke:#2563eb;stroke-width:1px;}#diagram-p3 [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p3 [data-look="neo"].node .neo-line path{stroke:#2563eb;filter:none;}#diagram-p3 [data-look="neo"].node circle{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p3 [data-look="neo"].node circle .state-start{fill:#000000;}#diagram-p3 [data-look="neo"].icon-shape .icon{fill:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p3 [data-look="neo"].icon-shape .icon-neo path{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p3 .classGroup text{font-size:14px!important;}#diagram-p3 .classGroup .title{font-size:16px!important;font-weight:700;}#diagram-p3 .classLabel .label{font-size:14px!important;}#diagram-p3 .edgeLabel,#diagram-p3 .edgeLabel .label{font-size:13px!important;}#diagram-p3 .relationshipLabelBox{font-size:13px!important;}#diagram-p3 .nodeLabel,#diagram-p3 .cluster-label{font-size:14px!important;}#diagram-p3 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><defs><marker id="diagram-p3_classDiagram-aggregationStart" class="marker aggregation classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p3_classDiagram-aggregationEnd" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p3_classDiagram-aggregationStart-margin" class="marker aggregation classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p3_classDiagram-aggregationEnd-margin" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p3_classDiagram-extensionStart" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,7 L18,13 V 1 Z"/></marker></defs><defs><marker id="diagram-p3_classDiagram-extensionEnd" class="marker extension classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,1 V 13 L18,7 Z"/></marker></defs><marker id="diagram-p3_classDiagram-extensionStart-margin" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,7 18,13 18,1" style="stroke-width: 2; stroke-dasharray: 0;"/></marker><defs><marker id="diagram-p3_classDiagram-extensionEnd-margin" class="marker extension classDiagram" refX="9" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,1 10,13 18,7" style="stroke-width: 2; stroke-dasharray: 0;"/></marker></defs><defs><marker id="diagram-p3_classDiagram-compositionStart" class="marker composition classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p3_classDiagram-compositionEnd" class="marker composition classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p3_classDiagram-compositionStart-margin" class="marker composition classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path viewBox="0 0 15 15" d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p3_classDiagram-compositionEnd-margin" class="marker composition classDiagram" refX="3.5" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p3_classDiagram-dependencyStart" class="marker dependency classDiagram" refX="6" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p3_classDiagram-dependencyEnd" class="marker dependency classDiagram" refX="13" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p3_classDiagram-dependencyStart-margin" class="marker dependency classDiagram" refX="4" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p3_classDiagram-dependencyEnd-margin" class="marker dependency classDiagram" refX="16" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p3_classDiagram-lollipopStart" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p3_classDiagram-lollipopEnd" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p3_classDiagram-lollipopStart-margin" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><defs><marker id="diagram-p3_classDiagram-lollipopEnd-margin" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><g class="root"><g class="clusters"/><g class="edges edgePaths"><path d="M441.8756510416667,132L441.8756510416667,144.92893218813452Q441.8756510416667,152 434.8045832298012,152L302,152Q295,152 295,159L295,166" id="diagram-p3-id_RateLimiter_RateLimitAlgorithm_1" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 175.5741424560547 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_RateLimiter_RateLimitAlgorithm_1" data-points="W3sieCI6NDQxLjg3NTY1MTA0MTY2NjcsInkiOjEzMn0seyJ4Ijo0NDEuODc1NjUxMDQxNjY2NywieSI6MTUyfSx7IngiOjI5NSwieSI6MTUyfSx7IngiOjI5NSwieSI6MTcyfV0=" data-look="neo" marker-end="url(#diagram-p3_classDiagram-dependencyEnd-margin)"/><path d="M557.3391927083334,132L557.3391927083334,144.92893218813452Q557.3391927083334,152 564.4102605201988,152L697.1437759381345,152Q704.21484375,152 704.21484375,159.07106781186548L704.21484375,176.5" id="diagram-p3-id_RateLimiter_RateLimiterFactory_2" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 186.04736328125 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_RateLimiter_RateLimiterFactory_2" data-points="W3sieCI6NTU3LjMzOTE5MjcwODMzMzQsInkiOjEzMn0seyJ4Ijo1NTcuMzM5MTkyNzA4MzMzNCwieSI6MTUyfSx7IngiOjcwNC4yMTQ4NDM3NSwieSI6MTUyfSx7IngiOjcwNC4yMTQ4NDM3NSwieSI6MTgyLjV9XQ==" data-look="neo" marker-end="url(#diagram-p3_classDiagram-dependencyEnd-margin)"/><path d="M704.21484375,302.5L704.21484375,347" id="diagram-p3-id_RateLimiterFactory_RateLimitConfig_3" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 44.5 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_RateLimiterFactory_RateLimitConfig_3" data-points="W3sieCI6NzA0LjIxNDg0Mzc1LCJ5IjozMDIuNX0seyJ4Ijo3MDQuMjE0ODQzNzUsInkiOjM1M31d" data-look="neo" marker-end="url(#diagram-p3_classDiagram-dependencyEnd-margin)"/><path d="M211.201171875,330.25L211.201171875,331.625Q211.201171875,333 209.826171875,333L97.85231781186548,333Q90.78125,333 90.78125,340.0710678118655L90.78125,353" id="diagram-p3-id_RateLimitAlgorithm_TokenBucketLimiter_4" class="edge-thickness-normal edge-pattern-dashed relation" style="stroke-dasharray: 0 0 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_RateLimitAlgorithm_TokenBucketLimiter_4" data-points="W3sieCI6MjExLjIwMTE3MTg3NSwieSI6MzEzfSx7IngiOjIxMS4yMDExNzE4NzUsInkiOjMzM30seyJ4Ijo5MC43ODEyNSwieSI6MzMzfSx7IngiOjkwLjc4MTI1LCJ5IjozNTN9XQ==" data-look="neo" marker-start="url(#diagram-p3_classDiagram-extensionStart-margin)"/><path d="M295,330.25L295,353" id="diagram-p3-id_RateLimitAlgorithm_SlidingWindowLimiter_5" class="edge-thickness-normal edge-pattern-dashed relation" style="stroke-dasharray: 0 0 2 2 2 2 2 2 2 2 2 2 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_RateLimitAlgorithm_SlidingWindowLimiter_5" data-points="W3sieCI6Mjk1LCJ5IjozMTN9LHsieCI6Mjk1LCJ5IjozNTN9XQ==" data-look="neo" marker-start="url(#diagram-p3_classDiagram-extensionStart-margin)"/><path d="M378.798828125,330.25L378.798828125,331.625Q378.798828125,333 380.173828125,333L493.7570571881345,333Q500.828125,333 500.828125,340.0710678118655L500.828125,353" id="diagram-p3-id_RateLimitAlgorithm_FixedWindowLimiter_6" class="edge-thickness-normal edge-pattern-dashed relation" style="stroke-dasharray: 0 0 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_RateLimitAlgorithm_FixedWindowLimiter_6" data-points="W3sieCI6Mzc4Ljc5ODgyODEyNSwieSI6MzEzfSx7IngiOjM3OC43OTg4MjgxMjUsInkiOjMzM30seyJ4Ijo1MDAuODI4MTI1LCJ5IjozMzN9LHsieCI6NTAwLjgyODEyNSwieSI6MzUzfV0=" data-look="neo" marker-start="url(#diagram-p3_classDiagram-extensionStart-margin)"/></g><g class="edgeLabels"/><g class="nodes"><g class="node default" id="diagram-p3-classId-RateLimiter-0" data-look="neo" transform="translate(499.607421875, 72)"><g class="basic label-container outer-path"><path d="M-183.1953125 -60 L183.1953125 -60 L183.1953125 60 L-183.1953125 60" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-183.1953125 -60 C-61.83672533408895 -60, 59.52186183182209 -60, 183.1953125 -60 M-183.1953125 -60 C-90.3124215430008 -60, 2.57046941399841 -60, 183.1953125 -60 M183.1953125 -60 C183.1953125 -20.985381044251405, 183.1953125 18.02923791149719, 183.1953125 60 M183.1953125 -60 C183.1953125 -27.209856185283826, 183.1953125 5.580287629432348, 183.1953125 60 M183.1953125 60 C45.23001986072737 60, -92.73527277854527 60, -183.1953125 60 M183.1953125 60 C67.62599938488059 60, -47.94331373023883 60, -183.1953125 60 M-183.1953125 60 C-183.1953125 22.171562199287138, -183.1953125 -15.656875601425725, -183.1953125 -60 M-183.1953125 60 C-183.1953125 21.373592885065577, -183.1953125 -17.252814229868846, -183.1953125 -60" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -36)"/><g class="label-group text" transform="translate(-38.515625, -36)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="77.03125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 127px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>RateLimiter</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-171.1953125, 9)"/><g class="methods-group text" transform="translate(-171.1953125, 39)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="303.875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 378px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+check(clientId, endpoint, now) : RateLimitResult</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-183.1953125 -15 C-41.32030152244408 -14.999612776634288, 100.55470945511183 -14.999225553268579, 183.1953125 -14.999 M-183.1953125 -15 C-97.10247339848203 -14.999765024448697, -11.009634296964066 -14.999530048897395, 183.1953125 -14.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-183.1953125 9 C-59.329127736791904 9.000338071381503, 64.53705702641619 9.000676142763004, 183.1953125 9.001 M-183.1953125 9 C-42.97886154944874 9.000382696612258, 97.23758940110253 9.000765393224516, 183.1953125 9.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p3-classId-RateLimitAlgorithm-1" data-look="neo" transform="translate(295, 242.5)"><g class="basic label-container outer-path"><path d="M-177.59765625 -70.5 L177.59765625 -70.5 L177.59765625 70.5 L-177.59765625 70.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-177.59765625 -70.5 C-85.90580939797 -70.5, 5.7860374540599935 -70.5, 177.59765625 -70.5 M-177.59765625 -70.5 C-63.86074651685591 -70.5, 49.87616321628818 -70.5, 177.59765625 -70.5 M177.59765625 -70.5 C177.59765625 -24.73017841800187, 177.59765625 21.03964316399626, 177.59765625 70.5 M177.59765625 -70.5 C177.59765625 -24.464640632209893, 177.59765625 21.570718735580215, 177.59765625 70.5 M177.59765625 70.5 C105.51923777904031 70.5, 33.44081930808062 70.5, -177.59765625 70.5 M177.59765625 70.5 C86.08369082354213 70.5, -5.430274602915745 70.5, -177.59765625 70.5 M-177.59765625 70.5 C-177.59765625 15.80468012112867, -177.59765625 -38.89063975774266, -177.59765625 -70.5 M-177.59765625 70.5 C-177.59765625 40.71310418381134, -177.59765625 10.926208367622671, -177.59765625 -70.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-34.640625, -46.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="69.28125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«interface»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-64.9453125, -25.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="129.890625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 182px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>RateLimitAlgorithm</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-165.59765625, 19.5)"/><g class="methods-group text" transform="translate(-165.59765625, 49.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="266.25" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 337px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+allowRequest(key, now) : RateLimitResult</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-177.59765625 -4.5 C-97.95222614343606 -4.49977577004171, -18.30679603687213 -4.49955154008342, 177.59765625 -4.499 M-177.59765625 -4.5 C-88.66521844464953 -4.499749623841656, 0.267219360700949 -4.499499247683313, 177.59765625 -4.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-177.59765625 19.5 C-81.95449658471001 19.5002692692057, 13.688663080579971 19.5005385384114, 177.59765625 19.501 M-177.59765625 19.5 C-66.47626383752795 19.50031284588648, 44.645128574944096 19.50062569177296, 177.59765625 19.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p3-classId-RateLimiterFactory-2" data-look="neo" transform="translate(704.21484375, 242.5)"><g class="basic label-container outer-path"><path d="M-175.2109375 -60 L175.2109375 -60 L175.2109375 60 L-175.2109375 60" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-175.2109375 -60 C-86.58352763570501 -60, 2.043882228589979 -60, 175.2109375 -60 M-175.2109375 -60 C-82.1127059317167 -60, 10.985525636566592 -60, 175.2109375 -60 M175.2109375 -60 C175.2109375 -31.605768736757597, 175.2109375 -3.211537473515193, 175.2109375 60 M175.2109375 -60 C175.2109375 -31.467644187340994, 175.2109375 -2.9352883746819884, 175.2109375 60 M175.2109375 60 C42.74034263426151 60, -89.73025223147698 60, -175.2109375 60 M175.2109375 60 C96.85982779662719 60, 18.508718093254373 60, -175.2109375 60 M-175.2109375 60 C-175.2109375 12.91081713152181, -175.2109375 -34.17836573695638, -175.2109375 -60 M-175.2109375 60 C-175.2109375 24.27886522472386, -175.2109375 -11.442269550552282, -175.2109375 -60" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -36)"/><g class="label-group text" transform="translate(-63.796875, -36)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="127.59375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 176px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>RateLimiterFactory</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-163.2109375, 9)"/><g class="methods-group text" transform="translate(-163.2109375, 39)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="262.625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 342px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+getLimiter(endpoint) : RateLimitAlgorithm</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-175.2109375 -15 C-76.1704060359078 -14.99971736772579, 22.870125428184394 -14.999434735451581, 175.2109375 -14.999 M-175.2109375 -15 C-52.78205142906428 -14.999650624305144, 69.64683464187144 -14.999301248610289, 175.2109375 -14.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-175.2109375 9 C-44.082283914645586 9.000374202248604, 87.04636967070883 9.000748404497209, 175.2109375 9.001 M-175.2109375 9 C-87.74036080924034 9.00024961505811, -0.2697841184806862 9.000499230116217, 175.2109375 9.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p3-classId-RateLimitConfig-3" data-look="neo" transform="translate(704.21484375, 431)"><g class="basic label-container outer-path"><path d="M-82.99609375 -78 L82.99609375 -78 L82.99609375 78 L-82.99609375 78" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-82.99609375 -78 C-37.79388135049577 -78, 7.408331049008467 -78, 82.99609375 -78 M-82.99609375 -78 C-19.84843888800362 -78, 43.29921597399276 -78, 82.99609375 -78 M82.99609375 -78 C82.99609375 -34.72568417199692, 82.99609375 8.548631656006165, 82.99609375 78 M82.99609375 -78 C82.99609375 -40.152967979492686, 82.99609375 -2.3059359589853727, 82.99609375 78 M82.99609375 78 C23.087303762973924 78, -36.82148622405215 78, -82.99609375 78 M82.99609375 78 C28.502109062998933 78, -25.991875624002134 78, -82.99609375 78 M-82.99609375 78 C-82.99609375 27.461845124650743, -82.99609375 -23.076309750698513, -82.99609375 -78 M-82.99609375 78 C-82.99609375 34.29495278744007, -82.99609375 -9.410094425119865, -82.99609375 -78" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -54)"/><g class="label-group text" transform="translate(-54.0546875, -54)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="108.109375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 159px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>RateLimitConfig</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-70.99609375, -9)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="51.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 103px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>capacity</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="46.703125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 102px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>window</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="87.9375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 144px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>algorithmType</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-70.99609375, 78)"/><g class="divider neo-line" style=""><path d="M-82.99609375 -33 C-49.42949122251187 -32.999797782034, -15.862888695023742 -32.99959556406801, 82.99609375 -32.999 M-82.99609375 -33 C-22.633540922857115 -32.99963635304928, 37.72901190428577 -32.999272706098566, 82.99609375 -32.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-82.99609375 54 C-28.367131260727056 54.00032910562426, 26.261831228545887 54.00065821124851, 82.99609375 54.001 M-82.99609375 54 C-32.824639870405676 54.00030225189893, 17.34681400918865 54.00060450379786, 82.99609375 54.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p3-classId-TokenBucketLimiter-4" data-look="neo" transform="translate(90.78125, 393.5)"><g class="basic label-container outer-path"><path d="M-78.78125 -40.5 L78.78125 -40.5 L78.78125 40.5 L-78.78125 40.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-78.78125 -40.5 C-43.82327349733011 -40.5, -8.865296994660227 -40.5, 78.78125 -40.5 M-78.78125 -40.5 C-44.188115690903466 -40.5, -9.594981381806932 -40.5, 78.78125 -40.5 M78.78125 -40.5 C78.78125 -20.019827585268768, 78.78125 0.46034482946246413, 78.78125 40.5 M78.78125 -40.5 C78.78125 -18.910658105032283, 78.78125 2.678683789935434, 78.78125 40.5 M78.78125 40.5 C37.87528794490121 40.5, -3.0306741101975803 40.5, -78.78125 40.5 M78.78125 40.5 C19.102397703367302 40.5, -40.576454593265396 40.5, -78.78125 40.5 M-78.78125 40.5 C-78.78125 13.87122714113681, -78.78125 -12.75754571772638, -78.78125 -40.5 M-78.78125 40.5 C-78.78125 21.13185507457931, -78.78125 1.7637101491586193, -78.78125 -40.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -16.5)"/><g class="label-group text" transform="translate(-66.78125, -16.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="133.5625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 183px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>TokenBucketLimiter</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-66.78125, 28.5)"/><g class="methods-group text" transform="translate(-66.78125, 58.5)"/><g class="divider neo-line" style=""><path d="M-78.78125 4.5 C-33.365845082117254 4.500288237397337, 12.049559835765493 4.5005764747946735, 78.78125 4.501 M-78.78125 4.5 C-36.19663009462217 4.500270271288571, 6.387989810755656 4.500540542577141, 78.78125 4.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-78.78125 22.5 C-17.478771252459126 22.500389067695345, 43.82370749508175 22.50077813539069, 78.78125 22.501 M-78.78125 22.5 C-44.815437321086996 22.500215570409704, -10.849624642173993 22.50043114081941, 78.78125 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p3-classId-SlidingWindowLimiter-5" data-look="neo" transform="translate(295, 393.5)"><g class="basic label-container outer-path"><path d="M-85.4375 -40.5 L85.4375 -40.5 L85.4375 40.5 L-85.4375 40.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-85.4375 -40.5 C-48.58355563896879 -40.5, -11.729611277937579 -40.5, 85.4375 -40.5 M-85.4375 -40.5 C-41.460010483173775 -40.5, 2.5174790336524495 -40.5, 85.4375 -40.5 M85.4375 -40.5 C85.4375 -12.315986443767361, 85.4375 15.868027112465278, 85.4375 40.5 M85.4375 -40.5 C85.4375 -21.96619422147261, 85.4375 -3.432388442945218, 85.4375 40.5 M85.4375 40.5 C46.18785639132921 40.5, 6.938212782658425 40.5, -85.4375 40.5 M85.4375 40.5 C18.637546248787302 40.5, -48.162407502425395 40.5, -85.4375 40.5 M-85.4375 40.5 C-85.4375 19.33800254661914, -85.4375 -1.823994906761719, -85.4375 -40.5 M-85.4375 40.5 C-85.4375 21.41098988803263, -85.4375 2.3219797760652625, -85.4375 -40.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -16.5)"/><g class="label-group text" transform="translate(-73.4375, -16.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="146.875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 199px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>SlidingWindowLimiter</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-73.4375, 28.5)"/><g class="methods-group text" transform="translate(-73.4375, 58.5)"/><g class="divider neo-line" style=""><path d="M-85.4375 4.5 C-28.833962174784524 4.500331256988004, 27.76957565043095 4.500662513976009, 85.4375 4.501 M-85.4375 4.5 C-29.07102770424398 4.500329869625725, 27.295444591512037 4.50065973925145, 85.4375 4.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-85.4375 22.5 C-18.609302067797103 22.500391094062515, 48.218895864405795 22.50078218812503, 85.4375 22.501 M-85.4375 22.5 C-29.058693635170286 22.50032994180755, 27.320112729659428 22.500659883615096, 85.4375 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p3-classId-FixedWindowLimiter-6" data-look="neo" transform="translate(500.828125, 393.5)"><g class="basic label-container outer-path"><path d="M-80.390625 -40.5 L80.390625 -40.5 L80.390625 40.5 L-80.390625 40.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-80.390625 -40.5 C-41.884141791777935 -40.5, -3.3776585835558706 -40.5, 80.390625 -40.5 M-80.390625 -40.5 C-24.558419030421092 -40.5, 31.273786939157816 -40.5, 80.390625 -40.5 M80.390625 -40.5 C80.390625 -15.525252521273288, 80.390625 9.449494957453425, 80.390625 40.5 M80.390625 -40.5 C80.390625 -13.61282353570985, 80.390625 13.2743529285803, 80.390625 40.5 M80.390625 40.5 C30.02363624348807 40.5, -20.34335251302386 40.5, -80.390625 40.5 M80.390625 40.5 C34.031488570145676 40.5, -12.327647859708648 40.5, -80.390625 40.5 M-80.390625 40.5 C-80.390625 8.532480954112632, -80.390625 -23.435038091774736, -80.390625 -40.5 M-80.390625 40.5 C-80.390625 18.609052134668627, -80.390625 -3.2818957306627468, -80.390625 -40.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -16.5)"/><g class="label-group text" transform="translate(-68.390625, -16.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="136.78125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 189px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>FixedWindowLimiter</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-68.390625, 28.5)"/><g class="methods-group text" transform="translate(-68.390625, 58.5)"/><g class="divider neo-line" style=""><path d="M-80.390625 4.5 C-31.9910961973144 4.500301027195663, 16.408432605371203 4.500602054391326, 80.390625 4.501 M-80.390625 4.5 C-44.75298047070924 4.500221652988326, -9.11533594141848 4.500443305976652, 80.390625 4.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-80.390625 22.5 C-26.815187145701373 22.50033321943855, 26.760250708597255 22.5006664388771, 80.390625 22.501 M-80.390625 22.5 C-44.11308308710983 22.500225632913743, -7.835541174219657 22.50045126582749, 80.390625 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g></g></g></g><defs><filter id="diagram-p3-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><defs><filter id="diagram-p3-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs></svg>
+</div>
+<details class="mermaid-src"><summary>View Mermaid source</summary>
+<pre><code>classDiagram
+  class RateLimiter {
+    +check(clientId, endpoint, now) RateLimitResult
+  }
+  class RateLimitAlgorithm {
+    &lt;&lt;interface&gt;&gt;
+    +allowRequest(key, now) RateLimitResult
+  }
+  class RateLimiterFactory {
+    +getLimiter(endpoint) RateLimitAlgorithm
+  }
+  class RateLimitConfig {
+    capacity
+    window
+    algorithmType
+  }
+  RateLimiter --&gt; RateLimitAlgorithm
+  RateLimiter --&gt; RateLimiterFactory
+  RateLimiterFactory --&gt; RateLimitConfig
+  RateLimitAlgorithm &lt;|.. TokenBucketLimiter
+  RateLimitAlgorithm &lt;|.. SlidingWindowLimiter
+  RateLimitAlgorithm &lt;|.. FixedWindowLimiter</code></pre>
+</details>
+
+<h3 id="p3-k">K. Responsibility Mapping</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Does NOT Handle</th></tr>
+<tr><td>RateLimiter</td><td>Entry point, delegates to the right algorithm</td><td>Algorithm math, config storage</td></tr>
+<tr><td>RateLimiterFactory</td><td>Resolves config → correct algorithm instance</td><td>The allow/deny decision itself</td></tr>
+<tr><td>TokenBucketLimiter (etc.)</td><td>Its own algorithm's math and state</td><td>Knowing about other algorithms or endpoints</td></tr>
+</table>
+
+<h3 id="p3-l">L. SOLID Analysis</h3>
+<table>
+<tr><th>Principle</th><th>How It's Applied</th><th>Naive Violation</th></tr>
+<tr><td>SRP</td><td>Factory resolves config; algorithms only do their own math; facade only delegates</td><td>One class reading config, doing token-bucket math, <em>and</em> sliding-window math via internal if/else</td></tr>
+<tr><td>OCP</td><td>Add a new algorithm = new class implementing <code>RateLimitAlgorithm</code>; zero edits elsewhere</td><td><code>if (algoType == "TOKEN_BUCKET") ... else if (algoType == "SLIDING_WINDOW") ...</code> inside one giant method</td></tr>
+<tr><td>LSP</td><td>Any algorithm can substitute for another behind <code>allowRequest()</code> without special-casing by caller</td><td>An algorithm that needs extra caller-side setup the interface doesn't declare</td></tr>
+<tr><td>ISP</td><td>One-method interface — no algorithm forced to implement irrelevant methods</td><td>A fat interface with <code>resetWindow()</code>, <code>getBurstCapacity()</code>, etc. that fixed-window doesn't need</td></tr>
+<tr><td>DIP</td><td><code>RateLimiter</code> depends on the <code>RateLimitAlgorithm</code> abstraction, not a concrete class</td><td><code>RateLimiter</code> directly instantiating <code>new TokenBucketLimiter()</code> inline</td></tr>
+</table>
+
+<h3 id="p3-m">M. Design Patterns</h3>
+<table>
+<tr><th>Pattern</th><th>Problem It Solves</th><th>Where It Appears</th><th>When NOT to Use</th></tr>
+<tr><td>Strategy</td><td>The algorithm is explicitly expected to vary and be swapped</td><td><code>RateLimitAlgorithm</code> + implementations</td><td>N/A — this is the textbook case; almost never wrong to use it here</td></tr>
+<tr><td>Factory</td><td>Choosing the right configured algorithm per endpoint without scattering config-reading logic</td><td><code>RateLimiterFactory</code></td><td>Skip if there's genuinely only one global algorithm/config — a factory with one product is ceremony</td></tr>
+<tr><td>Facade</td><td>Callers shouldn't need to know about factories/configs/algorithms</td><td><code>RateLimiter.check()</code></td><td>Skip only if the system is trivially small</td></tr>
+<tr><td>Decorator (optional)</td><td>Add logging/metrics around every check without touching algorithm code</td><td>A <code>MetricsRateLimiter</code> wrapping any <code>RateLimitAlgorithm</code></td><td>Skip unless observability was actually requested</td></tr>
+</table>
+<p><strong>Explicitly avoided:</strong> a Chain-of-Responsibility for "try token bucket, then sliding window, then fixed window until one matches" — there's no such fallback semantic here; a direct factory lookup by config is simpler and correct. Chain-of-Responsibility is tempting-sounding but not justified by the requirements.</p>
+
+<h3 id="p3-n">N. What Is Likely to Change?</h3>
+<table>
+<tr><th>Behavior</th><th>Current Design</th><th>Anticipated Change</th><th>Protecting Abstraction</th></tr>
+<tr><td>Algorithm</td><td>Token bucket</td><td>Sliding window, leaky bucket</td><td><code>RateLimitAlgorithm</code> interface</td></tr>
+<tr><td>Limit granularity</td><td>Per-client-per-endpoint</td><td>Per-IP, per-API-key, global</td><td>Composite key construction isolated in one place</td></tr>
+<tr><td>State storage</td><td>In-memory map</td><td>Shared store (Redis) for multi-server correctness</td><td>State access hidden behind the algorithm class, not exposed to callers</td></tr>
+<tr><td>Limit values</td><td>Static config</td><td>Runtime-adjustable, per-tier (free/premium)</td><td><code>RateLimitConfig</code> resolved fresh per request, not cached at construction</td></tr>
+</table>
+
+<h3 id="p3-o">O. Design Evolution</h3>
+<ul>
+<li><strong>V1:</strong> one hardcoded fixed-window algorithm, one global limit.</li>
+<li><strong>V2:</strong> per-client tracking — a map keyed by client ID.</li>
+<li><strong>V3:</strong> extract <code>RateLimitAlgorithm</code>; add token bucket and sliding window as swappable strategies.</li>
+<li><strong>V4:</strong> per-endpoint/per-tier configuration via <code>RateLimiterFactory</code> + <code>RateLimitConfig</code>.</li>
+<li><strong>V5:</strong> thread-safety — per-client lock (or atomic state) so the hot path doesn't serialize unrelated clients.</li>
+<li><strong>V6:</strong> distributed — move per-client state into a shared store (Redis), using an atomic script (e.g. Lua) for the check-and-decrement so multiple app servers agree on one counter; define a fail-open/fail-closed policy for when that store is unreachable.</li>
+</ul>
+<p><strong>What stays stable:</strong> <code>RateLimiter.check()</code>'s signature. V6's biggest change is entirely inside the algorithm implementations' storage layer.</p>
+
+<h3 id="p3-p">P. API / Interface Design</h3>
+<pre><code>interface RateLimitAlgorithm {
+  RateLimitResult allowRequest(String clientKey, long nowMs);
+}
+
+class RateLimiter {
+  RateLimitResult check(String clientId, String endpoint, long nowMs);
+}
+
+class RateLimitResult {
+  boolean allowed;
+  long    remaining;
+  long    retryAfterMs;   // 0 if allowed
+}</code></pre>
+<p><strong>Ownership/validation notes:</strong> <code>nowMs</code> is always supplied by the calling layer (server-side clock), never trusted from client input, and never read internally via a static call — this is what makes every algorithm implementation independently unit-testable with fabricated timestamps.</p>
+
+<h3 id="p3-q">Q. Pseudocode — Token Bucket</h3>
+<pre><code>allowRequest(key, now):
+  bucket = store.getOrCreate(key, capacity)
+  lock(bucket):
+    elapsed = now - bucket.lastRefillTime
+    bucket.tokens = min(capacity, bucket.tokens + elapsed * refillRatePerMs)
+    bucket.lastRefillTime = now
+    if bucket.tokens >= 1:
+      bucket.tokens -= 1
+      return ALLOW(remaining = floor(bucket.tokens))
+    else:
+      deficit = 1 - bucket.tokens
+      return DENY(retryAfterMs = deficit / refillRatePerMs)</code></pre>
+
+<h3 id="p3-r">R. End-to-End Use Case</h3>
+<pre>
+Client request
+  │
+  ▼
+API Gateway → RateLimiter.check(clientId, endpoint, now)
+  │
+  ▼
+RateLimiterFactory.getLimiter(endpoint)  → returns configured TokenBucketLimiter
+  │
+  ▼
+TokenBucketLimiter.allowRequest(clientKey, now)
+  │  refill → check → decrement (atomic under per-key lock)
+  ▼
+RateLimitResult{allowed, remaining, retryAfterMs}
+  │
+  ▼
+Gateway forwards request (200) or rejects (429 + Retry-After header)
+</pre>
+
+<h3 id="p3-s">S. Data Structures</h3>
+<table>
+<tr><th>Structure</th><th>Used For</th><th>Why</th><th>Alternative &amp; Trade-off</th></tr>
+<tr><td><code>ConcurrentHashMap&lt;ClientKey, Bucket&gt;</code></td><td>Per-client state lookup</td><td>O(1) access, safe concurrent inserts of new client keys</td><td>A single global lock around a plain map — simpler, but serializes all clients</td></tr>
+<tr><td>Deque/queue of timestamps (sliding window log)</td><td>Exact sliding-window counting</td><td>Precise — no boundary burst issue</td><td>Fixed window counters — O(1) memory but allows a 2x burst at window boundaries</td></tr>
+<tr><td>Two rolling counters (sliding window <em>counter</em>, approximate)</td><td>Memory-efficient approximation of sliding window</td><td>O(1) memory per client instead of O(requests in window)</td><td>Less precise than the full log approach — accepted trade-off at scale</td></tr>
+</table>
+
+<h3 id="p3-t">T. Complexity Analysis</h3>
+<table>
+<tr><th>Algorithm</th><th>Time per Request</th><th>Space per Client</th><th>Precision</th></tr>
+<tr><td>Token Bucket</td><td>O(1)</td><td>O(1)</td><td>Allows controlled bursts</td></tr>
+<tr><td>Fixed Window Counter</td><td>O(1)</td><td>O(1)</td><td>Boundary issue — up to 2x burst across a window edge</td></tr>
+<tr><td>Sliding Window Log</td><td>O(w) to prune (w = requests in window)</td><td>O(w)</td><td>Exact</td></tr>
+<tr><td>Sliding Window Counter (approx.)</td><td>O(1)</td><td>O(1)</td><td>Close approximation, small error at boundaries</td></tr>
+</table>
+
+<h3 id="p3-u">U. Testing Strategy</h3>
+<ul>
+<li><strong>Happy path:</strong> requests under the limit are all allowed.</li>
+<li><strong>Edge cases:</strong> exactly at the limit; burst then wait exactly the refill interval (deterministic via injected clock); window-boundary burst for fixed-window (intentionally demonstrate the known weakness).</li>
+<li><strong>Invalid input:</strong> unknown client falls back to the configured default policy.</li>
+<li><strong>Concurrency tests:</strong> N threads racing for the last token — exactly <code>capacity</code> requests succeed, never more.</li>
+<li><strong>Failure scenarios:</strong> shared store (if distributed) times out — verify the configured fail-open/fail-closed behavior triggers correctly.</li>
+</ul>
+
+<h3 id="p3-v">V. Interviewer Follow-Ups</h3>
+<table>
+<tr><th>Follow-Up</th><th>Testing</th><th>Design Change</th><th>Classes Changed</th><th>Pattern/Trade-off</th></tr>
+<tr><td>"Run this across 10 servers behind a load balancer."</td><td>LLD → distributed boundary</td><td>Move per-client state to a shared store (Redis); use an atomic script for check-and-decrement</td><td>Storage layer inside each algorithm impl</td><td>Fail-open vs. fail-closed when the store is unreachable</td></tr>
+<tr><td>"Different limits for free vs. premium users."</td><td>Config-driven variability, not code changes</td><td><code>RateLimitConfig</code> keyed by tier; Factory selects per-request</td><td><code>RateLimiterFactory</code>, <code>RateLimitConfig</code></td><td>Zero change to algorithm classes — validates the OCP investment</td></tr>
+<tr><td>"Two requests for the last token arrive simultaneously."</td><td>Atomicity of check-then-decrement</td><td>Guard the refill+check+decrement sequence with a per-key lock (or CAS loop)</td><td>Concrete algorithm class</td><td>Per-key lock beats a single global lock for throughput</td></tr>
+<tr><td>"Limits must be changeable without a restart."</td><td>Hot-reload awareness</td><td>Config lookup happens per-request from a live config store, not cached at startup</td><td><code>RateLimiterFactory</code></td><td>Adds a small per-request config-lookup cost — usually worth it</td></tr>
+<tr><td>"Millions of distinct clients — memory is exploding."</td><td>Bounded-resource thinking</td><td>TTL-evict idle client buckets (same idea as LRU eviction in Problem 2)</td><td>Per-algorithm state store</td><td>Trades a little memory precision for a bounded footprint</td></tr>
+<tr><td>"What if a client sends its own timestamp to try to reset its limit?"</td><td>Security/trust boundary awareness</td><td>Never use client-supplied time for algorithm math — timestamp must be server-generated</td><td>API contract (already designed this way — validates the earlier decision)</td><td>Trust boundary discipline</td></tr>
+<tr><td>"The shared Redis cluster goes down."</td><td>Failure-mode reasoning</td><td>Explicit, documented fail-open (risk overload) or fail-closed (risk false rejections) policy — not left undefined</td><td>Facade-level fallback logic</td><td>Availability vs. protection trade-off — there's no universally "correct" choice, only an explicit one</td></tr>
+<tr><td>"Add a global limit on top of per-endpoint limits."</td><td>Composability of rules</td><td>Check a global limiter first, then the per-endpoint one, short-circuiting on the first denial</td><td><code>RateLimiter.check()</code> orchestration</td><td>Ordering matters — decide and document which check runs first</td></tr>
+<tr><td>"Return exactly how long until the client can retry."</td><td>API completeness</td><td><code>RateLimitResult.retryAfterMs</code>, computed differently per algorithm</td><td>Already part of the base design — validates early API choice</td><td>—</td></tr>
+</table>
+
+<h3 id="p3-w">W. Concurrency</h3>
+<p><strong>Shared mutable state:</strong> each client's bucket/window counters. The canonical race: two threads both read "tokens = 1," both decide to allow, both decrement — exceeding the limit by one.</p>
+<ul>
+<li><strong>Fine-grained locking:</strong> lock per client key (not one global lock) so unrelated clients never contend — critical for throughput at scale.</li>
+<li><strong>Atomic alternative:</strong> if the state is simple enough (e.g. a single counter in fixed-window), an atomic compare-and-swap loop can avoid locking entirely; token bucket's compound refill+decrement is harder to express as a single atomic op, so a lock is the more honest answer there.</li>
+<li><strong>Distributed atomicity:</strong> once state lives in Redis, "check-then-decrement" must be one atomic operation from Redis's perspective — a Lua script (executed atomically server-side) is the standard tool, rather than a separate GET then SET from the application, which would reintroduce the same race across the network.</li>
+<li><strong>Idempotency:</strong> rate-limit checks are naturally idempotent-safe (they're not a mutating business action) — a retried check just consumes an extra unit of quota, which is an acceptable, well-understood cost, not a correctness bug.</li>
+</ul>
+
+<h3 id="p3-x">X. Persistence</h3>
+<p>Rate-limiter state is inherently ephemeral and derived — losing it on restart (resetting all clients to a full bucket) is an acceptable, safe default, not a data-loss incident. In the distributed design, Redis (with a TTL) effectively serves as the "shared state" layer, but it's not meant to be a durable system of record — it can be treated as a fast, shared cache.</p>
+
+<h3 id="p3-y">Y. Scaling Boundary</h3>
+<table>
+<tr><th>Layer</th><th>What Belongs Here</th></tr>
+<tr><td><strong>LLD</strong></td><td>Algorithm classes, Factory, in-process state and locking for one server</td></tr>
+<tr><td><strong>HLD</strong></td><td>Where the rate limiter sits (gateway/middleware), a shared Redis/Memcached tier, per-service vs. centralized limiting</td></tr>
+<tr><td><strong>Distributed Systems</strong></td><td>Atomic cross-node counter updates (Lua scripts), replication of the shared store, fail-open/fail-closed policy under partition, clock considerations across nodes</td></tr>
+</table>
+
+<h3 id="p3-z">Z. Failure Scenarios</h3>
+<ul>
+<li><strong>Shared store outage (distributed mode):</strong> must have an explicit fail-open/fail-closed policy — silence here is itself a bug.</li>
+<li><strong>Duplicate/retried client requests:</strong> naturally handled — each retry is just another checked request, no special idempotency machinery needed since rate-limiting isn't a mutating operation.</li>
+<li><strong>Clock skew across distributed nodes:</strong> mitigated by centralizing the time-sensitive math inside the shared store's atomic script rather than trusting each app server's local clock independently.</li>
+<li><strong>Stale/leaked per-client state:</strong> bounded via TTL eviction — otherwise an attacker could cheaply exhaust memory by rotating fake client IDs.</li>
+</ul>
+
+<h3 id="p3-aa">AA. Common Bad Designs</h3>
+<ul>
+<li><strong>One class hardcoding token-bucket math with no interface</strong> — quick to write, but adding sliding-window later means editing and re-testing already-shipped, working code — the textbook OCP violation this problem exists to teach.</li>
+<li><strong>A single global lock around the entire limiter</strong> — "looks" thread-safe, but serializes every client's requests behind every other client's, destroying throughput.</li>
+<li><strong>Trusting a client-supplied timestamp</strong> — looks convenient for testing, but is a real security hole: a client could manipulate its own rate limit.</li>
+<li><strong>Building the distributed (Redis) version on day one</strong ) when the interviewer only asked about a single service — wastes interview time proving distributed-systems knowledge nobody asked to see yet; better to nail the in-process version first and raise scaling as a natural follow-up.</li>
+</ul>
+
+<h3 id="p3-ab">AB. Design Trade-Offs</h3>
+<table>
+<tr><th>Decision</th><th>Option A</th><th>Option B</th><th>Trade-off</th></tr>
+<tr><td>Algorithm</td><td>Token Bucket</td><td>Sliding Window Log</td><td>Token bucket allows bursts and is O(1) memory; sliding window log is exact but O(requests-in-window) memory</td></tr>
+<tr><td>Locking</td><td>Global lock</td><td>Per-client lock</td><td>Global is simpler to reason about; per-client scales far better under load</td></tr>
+<tr><td>State location</td><td>In-memory (single server)</td><td>Shared store (Redis)</td><td>In-memory is fast and simple but wrong once there's more than one server; shared store is correct at scale but adds latency and a new failure mode</td></tr>
+<tr><td>Failure policy</td><td>Fail-open</td><td>Fail-closed</td><td>Fail-open protects availability at the cost of temporarily unlimited traffic; fail-closed protects the backend at the cost of rejecting legitimate traffic during an outage</td></tr>
+</table>
+
+<h3 id="p3-ac">AC. Interviewer Evaluation</h3>
+<ul>
+<li><strong>Weak candidate:</strong> hardcodes one algorithm inline with no interface; doesn't ask about per-client vs. global scope.</li>
+<li><strong>Average candidate:</strong> extracts a Strategy interface for algorithms, but doesn't discuss concurrency or mention testability (clock injection).</li>
+<li><strong>Strong candidate:</strong> Strategy + Factory, proactively raises the check-and-decrement race, chooses per-client locking, and injects time as a parameter without being asked.</li>
+<li><strong>Exceptional candidate:</strong> all of the above, and when scale comes up, can immediately articulate the fail-open/fail-closed trade-off and why Redis needs an atomic script rather than separate GET/SET calls.</li>
+</ul>
+
+<h3 id="p3-ad">AD. Interview Simulation</h3>
+<div class="dialog"><span class="who">Interviewer:</span> Design a rate limiter for an API.</div>
+<div class="dialog"><span class="who">Candidate:</span> Should limiting be per-client, per-endpoint, or both — and do you need multiple algorithms supported, like token bucket versus sliding window?</div>
+<div class="dialog"><span class="who">Interviewer:</span> Per-client-per-endpoint, and yes, assume the algorithm might change later.</div>
+<div class="dialog"><span class="who">Candidate:</span> Then I'll define a <code>RateLimitAlgorithm</code> interface with one method, <code>allowRequest(key, timestamp)</code> — the timestamp is passed in rather than read internally, so every algorithm is testable without mocking a clock.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Good. Implement token bucket.</div>
+<div class="dialog"><span class="who">Candidate:</span> Each client key maps to a bucket with a token count and last-refill time. On each request, I refill based on elapsed time, then check if a token is available before decrementing.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Two requests for the same client arrive at the same instant, both see one token left.</div>
+<div class="dialog"><span class="who">Candidate:</span> That refill-check-decrement sequence needs to be atomic per client key — I'd use a lock scoped to that client's bucket, not a global lock, so unrelated clients aren't affected.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Now this needs to run correctly across ten application servers.</div>
+<div class="dialog"><span class="who">Candidate:</span> At that point the per-client state has to move out of any single server's memory into a shared store like Redis, and the check-and-decrement needs to be one atomic operation there too — typically a Lua script executed server-side, so two app servers can't race each other over the network.</div>
+<div class="dialog"><span class="who">Interviewer:</span> What if Redis goes down?</div>
+<div class="dialog"><span class="who">Candidate:</span> That's a policy decision, not a bug to hide — fail-open keeps the service available but risks a traffic spike; fail-closed protects the backend but rejects legitimate users. I'd make that explicit and configurable rather than picking silently.</div>
+
+<h3 id="p3-ae">AE. Online Solution Comparison</h3>
+<table>
+<tr><th>Source</th><th>Approach</th><th>Strength</th><th>Weakness</th><th>Worth Learning</th></tr>
+<tr><td><a href="https://www.hellointerview.com/learn/low-level-design/problem-breakdowns/rate-limiter" target="_blank">Hello Interview</a></td><td><code>RateLimiter</code> orchestrator + per-client bucket delegation; explicit "Tell, Don't Ask" framing; timestamp passed as a parameter</td><td>Best testability framing of any source found; clean interface design</td><td>Distributed extension is only briefly gestured at</td><td>The timestamp-as-parameter discipline — adopted directly in this document</td></tr>
+<tr><td><a href="https://algo.monster/courses/lld/lld_rate_limiter" target="_blank">AlgoMonster</a> (cross-referenced)</td><td>Standard multi-algorithm walkthrough</td><td>Good comparative coverage of token bucket vs. window algorithms</td><td>Less depth on concurrency/distributed concerns</td><td>Useful as an algorithm-tradeoff reference</td></tr>
+<tr><td><a href="https://siddarthkanted.wordpress.com/2023/07/16/rate-limit-low-level-design-interview/" target="_blank">Tutorials Made Easy (blog)</a></td><td>Interview-narrative style walkthrough</td><td>Good sense of how the conversation typically escalates</td><td>Less rigorous on class-level API design</td><td>Pacing/escalation pattern used in this document's simulation (AD)</td></tr>
+</table>
+
+<h3 id="p3-af">AF. Interview Cheat Sheet</h3>
+<table>
+<tr><td><strong>Problem</strong></td><td>Rate Limiter</td></tr>
+<tr><td><strong>Difficulty</strong></td><td>Intermediate → Advanced+Distributed</td></tr>
+<tr><td><strong>Core requirements</strong></td><td>Allow/deny per client based on a configurable, swappable algorithm</td></tr>
+<tr><td><strong>Key clarifications</strong></td><td>Granularity? Single-process or distributed? Algorithm(s)? Fail-open or fail-closed?</td></tr>
+<tr><td><strong>Core entities</strong></td><td>RateLimiter (facade), RateLimitAlgorithm (strategy), RateLimiterFactory, RateLimitConfig, RateLimitResult</td></tr>
+<tr><td><strong>Key relationships</strong></td><td>Facade depends on Strategy interface; Factory builds instances from Config</td></tr>
+<tr><td><strong>Key patterns</strong></td><td>Strategy (textbook fit), Factory</td></tr>
+<tr><td><strong>Most important decision</strong></td><td>Passing timestamp as a parameter, never trusting client-supplied or internally-read time</td></tr>
+<tr><td><strong>Likely-changing behavior</strong></td><td>Algorithm, granularity, storage backend, limit values</td></tr>
+<tr><td><strong>Concurrency concern</strong></td><td>Atomic check-and-decrement per client key; Lua scripts for distributed atomicity</td></tr>
+<tr><td><strong>Top follow-ups</strong></td><td>Multi-server distribution, per-tier limits, memory bounding, Redis outage policy</td></tr>
+<tr><td><strong>Common mistakes</strong></td><td>Hardcoded algorithm with no interface; global lock; trusting client clocks; premature distributed design</td></tr>
+<tr><td><strong>What NOT to over-engineer</strong></td><td>Don't build the Redis/distributed version before the interviewer asks for scale</td></tr>
+</table><div class="prevnext"><a class="prevnext-link prev" href="p2.html">&larr; 2. LRU Cache</a><a class="prevnext-link next" href="p4.html">4. Splitwise (Expense Sharing) &rarr;</a></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

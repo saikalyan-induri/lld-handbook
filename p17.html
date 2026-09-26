@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('lld-theme') || 'light');</script>
+<title>17. Movie Ticket Booking System — LLD Handbook</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+</head>
+<body>
+<button id="menu-toggle" aria-label="Toggle menu">&#9776;</button>
+<nav id="sidebar">
+  <div class="sidebar-top">
+    <a class="brand" href="index.html">LLD Handbook</a>
+    <button id="theme-toggle" aria-label="Toggle dark mode">&#127769;</button>
+  </div>
+  <div class="search-wrap">
+    <input id="search-box" type="text" placeholder="Search problems &amp; sections...">
+    <div id="search-results"></div>
+  </div>
+  <ul class="nav-list">
+    <li><a href="index.html" data-page="index.html">Home</a></li>
+    <li><a href="p1.html" data-page="p1.html">1. Parking Lot</a></li>
+    <li><a href="p2.html" data-page="p2.html">2. LRU Cache</a></li>
+    <li><a href="p3.html" data-page="p3.html">3. Rate Limiter</a></li>
+    <li><a href="p4.html" data-page="p4.html">4. Splitwise (Expense Sharing)</a></li>
+    <li><a href="p5.html" data-page="p5.html">5. Ride-Sharing Service (Uber/Lyft)</a></li>
+    <li><a href="p6.html" data-page="p6.html">6. Logging Framework</a></li>
+    <li><a href="p7.html" data-page="p7.html">7. Notification System</a></li>
+    <li><a href="p8.html" data-page="p8.html">8. Coffee Vending Machine</a></li>
+    <li><a href="p9.html" data-page="p9.html">9. File System</a></li>
+    <li><a href="p10.html" data-page="p10.html">10. Pub-Sub / Message Queue</a></li>
+    <li><a href="p11.html" data-page="p11.html">11. Elevator System</a></li>
+    <li><a href="p12.html" data-page="p12.html">12. Tic-Tac-Toe / Board Game Engine</a></li>
+    <li><a href="p13.html" data-page="p13.html">13. Chess Game</a></li>
+    <li><a href="p14.html" data-page="p14.html">14. ATM Machine</a></li>
+    <li><a href="p15.html" data-page="p15.html">15. Library Management System</a></li>
+    <li><a href="p16.html" data-page="p16.html">16. Hotel Reservation System</a></li>
+    <li><a href="p17.html" data-page="p17.html">17. Movie Ticket Booking System</a></li>
+    <li><a href="p18.html" data-page="p18.html">18. Restaurant / Food Delivery System</a></li>
+    <li><a href="p19.html" data-page="p19.html">19. E-commerce Shopping Cart &amp; Checkout</a></li>
+    <li><a href="p20.html" data-page="p20.html">20. Chat Application (WhatsApp-style)</a></li>
+    <li><a href="synthesis.html" data-page="synthesis.html">Cross-Problem Synthesis</a></li>
+  </ul>
+</nav>
+<main id="content">
+<h1 class="problem-title">17. Movie Ticket Booking System <span class="badge">Advanced (Concurrency Showcase)</span></h1>
+
+<div class="section-toc">
+<a href="#p17-a">A. Interview Prompt</a><a href="#p17-b">B. Difficulty</a><a href="#p17-c">C. What It Tests</a>
+<a href="#p17-d">D. Requirements</a><a href="#p17-e">E. Clarifying Questions</a><a href="#p17-f">F. Assumptions</a>
+<a href="#p17-g">G. Actors</a><a href="#p17-h">H. Core Entities</a><a href="#p17-i">I. Relationships</a>
+<a href="#p17-j">J. Class Diagram</a><a href="#p17-k">K. Responsibility Map</a><a href="#p17-l">L. SOLID Analysis</a>
+<a href="#p17-m">M. Design Patterns</a><a href="#p17-n">N. What Changes?</a><a href="#p17-o">O. Design Evolution</a>
+<a href="#p17-p">P. API Design</a><a href="#p17-q">Q. Pseudocode</a><a href="#p17-r">R. End-to-End Flow</a>
+<a href="#p17-s">S. Data Structures</a><a href="#p17-t">T. Complexity</a><a href="#p17-u">U. Testing Strategy</a>
+<a href="#p17-v">V. Interviewer Follow-Ups</a><a href="#p17-w">W. Concurrency</a><a href="#p17-x">X. Persistence</a>
+<a href="#p17-y">Y. Scaling Boundary</a><a href="#p17-z">Z. Failure Scenarios</a><a href="#p17-aa">AA. Bad Designs</a>
+<a href="#p17-ab">AB. Trade-Offs</a><a href="#p17-ac">AC. Interviewer Evaluation</a><a href="#p17-ad">AD. Simulation</a>
+<a href="#p17-ae">AE. Source Comparison</a><a href="#p17-af">AF. Cheat Sheet</a>
+</div>
+
+<h3 id="p17-a">A. Realistic Interview Prompt</h3>
+<div class="prompt">"Design a movie ticket booking system like BookMyShow. Users can browse shows, select seats, hold them briefly while paying, and confirm a booking. Thousands of users may try to book seats for a popular show at the same time."</div>
+
+<h3 id="p17-b">B. Difficulty</h3>
+<p><strong>Advanced — the concurrency showcase of this document's second half.</strong> The entity model is not the hard part; the hard part is that <em>every</em> popular-show demo scenario is a high-contention multi-seat race, and the interview is really evaluating whether the candidate's locking design survives that contention without deadlocking, double-booking, or leaving seats stuck in limbo.</p>
+
+<h3 id="p17-c">C. What This Problem Tests</h3>
+<ul>
+<li>Splitting the physical <code>Seat</code> from its per-show status (<code>ShowSeat</code>) — the same "shared static thing vs. per-instance changing state" split as Library's Book/BookItem and Hotel's Room/RoomInventory, now at genuinely high contention</li>
+<li>State machine for a seat's per-show lifecycle (available → locked → booked, with expiry back to available)</li>
+<li>TTL-based soft locking during payment, converted to a hard commit only on payment success</li>
+<li>Multi-seat atomicity: booking several seats together must be all-or-nothing and deadlock-free</li>
+<li>Idempotent payment confirmation under retries</li>
+</ul>
+
+<h3 id="p17-d">D. Requirements</h3>
+<p><strong>Functional</strong></p>
+<ol>
+<li>Browse shows for a movie by city/theater/time</li>
+<li>View a show's seat map with real-time availability</li>
+<li>Select one or more seats and hold them temporarily while completing payment</li>
+<li>Confirm a booking on successful payment; release the hold on failure or timeout</li>
+<li>Price seats by category (Silver/Gold/Premium) and show (peak/off-peak)</li>
+</ol>
+<p><strong>Non-Functional</strong></p>
+<ul>
+<li>Two users must never both successfully book the same seat for the same show</li>
+<li>A user who abandons checkout must not permanently lock a seat — the hold must expire</li>
+<li>Booking multiple seats together must not deadlock against another user doing the same for an overlapping seat set</li>
+</ul>
+
+<h3 id="p17-e">E. Clarifying Questions</h3>
+<table>
+<tr><th>#</th><th>Question</th><th>Why It Matters</th><th>Design Decision Affected</th></tr>
+<tr><td>1</td><td>How long should a seat hold last before it expires and releases automatically?</td><td>Sets the TTL for the soft lock and whether a background sweep or lazy expiry check is needed</td><td>Design of <code>SeatLock</code> and its expiry mechanism</td></tr>
+<tr><td>2</td><td>Can a user select and hold multiple seats in one transaction?</td><td>Introduces the multi-resource deadlock question, not just single-seat contention</td><td>Locking order strategy in the booking flow</td></tr>
+<tr><td>3</td><td>Is payment synchronous (blocking) or asynchronous (webhook-confirmed later)?</td><td>Determines whether the hard lock commits inline or on a later, possibly-retried callback</td><td>Whether payment confirmation needs an idempotency key</td></tr>
+<tr><td>4</td><td>Should users be waitlisted for a sold-out show and notified on a cancellation?</td><td>Adds an Observer-driven notification path on top of the core booking flow</td><td>Presence and design of a waitlist Observer</td></tr>
+</table>
+
+<h3 id="p17-f">F. Assumptions</h3>
+<ul>
+<li><strong>Confirmed:</strong> show browsing, seat-map viewing, temporary seat hold, payment-gated confirmation, category/show-based pricing.</li>
+<li><strong>Assumption:</strong> holds expire after a fixed TTL (e.g. 5–10 minutes) unless stated otherwise.</li>
+<li><strong>Assumption:</strong> payment confirmation arrives via a callback/webhook that may be retried by the payment provider, so it must be handled idempotently.</li>
+</ul>
+
+<h3 id="p17-g">G. Actors</h3>
+<table>
+<tr><th>Actor</th><th>Responsibility</th></tr>
+<tr><td>User</td><td>Browses shows, selects seats, pays, confirms booking</td></tr>
+<tr><td>Payment Gateway</td><td>External system that authorizes payment and calls back with the result</td></tr>
+<tr><td>BookingService (facade)</td><td>Top-level API coordinating seat selection, holds, and confirmation</td></tr>
+</table>
+
+<h3 id="p17-h">H. Core Domain Entities</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Key Attributes</th><th>Key Methods</th><th>Does NOT Handle</th></tr>
+<tr><td><code>Seat</code></td><td>One physical seat's static attributes in a screen</td><td>seatNumber, category</td><td>—</td><td>Any per-show status — delegates to <code>ShowSeat</code></td></tr>
+<tr><td><code>Show</code></td><td>One scheduled screening of a movie in a screen</td><td>movie, screen, startTime</td><td>—</td><td>Individual seat status directly</td></tr>
+<tr><td><code>ShowSeat</code></td><td>One seat's status for one specific show, and the State-machine owner</td><td>seat, show, status</td><td><code>lock()</code>, <code>confirm()</code>, <code>release()</code></td><td>Payment processing or pricing math</td></tr>
+<tr><td><code>ShowSeatState</code> (interface)</td><td>One lifecycle state's allowed transitions</td><td>—</td><td><code>onLock()</code>, <code>onConfirm()</code>, <code>onExpire()</code></td><td>—</td></tr>
+<tr><td><code>SeatLock</code></td><td>A TTL-bound soft hold on a set of <code>ShowSeat</code>s for one user</td><td>seats, userId, expiresAt</td><td><code>isExpired()</code></td><td>—</td></tr>
+<tr><td><code>Booking</code></td><td>One booking attempt spanning hold → payment → confirmation</td><td>user, show, seats, status, totalPrice</td><td><code>confirm()</code>, <code>cancel()</code></td><td>Seat-level status directly — delegates to each <code>ShowSeat</code></td></tr>
+<tr><td><code>PricingStrategy</code> (interface)</td><td>One price-calculation rule</td><td>—</td><td><code>calculatePrice(seat, show)</code></td><td>—</td></tr>
+<tr><td><code>WaitlistNotifier</code></td><td>Observer subject notifying waitlisted users when a seat frees up</td><td>—</td><td><code>notifyWaiting(showSeat)</code></td><td>—</td></tr>
+<tr><td><code>BookingService</code> (facade)</td><td>Top-level orchestration</td><td>—</td><td><code>holdSeats()</code>, <code>confirmBooking()</code>, <code>cancelBooking()</code></td><td>—</td></tr>
+</table>
+
+<h3 id="p17-i">I. Class Relationships</h3>
+<ul>
+<li><strong>Seat vs. ShowSeat is the central modeling decision, once again:</strong> a seat's physical attributes (number, category) are static across every show that ever plays in that screen, while its booking status only makes sense <em>relative to one specific show</em> — the same seat is available for the 3pm show and booked for the 7pm show. This is the identical split-shape already seen in Library's Book/BookItem and Hotel's Room/RoomInventory, but the contention here is dramatically higher because a single popular show creates a genuine thundering-herd on a small set of good seats.</li>
+<li><strong>State machine for ShowSeat:</strong> <code>AVAILABLE → LOCKED → BOOKED</code>, with <code>LOCKED → AVAILABLE</code> on hold expiry or payment failure. Encoding this as a <code>ShowSeatState</code> hierarchy (rather than a raw enum checked with scattered <code>if</code> statements) keeps every transition's legality colocated with the state itself — a <code>BOOKED</code> seat simply has no <code>onLock()</code> transition to accept.</li>
+<li><strong>SeatLock as a TTL-bound soft hold, Booking confirmation as the hard commit:</strong> selecting seats doesn't book them — it soft-locks them for a bounded window so the seat isn't shown as available to other users while this user pays, but the lock self-expires if they abandon checkout. Only a successful payment converts the soft lock into a permanent <code>BOOKED</code> status. This two-phase shape is deliberately similar to a database's optimistic-lock-then-commit pattern, made explicit at the domain level.</li>
+<li><strong>Strategy for pricing, Observer for the waitlist:</strong> both are the same shapes already established in Hotel (Problem 16) and Library (Problem 15) respectively — pricing varies by seat category and show timing behind <code>PricingStrategy</code>, and waitlist notification on a cancellation reuses the same subject/observer relationship rather than a bespoke path.</li>
+</ul>
+
+<h3 id="p17-j">J. Class Diagram</h3>
+<div class="diagram-card">
+<svg id="diagram-p17" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="classDiagram" style="max-width: 533.811px; background-color: white;" viewBox="4 4 533.810546875 835" role="graphics-document document" aria-roledescription="classDiagram"><style>#diagram-p17{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;fill:#1a1f26;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#diagram-p17 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#diagram-p17 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#diagram-p17 .error-icon{fill:#fff7e6;}#diagram-p17 .error-text{fill:#000819;stroke:#000819;}#diagram-p17 .edge-thickness-normal{stroke-width:1px;}#diagram-p17 .edge-thickness-thick{stroke-width:3.5px;}#diagram-p17 .edge-pattern-solid{stroke-dasharray:0;}#diagram-p17 .edge-thickness-invisible{stroke-width:0;fill:none;}#diagram-p17 .edge-pattern-dashed{stroke-dasharray:3;}#diagram-p17 .edge-pattern-dotted{stroke-dasharray:2;}#diagram-p17 .marker{fill:#334155;stroke:#334155;}#diagram-p17 .marker.cross{stroke:#334155;}#diagram-p17 svg{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;}#diagram-p17 p{margin:0;}#diagram-p17 g.classGroup text{fill:#2563eb;stroke:none;font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:10px;}#diagram-p17 g.classGroup text .title{font-weight:bolder;}#diagram-p17 .cluster-label text{fill:#000819;}#diagram-p17 .cluster-label span{color:#000819;}#diagram-p17 .cluster-label span p{background-color:transparent;}#diagram-p17 .cluster rect{fill:#f4f6f8;stroke:#d8dee5;stroke-width:1px;}#diagram-p17 .cluster text{fill:#000819;}#diagram-p17 .cluster span{color:#000819;}#diagram-p17 .nodeLabel,#diagram-p17 .edgeLabel{color:#0f2540;}#diagram-p17 .noteLabel .nodeLabel,#diagram-p17 .noteLabel .edgeLabel{color:#333;}#diagram-p17 .edgeLabel .label rect{fill:#eef6ff;}#diagram-p17 .label text{fill:#0f2540;}#diagram-p17 .labelBkg{background:#eef6ff;}#diagram-p17 .edgeLabel .label span{background:#eef6ff;}#diagram-p17 .classTitle{font-weight:bolder;}#diagram-p17 .node rect,#diagram-p17 .node circle,#diagram-p17 .node ellipse,#diagram-p17 .node polygon,#diagram-p17 .node path{fill:#eef6ff;stroke:#2563eb;stroke-width:1;}#diagram-p17 .divider{stroke:#2563eb;stroke-width:1;}#diagram-p17 g.clickable{cursor:pointer;}#diagram-p17 g.classGroup rect{fill:#eef6ff;stroke:#2563eb;}#diagram-p17 g.classGroup line{stroke:#2563eb;stroke-width:1;}#diagram-p17 .classLabel .box{stroke:none;stroke-width:0;fill:#eef6ff;opacity:0.5;}#diagram-p17 .classLabel .label{fill:#2563eb;font-size:10px;}#diagram-p17 .relation{stroke:#334155;stroke-width:1;fill:none;}#diagram-p17 .dashed-line{stroke-dasharray:3;}#diagram-p17 .dotted-line{stroke-dasharray:1 2;}#diagram-p17 [id$="-compositionStart"],#diagram-p17 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p17 [id$="-compositionEnd"],#diagram-p17 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p17 [id$="-dependencyStart"],#diagram-p17 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p17 [id$="-dependencyEnd"],#diagram-p17 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p17 [id$="-extensionStart"],#diagram-p17 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p17 [id$="-extensionEnd"],#diagram-p17 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p17 [id$="-aggregationStart"],#diagram-p17 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p17 [id$="-aggregationEnd"],#diagram-p17 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p17 [id$="-lollipopStart"],#diagram-p17 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p17 [id$="-lollipopEnd"],#diagram-p17 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p17 .edgeTerminals{font-size:11px;line-height:initial;}#diagram-p17 .classTitleText{text-anchor:middle;font-size:18px;fill:#1a1f26;}#diagram-p17 .edgeLabel[data-look="neo"]{background-color:#ffffff;text-align:center;}#diagram-p17 .edgeLabel[data-look="neo"] p{background-color:#ffffff;}#diagram-p17 .edgeLabel[data-look="neo"] rect{opacity:0.5;background-color:#ffffff;fill:#ffffff;}#diagram-p17 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#diagram-p17 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#diagram-p17 .node .neo-node{stroke:#2563eb;}#diagram-p17 [data-look="neo"].node rect,#diagram-p17 [data-look="neo"].cluster rect,#diagram-p17 [data-look="neo"].node polygon{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p17 [data-look="neo"].swimlane.cluster rect{filter:none;}#diagram-p17 [data-look="neo"].node path{stroke:#2563eb;stroke-width:1px;}#diagram-p17 [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p17 [data-look="neo"].node .neo-line path{stroke:#2563eb;filter:none;}#diagram-p17 [data-look="neo"].node circle{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p17 [data-look="neo"].node circle .state-start{fill:#000000;}#diagram-p17 [data-look="neo"].icon-shape .icon{fill:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p17 [data-look="neo"].icon-shape .icon-neo path{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p17 .classGroup text{font-size:14px!important;}#diagram-p17 .classGroup .title{font-size:16px!important;font-weight:700;}#diagram-p17 .classLabel .label{font-size:14px!important;}#diagram-p17 .edgeLabel,#diagram-p17 .edgeLabel .label{font-size:13px!important;}#diagram-p17 .relationshipLabelBox{font-size:13px!important;}#diagram-p17 .nodeLabel,#diagram-p17 .cluster-label{font-size:14px!important;}#diagram-p17 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><defs><marker id="diagram-p17_classDiagram-aggregationStart" class="marker aggregation classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p17_classDiagram-aggregationEnd" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p17_classDiagram-aggregationStart-margin" class="marker aggregation classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p17_classDiagram-aggregationEnd-margin" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p17_classDiagram-extensionStart" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,7 L18,13 V 1 Z"/></marker></defs><defs><marker id="diagram-p17_classDiagram-extensionEnd" class="marker extension classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,1 V 13 L18,7 Z"/></marker></defs><marker id="diagram-p17_classDiagram-extensionStart-margin" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,7 18,13 18,1" style="stroke-width: 2; stroke-dasharray: 0;"/></marker><defs><marker id="diagram-p17_classDiagram-extensionEnd-margin" class="marker extension classDiagram" refX="9" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,1 10,13 18,7" style="stroke-width: 2; stroke-dasharray: 0;"/></marker></defs><defs><marker id="diagram-p17_classDiagram-compositionStart" class="marker composition classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p17_classDiagram-compositionEnd" class="marker composition classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p17_classDiagram-compositionStart-margin" class="marker composition classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path viewBox="0 0 15 15" d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p17_classDiagram-compositionEnd-margin" class="marker composition classDiagram" refX="3.5" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p17_classDiagram-dependencyStart" class="marker dependency classDiagram" refX="6" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p17_classDiagram-dependencyEnd" class="marker dependency classDiagram" refX="13" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p17_classDiagram-dependencyStart-margin" class="marker dependency classDiagram" refX="4" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p17_classDiagram-dependencyEnd-margin" class="marker dependency classDiagram" refX="16" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p17_classDiagram-lollipopStart" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p17_classDiagram-lollipopEnd" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p17_classDiagram-lollipopStart-margin" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><defs><marker id="diagram-p17_classDiagram-lollipopEnd-margin" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><g class="root"><g class="clusters"/><g class="edges edgePaths"><path d="M165.240234375,391L165.240234375,425" id="diagram-p17-id_Seat_ShowSeat_1" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 34 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Seat_ShowSeat_1" data-points="W3sieCI6MTY1LjI0MDIzNDM3NSwieSI6MzkxfSx7IngiOjE2NS4yNDAyMzQzNzUsInkiOjQzMX1d" data-look="neo" marker-end="url(#diagram-p17_classDiagram-dependencyEnd-margin)"/><path d="M165.240234375,608L165.240234375,620.9289321881345Q165.240234375,628 158.16916656313452,628L97.33203125,628Q90.33203125,628 90.33203125,635L90.33203125,642" id="diagram-p17-id_ShowSeat_ShowSeatState_2" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 103.6067123413086 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_ShowSeat_ShowSeatState_2" data-points="W3sieCI6MTY1LjI0MDIzNDM3NSwieSI6NjA4fSx7IngiOjE2NS4yNDAyMzQzNzUsInkiOjYyOH0seyJ4Ijo5MC4zMzIwMzEyNSwieSI6NjI4fSx7IngiOjkwLjMzMjAzMTI1LCJ5Ijo2NDh9XQ==" data-look="neo" marker-end="url(#diagram-p17_classDiagram-dependencyEnd-margin)"/><path d="M198.865234375,608L198.865234375,620.9289321881345Q198.865234375,628 205.93630218686548,628L266.7734375,628Q273.7734375,628 273.7734375,635L273.7734375,642" id="diagram-p17-id_ShowSeat_SeatLock_3" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 103.60671997070312 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_ShowSeat_SeatLock_3" data-points="W3sieCI6MTk4Ljg2NTIzNDM3NSwieSI6NjA4fSx7IngiOjE5OC44NjUyMzQzNzUsInkiOjYyOH0seyJ4IjoyNzMuNzczNDM3NSwieSI6NjI4fSx7IngiOjI3My43NzM0Mzc1LCJ5Ijo2NDh9XQ==" data-look="neo" marker-end="url(#diagram-p17_classDiagram-dependencyEnd-margin)"/><path d="M374.34830729166663,391L374.34830729166663,403.9289321881345Q374.34830729166663,411 367.27723947980115,411L205.865234375,411Q198.865234375,411 198.865234375,418L198.865234375,425" id="diagram-p17-id_Booking_ShowSeat_4" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 204.1815643310547 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Booking_ShowSeat_4" data-points="W3sieCI6Mzc0LjM0ODMwNzI5MTY2NjYzLCJ5IjozOTF9LHsieCI6Mzc0LjM0ODMwNzI5MTY2NjYzLCJ5Ijo0MTF9LHsieCI6MTk4Ljg2NTIzNDM3NSwieSI6NDExfSx7IngiOjE5OC44NjUyMzQzNzUsInkiOjQzMX1d" data-look="neo" marker-end="url(#diagram-p17_classDiagram-dependencyEnd-margin)"/><path d="M406.150390625,391L406.150390625,425" id="diagram-p17-id_Booking_PricingStrategy_5" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 34 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Booking_PricingStrategy_5" data-points="W3sieCI6NDA2LjE1MDM5MDYyNSwieSI6MzkxfSx7IngiOjQwNi4xNTAzOTA2MjUsInkiOjQzMX1d" data-look="neo" marker-end="url(#diagram-p17_classDiagram-dependencyEnd-margin)"/><path d="M390.2493489583333,174L390.2493489583333,208" id="diagram-p17-id_BookingService_Booking_6" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 34 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_BookingService_Booking_6" data-points="W3sieCI6MzkwLjI0OTM0ODk1ODMzMzMsInkiOjE3NH0seyJ4IjozOTAuMjQ5MzQ4OTU4MzMzMywieSI6MjE0fV0=" data-look="neo" marker-end="url(#diagram-p17_classDiagram-dependencyEnd-margin)"/></g><g class="edgeLabels"><g class="edgeLabel"><g class="label" data-id="id_Seat_ShowSeat_1" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeTerminals" transform="translate(150.2402321875001, 408.499998125)"><g class="inner" transform="translate(-3.6171875, -9.75)"><foreignObject width="7.234375" height="19.5" style="width: 9px; height: 12px;"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="edgeLabel"><p>1</p></span></div></foreignObject></g></g><g class="edgeTerminals" transform="translate(175.24023218749988, 408.499998125)"><g class="inner" transform="translate(-2.53125, -9.75)"/><foreignObject width="5.0625" height="19.5" style="width: 9px; height: 12px;"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="edgeLabel"><p>*</p></span></div></foreignObject></g><g class="edgeLabel"><g class="label" data-id="id_Booking_ShowSeat_4" transform="translate(0, 0)"><foreignObject width="0" height="0"><div xmlns="http://www.w3.org/1999/xhtml" class="labelBkg" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 200px; text-align: center;"><span class="edgeLabel"></span></div></foreignObject></g></g><g class="edgeTerminals" transform="translate(213.3652334475, 424.99999831999975)"><g class="inner" transform="translate(-2.53125, -9.75)"/><foreignObject width="5.0625" height="19.5" style="width: 9px; height: 12px;"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5;"><span class="edgeLabel"><p>*</p></span></div></foreignObject></g></g><g class="nodes"><g class="node default" id="diagram-p17-classId-Seat-0" data-look="neo" transform="translate(165.240234375, 323.5)"><g class="basic label-container outer-path"><path d="M-57.52734375 -67.5 L57.52734375 -67.5 L57.52734375 67.5 L-57.52734375 67.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-57.52734375 -67.5 C-31.927598410716094 -67.5, -6.3278530714321874 -67.5, 57.52734375 -67.5 M-57.52734375 -67.5 C-25.97872675285782 -67.5, 5.569890244284359 -67.5, 57.52734375 -67.5 M57.52734375 -67.5 C57.52734375 -25.417387876709455, 57.52734375 16.66522424658109, 57.52734375 67.5 M57.52734375 -67.5 C57.52734375 -31.094258913787748, 57.52734375 5.311482172424505, 57.52734375 67.5 M57.52734375 67.5 C33.55254597886857 67.5, 9.577748207737145 67.5, -57.52734375 67.5 M57.52734375 67.5 C16.780553930356874 67.5, -23.966235889286253 67.5, -57.52734375 67.5 M-57.52734375 67.5 C-57.52734375 21.187515270389284, -57.52734375 -25.124969459221433, -57.52734375 -67.5 M-57.52734375 67.5 C-57.52734375 17.260523407570616, -57.52734375 -32.97895318485877, -57.52734375 -67.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -43.5)"/><g class="label-group text" transform="translate(-14.7890625, -43.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="29.578125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 78px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Seat</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-45.52734375, 1.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="76.265625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 127px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>seatNumber</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="53.703125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 105px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>category</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-45.52734375, 67.5)"/><g class="divider neo-line" style=""><path d="M-57.52734375 -22.5 C-25.560597821077625 -22.49972216042107, 6.40614810784475 -22.49944432084214, 57.52734375 -22.499 M-57.52734375 -22.5 C-26.84641973402832 -22.499733336166628, 3.83450428194336 -22.49946667233326, 57.52734375 -22.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-57.52734375 43.5 C-14.281846826066086 43.50037586905726, 28.963650097867827 43.500751738114516, 57.52734375 43.501 M-57.52734375 43.5 C-19.573283190931818 43.50032987843767, 18.380777368136364 43.500659756875336, 57.52734375 43.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p17-classId-ShowSeat-1" data-look="neo" transform="translate(182.052734375, 519.5)"><g class="basic label-container outer-path"><path d="M-60.4375 -88.5 L60.4375 -88.5 L60.4375 88.5 L-60.4375 88.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-60.4375 -88.5 C-23.156939969308915 -88.5, 14.12362006138217 -88.5, 60.4375 -88.5 M-60.4375 -88.5 C-26.559022883793517 -88.5, 7.319454232412966 -88.5, 60.4375 -88.5 M60.4375 -88.5 C60.4375 -18.484876401821225, 60.4375 51.53024719635755, 60.4375 88.5 M60.4375 -88.5 C60.4375 -40.24553085423886, 60.4375 8.008938291522284, 60.4375 88.5 M60.4375 88.5 C17.43667241384938 88.5, -25.56415517230124 88.5, -60.4375 88.5 M60.4375 88.5 C32.46340633159338 88.5, 4.489312663186766 88.5, -60.4375 88.5 M-60.4375 88.5 C-60.4375 18.705850346691037, -60.4375 -51.08829930661793, -60.4375 -88.5 M-60.4375 88.5 C-60.4375 31.454280754023642, -60.4375 -25.591438491952715, -60.4375 -88.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -64.5)"/><g class="label-group text" transform="translate(-33.453125, -64.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="66.90625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 114px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>ShowSeat</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-48.4375, -19.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="37.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 86px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>status</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-48.4375, 25.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="42.40625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 102px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+lock()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="63.40625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 125px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+confirm()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="63.421875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 119px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+release()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-60.4375 -43.5 C-17.98958869893071 -43.499648828034736, 24.45832260213858 -43.49929765606948, 60.4375 -43.499 M-60.4375 -43.5 C-17.36328863822201 -43.49964364664851, 25.71092272355598 -43.499287293297016, 60.4375 -43.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-60.4375 1.5 C-18.98259117868885 1.5003429568465052, 22.4723176426223 1.5006859136930102, 60.4375 1.501 M-60.4375 1.5 C-15.029163990623715 1.5003756635864272, 30.37917201875257 1.500751327172854, 60.4375 1.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p17-classId-ShowSeatState-2" data-look="neo" transform="translate(90.33203125, 739.5)"><g class="basic label-container outer-path"><path d="M-78.33203125 -91.5 L78.33203125 -91.5 L78.33203125 91.5 L-78.33203125 91.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-78.33203125 -91.5 C-26.78673032562473 -91.5, 24.758570598750538 -91.5, 78.33203125 -91.5 M-78.33203125 -91.5 C-46.410454881336655 -91.5, -14.48887851267331 -91.5, 78.33203125 -91.5 M78.33203125 -91.5 C78.33203125 -54.37680896656029, 78.33203125 -17.25361793312058, 78.33203125 91.5 M78.33203125 -91.5 C78.33203125 -27.65417485125488, 78.33203125 36.19165029749024, 78.33203125 91.5 M78.33203125 91.5 C26.19502556676455 91.5, -25.9419801164709 91.5, -78.33203125 91.5 M78.33203125 91.5 C45.871046824786674 91.5, 13.410062399573349 91.5, -78.33203125 91.5 M-78.33203125 91.5 C-78.33203125 21.536345397399018, -78.33203125 -48.427309205201965, -78.33203125 -91.5 M-78.33203125 91.5 C-78.33203125 29.68104090399767, -78.33203125 -32.13791819200466, -78.33203125 -91.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-34.640625, -67.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="69.28125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«interface»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-50.5703125, -46.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="101.140625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 146px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>ShowSeatState</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-66.33203125, -1.5)"/><g class="methods-group text" transform="translate(-66.33203125, 28.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="62.65625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 123px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+onLock()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="82.09375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 144px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+onConfirm()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="72.765625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 133px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+onExpire()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-78.33203125 -25.5 C-26.765532873869304 -25.499670846666724, 24.80096550226139 -25.499341693333452, 78.33203125 -25.499 M-78.33203125 -25.5 C-32.78200112579252 -25.499709250293925, 12.768028998414962 -25.49941850058785, 78.33203125 -25.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-78.33203125 -1.5 C-19.291982592298176 -1.4996231423613333, 39.74806606540365 -1.4992462847226664, 78.33203125 -1.499 M-78.33203125 -1.5 C-15.960769837022859 -1.4996018789477454, 46.41049157595428 -1.4992037578954909, 78.33203125 -1.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p17-classId-SeatLock-3" data-look="neo" transform="translate(273.7734375, 726)"><g class="basic label-container outer-path"><path d="M-65.109375 -78 L65.109375 -78 L65.109375 78 L-65.109375 78" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-65.109375 -78 C-18.760304122996118 -78, 27.588766754007764 -78, 65.109375 -78 M-65.109375 -78 C-33.07955374442983 -78, -1.0497324888596609 -78, 65.109375 -78 M65.109375 -78 C65.109375 -39.483029681182856, 65.109375 -0.9660593623657121, 65.109375 78 M65.109375 -78 C65.109375 -36.53974387887164, 65.109375 4.92051224225672, 65.109375 78 M65.109375 78 C37.95785646234769 78, 10.806337924695377 78, -65.109375 78 M65.109375 78 C25.531080744342027 78, -14.047213511315945 78, -65.109375 78 M-65.109375 78 C-65.109375 35.19670848895004, -65.109375 -7.606583022099926, -65.109375 -78 M-65.109375 78 C-65.109375 42.27046345642694, -65.109375 6.540926912853877, -65.109375 -78" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -54)"/><g class="label-group text" transform="translate(-31.125, -54)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="62.25" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 111px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>SeatLock</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-53.109375, -9)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="38.921875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 90px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>userId</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="58.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 112px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>expiresAt</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-53.109375, 57)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="75.09375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 135px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+isExpired()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-65.109375 -33 C-26.3287819878391 -32.99970218887056, 12.451811024321799 -32.999404377741115, 65.109375 -32.999 M-65.109375 -33 C-34.61643547401657 -32.999765832957806, -4.123495948033131 -32.99953166591561, 65.109375 -32.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-65.109375 33 C-36.010416325336074 33.00022346212565, -6.911457650672148 33.0004469242513, 65.109375 33.001 M-65.109375 33 C-18.03577352665912 33.00036149633961, 29.03782794668176 33.000722992679215, 65.109375 33.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p17-classId-Booking-4" data-look="neo" transform="translate(390.2493489583333, 302.5)"><g class="basic label-container outer-path"><path d="M-57.703125 -88.5 L57.703125 -88.5 L57.703125 88.5 L-57.703125 88.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-57.703125 -88.5 C-12.004323323197752 -88.5, 33.694478353604495 -88.5, 57.703125 -88.5 M-57.703125 -88.5 C-11.811227703956334 -88.5, 34.08066959208733 -88.5, 57.703125 -88.5 M57.703125 -88.5 C57.703125 -44.389554641355105, 57.703125 -0.2791092827102091, 57.703125 88.5 M57.703125 -88.5 C57.703125 -52.79973538581404, 57.703125 -17.099470771628077, 57.703125 88.5 M57.703125 88.5 C20.024766707181826 88.5, -17.65359158563635 88.5, -57.703125 88.5 M57.703125 88.5 C27.1368865113065 88.5, -3.4293519773870003 88.5, -57.703125 88.5 M-57.703125 88.5 C-57.703125 34.002137797660815, -57.703125 -20.49572440467837, -57.703125 -88.5 M-57.703125 88.5 C-57.703125 51.907563427732484, -57.703125 15.315126855464968, -57.703125 -88.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -64.5)"/><g class="label-group text" transform="translate(-28, -64.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="56" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 105px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Booking</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-45.703125, -19.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="37.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 86px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>status</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="58.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 111px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>totalPrice</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-45.703125, 46.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="63.40625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 125px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+confirm()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="57.96875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 115px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+cancel()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-57.703125 -43.5 C-17.923516850702768 -43.49965530802579, 21.856091298594464 -43.499310616051574, 57.703125 -43.499 M-57.703125 -43.5 C-14.592928860176848 -43.49962644834106, 28.517267279646305 -43.499252896682115, 57.703125 -43.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-57.703125 22.5 C-21.030431279445622 22.50031777043029, 15.642262441108755 22.50063554086058, 57.703125 22.501 M-57.703125 22.5 C-28.706695014167806 22.500251255282844, 0.28973497166438733 22.500502510565692, 57.703125 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p17-classId-PricingStrategy-5" data-look="neo" transform="translate(406.150390625, 501.5)"><g class="basic label-container outer-path"><path d="M-123.66015625 -70.5 L123.66015625 -70.5 L123.66015625 70.5 L-123.66015625 70.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-123.66015625 -70.5 C-49.5932677601058 -70.5, 24.473620729788394 -70.5, 123.66015625 -70.5 M-123.66015625 -70.5 C-32.60896173170174 -70.5, 58.44223278659652 -70.5, 123.66015625 -70.5 M123.66015625 -70.5 C123.66015625 -17.740743044727964, 123.66015625 35.01851391054407, 123.66015625 70.5 M123.66015625 -70.5 C123.66015625 -25.336556800578826, 123.66015625 19.826886398842348, 123.66015625 70.5 M123.66015625 70.5 C64.85598661969199 70.5, 6.05181698938398 70.5, -123.66015625 70.5 M123.66015625 70.5 C43.5960236770554 70.5, -36.4681088958892 70.5, -123.66015625 70.5 M-123.66015625 70.5 C-123.66015625 40.623529579423334, -123.66015625 10.74705915884666, -123.66015625 -70.5 M-123.66015625 70.5 C-123.66015625 41.08389303653708, -123.66015625 11.667786073074147, -123.66015625 -70.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-34.640625, -46.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="69.28125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«interface»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-51.7421875, -25.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="103.484375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 150px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>PricingStrategy</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-111.66015625, 19.5)"/><g class="methods-group text" transform="translate(-111.66015625, 49.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="171.578125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 231px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+calculatePrice(seat, show)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-123.66015625 -4.5 C-37.95313902493456 -4.499653457427905, 47.753878200130885 -4.49930691485581, 123.66015625 -4.499 M-123.66015625 -4.5 C-70.04447564059575 -4.499783213598319, -16.428795031191484 -4.499566427196639, 123.66015625 -4.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-123.66015625 19.5 C-66.9737187068256 19.500229202514628, -10.287281163651173 19.500458405029253, 123.66015625 19.501 M-123.66015625 19.5 C-38.75100870534742 19.500343316514066, 46.15813883930517 19.500686633028128, 123.66015625 19.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p17-classId-BookingService-6" data-look="neo" transform="translate(390.2493489583333, 93)"><g class="basic label-container outer-path"><path d="M-95.45703125 -81 L95.45703125 -81 L95.45703125 81 L-95.45703125 81" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-95.45703125 -81 C-24.089198082654704 -81, 47.27863508469059 -81, 95.45703125 -81 M-95.45703125 -81 C-55.636486614394606 -81, -15.815941978789212 -81, 95.45703125 -81 M95.45703125 -81 C95.45703125 -21.276913704749354, 95.45703125 38.44617259050129, 95.45703125 81 M95.45703125 -81 C95.45703125 -27.208491841835503, 95.45703125 26.583016316328994, 95.45703125 81 M95.45703125 81 C32.58004842192972 81, -30.296934406140565 81, -95.45703125 81 M95.45703125 81 C22.397566271710275 81, -50.66189870657945 81, -95.45703125 81 M-95.45703125 81 C-95.45703125 34.01807324874165, -95.45703125 -12.963853502516699, -95.45703125 -81 M-95.45703125 81 C-95.45703125 42.05126256237089, -95.45703125 3.102525124741774, -95.45703125 -81" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -57)"/><g class="label-group text" transform="translate(-52.9140625, -57)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="105.828125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 153px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>BookingService</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-83.45703125, -12)"/><g class="methods-group text" transform="translate(-83.45703125, 18)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="79.78125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 136px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+holdSeats()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="114" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 180px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+confirmBooking()</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="108.5625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 170px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+cancelBooking()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-95.45703125 -36 C-38.20648603264395 -35.99970012400099, 19.044059184712097 -35.99940024800198, 95.45703125 -35.999 M-95.45703125 -36 C-42.309159206034 -35.99972161363418, 10.838712837931993 -35.99944322726835, 95.45703125 -35.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-95.45703125 -12 C-45.199038561299034 -11.999736750703272, 5.0589541274019325 -11.999473501406543, 95.45703125 -11.999 M-95.45703125 -12 C-47.213191981536276 -11.99974730075597, 1.0306472869274472 -11.99949460151194, 95.45703125 -11.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g></g></g></g><defs><filter id="diagram-p17-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><defs><filter id="diagram-p17-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs></svg>
+</div>
+<details class="mermaid-src"><summary>View Mermaid source</summary>
+<pre><code>classDiagram
+  class Seat {
+    seatNumber
+    category
+  }
+  class ShowSeat {
+    status
+    +lock()
+    +confirm()
+    +release()
+  }
+  class ShowSeatState {
+    &lt;&lt;interface&gt;&gt;
+    +onLock()
+    +onConfirm()
+    +onExpire()
+  }
+  class SeatLock {
+    userId
+    expiresAt
+    +isExpired()
+  }
+  class Booking {
+    status
+    totalPrice
+    +confirm()
+    +cancel()
+  }
+  class PricingStrategy {
+    &lt;&lt;interface&gt;&gt;
+    +calculatePrice(seat, show)
+  }
+  class BookingService {
+    +holdSeats()
+    +confirmBooking()
+    +cancelBooking()
+  }
+  Seat &quot;1&quot; --&gt; &quot;*&quot; ShowSeat
+  ShowSeat --&gt; ShowSeatState
+  ShowSeat --&gt; SeatLock
+  Booking --&gt; &quot;*&quot; ShowSeat
+  Booking --&gt; PricingStrategy
+  BookingService --&gt; Booking</code></pre>
+</details>
+
+<h3 id="p17-k">K. Responsibility Mapping</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Does NOT Handle</th></tr>
+<tr><td>ShowSeat</td><td>Per-show status and legal state transitions</td><td>Payment, pricing math</td></tr>
+<tr><td>SeatLock</td><td>TTL-bound soft hold and expiry check</td><td>Deciding what happens after expiry — that's Booking/BookingService</td></tr>
+<tr><td>Booking</td><td>Coordinating a multi-seat hold-to-confirm lifecycle</td><td>Individual seat state transitions themselves</td></tr>
+<tr><td>PricingStrategy implementations</td><td>One price formula</td><td>Booking commitment itself</td></tr>
+<tr><td>BookingService</td><td>Top-level orchestration, locking order</td><td>State-transition legality, price math</td></tr>
+</table>
+
+<h3 id="p17-l">L. SOLID Analysis</h3>
+<table>
+<tr><th>Principle</th><th>How It's Applied</th><th>Naive Violation</th></tr>
+<tr><td>SRP</td><td><code>ShowSeat</code> owns status; <code>SeatLock</code> owns TTL/expiry; <code>PricingStrategy</code> owns pricing; <code>Booking</code> owns multi-seat coordination</td><td>One <code>Booking</code> class directly flipping seat booleans, running a timer, and computing price inline</td></tr>
+<tr><td>OCP</td><td>A new pricing rule is a new <code>PricingStrategy</code>; a new seat lifecycle state is a new <code>ShowSeatState</code> implementation</td><td>A giant <code>switch</code> on a status enum scattered across every method that touches seat state</td></tr>
+<tr><td>LSP</td><td>Every <code>ShowSeatState</code> honestly rejects transitions it doesn't support (e.g. <code>BOOKED.onLock()</code> throws/rejects) rather than silently no-op-ing</td><td>A state that silently allows an illegal transition "just to be safe," masking a bug instead of surfacing it</td></tr>
+<tr><td>ISP</td><td><code>PricingStrategy</code> stays a single-method interface</td><td>A combined "SeatPolicy" interface mixing pricing with cancellation-fee rules</td></tr>
+<tr><td>DIP</td><td><code>Booking</code> depends on the <code>PricingStrategy</code> abstraction, not a hardcoded category-rate table</td><td><code>Booking.calculateTotal()</code> embedding a rate table directly</td></tr>
+</table>
+
+<h3 id="p17-m">M. Design Patterns</h3>
+<table>
+<tr><th>Pattern</th><th>Problem It Solves</th><th>Where It Appears</th><th>When NOT to Use</th></tr>
+<tr><td>State</td><td>A seat's legal transitions genuinely depend on its current status, not just external checks</td><td><code>ShowSeatState</code> (AVAILABLE/LOCKED/BOOKED)</td><td>Skip if the round only ever needs a boolean booked flag with no hold/expiry concept</td></tr>
+<tr><td>Strategy</td><td>Price varies by seat category and show timing, and changes more often than the booking flow</td><td><code>PricingStrategy</code></td><td>Skip if every seat in a show is one flat price</td></tr>
+<tr><td>Observer</td><td>Waitlist notification on cancellation shouldn't require the cancel path to know who's waiting</td><td><code>WaitlistNotifier</code></td><td>Skip if waitlisting is out of scope for the round</td></tr>
+</table>
+<p><strong>Explicitly avoided:</strong> a single boolean "booked" flag per seat shared across all shows — see I for why per-show status is the entire point of this problem.</p>
+
+<h3 id="p17-n">N. What Is Likely to Change?</h3>
+<table>
+<tr><th>Behavior</th><th>Current Design</th><th>Anticipated Change</th><th>Protecting Abstraction</th></tr>
+<tr><td>Pricing rules</td><td>Category-and-show-timing-based</td><td>Dynamic demand pricing, group discounts, promo codes</td><td><code>PricingStrategy</code> interface</td></tr>
+<tr><td>Hold TTL</td><td>Fixed window</td><td>Variable TTL by seat scarcity or user tier</td><td><code>SeatLock</code>'s expiry field, no change to the state machine itself</td></tr>
+<tr><td>Seat lifecycle</td><td>AVAILABLE/LOCKED/BOOKED</td><td>Add a CANCELLED-pending-refund state distinct from AVAILABLE</td><td>New <code>ShowSeatState</code> implementation, additive</td></tr>
+</table>
+
+<h3 id="p17-o">O. Design Evolution</h3>
+<ul>
+<li><strong>V1:</strong> one booked boolean per seat, no hold concept, one flat price, synchronous payment.</li>
+<li><strong>V2:</strong> split <code>Seat</code> from <code>ShowSeat</code> the moment a screen hosts more than one show — the "same seat, different show" case that a single boolean cannot represent.</li>
+<li><strong>V3:</strong> introduce the <code>ShowSeatState</code> machine and <code>SeatLock</code> TTL once "hold while paying" becomes a real requirement rather than instant booking.</li>
+<li><strong>V4:</strong> extract <code>PricingStrategy</code> once category/show-based pricing is requested.</li>
+<li><strong>V5:</strong> wire <code>WaitlistNotifier</code> once sold-out waitlisting is requested.</li>
+</ul>
+<p><strong>What stays stable:</strong> <code>BookingService</code>'s public hold/confirm/cancel API. New states and pricing rules are additive.</p>
+
+<h3 id="p17-p">P. API / Interface Design</h3>
+<pre><code>interface PricingStrategy {
+  Money calculatePrice(Seat seat, Show show);
+}
+
+class BookingService {
+  SeatLock holdSeats(User user, Show show, List&lt;SeatId&gt; seatIds);
+  Booking confirmBooking(String lockId, PaymentResult result);  // idempotency-keyed
+  void cancelBooking(String bookingId);
+}</code></pre>
+<p><strong>Ownership/validation notes:</strong> <code>holdSeats()</code> acquires locks on every requested <code>ShowSeat</code> in one atomic step (all-or-nothing — see W for lock ordering), and <code>confirmBooking()</code> is keyed by an idempotency key derived from the payment provider's transaction id, so a retried webhook call cannot double-confirm or double-charge.</p>
+
+<h3 id="p17-q">Q. Pseudocode — Critical Logic</h3>
+<pre><code>BookingService.holdSeats(user, show, seatIds):
+  orderedIds = sort(seatIds)          // canonical order — see W
+  locks = []
+  try:
+    for id in orderedIds:
+      lock(showSeatFor(id))
+      locks.append(showSeatFor(id))
+      if showSeatFor(id).status != AVAILABLE: rollback(locks); reject
+    for seat in locks: seat.status = LOCKED
+    seatLock = new SeatLock(user, locks, expiresAt = now + HOLD_TTL)
+    return seatLock
+  finally:
+    for seat in locks: unlock(seat)
+
+BookingService.confirmBooking(lockId, paymentResult, idempotencyKey):
+  if alreadyProcessed(idempotencyKey): return existingBookingFor(idempotencyKey)  // idempotent retry
+  seatLock = lockFor(lockId)
+  if seatLock.isExpired(): reject
+  if paymentResult.success:
+    for seat in seatLock.seats: seat.status = BOOKED
+    booking = new Booking(seatLock, CONFIRMED)
+  else:
+    for seat in seatLock.seats: seat.status = AVAILABLE
+    waitlistNotifier.notifyWaiting(seatLock.seats)
+  recordProcessed(idempotencyKey, booking)
+  return booking</code></pre>
+
+<h3 id="p17-r">R. End-to-End Use Case</h3>
+<pre>
+userA.holdSeats(show, [A4, A5]) → both locked atomically in sorted order → SeatLock (TTL 8 min)
+  │
+  ▼
+userA pays within the window
+  │  payment webhook fires → confirmBooking(lockId, success, idempotencyKey)
+  │  A4, A5 → BOOKED; Booking CONFIRMED
+  ▼
+Same webhook retried by the payment provider due to a network blip
+  │  idempotencyKey already processed → same Booking returned, no double-booking, no double-charge
+</pre>
+
+<h3 id="p17-s">S. Data Structures</h3>
+<table>
+<tr><th>Structure</th><th>Used For</th><th>Why</th><th>Alternative &amp; Trade-off</th></tr>
+<tr><td>Hash map of seatId → <code>ShowSeat</code> per show</td><td>O(1) seat status lookup during hold/confirm</td><td>Seat-map rendering and locking both need fast point lookups, not range queries</td><td>A 2D grid array also works if the seat map is genuinely rectangular</td></tr>
+<tr><td>Sorted order of seat ids before locking</td><td>Deadlock-free multi-seat locking</td><td>Guarantees every concurrent booking attempt acquires shared seats in the same global order</td><td>Without this, two users booking overlapping seat sets in opposite orders can deadlock — see W</td></tr>
+<tr><td>Idempotency-key store (processed payment confirmations)</td><td>Safe webhook retries</td><td>O(1) check for "have I already handled this exact confirmation"</td><td>A TTL-bounded cache is sufficient since providers don't retry indefinitely</td></tr>
+</table>
+
+<h3 id="p17-t">T. Complexity Analysis</h3>
+<table>
+<tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+<tr><td><code>holdSeats()</code> for k seats</td><td>O(k log k) for the sort + O(k) for the locks</td><td>O(k)</td></tr>
+<tr><td><code>confirmBooking()</code></td><td>O(k) for k held seats + O(1) idempotency check</td><td>O(1)</td></tr>
+<tr><td>Seat-map render for a show</td><td>O(seats in the screen)</td><td>O(seats in the screen)</td></tr>
+</table>
+
+<h3 id="p17-u">U. Testing Strategy</h3>
+<ul>
+<li><strong>Happy path:</strong> holding then confirming a set of seats transitions exactly those seats to BOOKED and no others.</li>
+<li><strong>Edge cases:</strong> a hold that expires before payment completes releases all its seats back to AVAILABLE and, if a waitlist exists, triggers notification.</li>
+<li><strong>Idempotency tests:</strong> calling <code>confirmBooking()</code> twice with the same idempotency key produces exactly one <code>Booking</code> and one charge, not two.</li>
+<li><strong>Concurrency tests:</strong> two users concurrently holding overlapping seat sets (e.g. user A wants A4-A5, user B wants A5-A6) result in exactly one success for the shared seat A5, and neither request deadlocks against the other.</li>
+</ul>
+
+<h3 id="p17-v">V. Interviewer Follow-Ups</h3>
+<table>
+<tr><th>Follow-Up</th><th>Testing</th><th>Design Change</th><th>Classes Changed</th><th>Pattern/Trade-off</th></tr>
+<tr><td>"What if two users try to lock overlapping seats in opposite order — A4-then-A5 vs. A5-then-A4?"</td><td>Whether lock acquisition order was ever left to caller discretion</td><td>Enforce sorted-id lock ordering inside <code>holdSeats()</code> itself, not left to the caller</td><td>BookingService only</td><td>This is the File System (Problem 9) canonical-ordering deadlock lesson, reapplied</td></tr>
+<tr><td>"Scale to a flash-sale-level popular show — thousands of concurrent hold attempts on the same 200 seats."</td><td>Whether locking was assumed to be in-process rather than distributed</td><td>Move seat locks to a distributed lock service (e.g. Redis with TTL) so multiple app servers coordinate correctly</td><td>SeatLock's underlying implementation, not its interface</td><td>LLD→HLD boundary — see Y</td></tr>
+<tr><td>"Add a waitlist for sold-out shows."</td><td>Whether cancellation was already decoupled from "who cares"</td><td><code>WaitlistNotifier</code> subscribes to seat-release events</td><td>New Observer wiring only</td><td>Reuses the Library/Pub-Sub Observer shape</td></tr>
+</table>
+
+<h3 id="p17-w">W. Concurrency</h3>
+<p><strong>Shared mutable state:</strong> each <code>ShowSeat</code>'s status for a popular show, under genuinely high simultaneous contention — this is the highest-contention scenario in the entire document.</p>
+<ul>
+<li><strong>The check-then-act race, at multi-resource scale:</strong> holding a single seat has the same check-then-lock-then-commit shape seen throughout this document (Parking Lot, Splitwise, ATM, Library, Hotel). What's new here is that a booking often spans <em>multiple</em> seats, which introduces a genuine deadlock risk: if user A locks A4 then tries to lock A5 while user B has already locked A5 and is trying to lock A4, both wait on each other forever.</li>
+<li><strong>Canonical lock ordering resolves it:</strong> sorting the requested seat ids before acquiring any locks, and always acquiring in that sorted order, guarantees every concurrent request converges on the same global lock order — this is exactly File System's (Problem 9) inter-process lock-ordering fix for the same deadlock shape, reapplied to seats instead of files.</li>
+<li><strong>TTL-based soft locks prevent indefinite holds:</strong> a <code>SeatLock</code> that never expired would let an abandoned checkout permanently starve a seat; the TTL guarantees eventual release even if the client disappears mid-payment.</li>
+<li><strong>Idempotent confirmation under retries:</strong> payment webhooks can and do get retried by the provider; keying <code>confirmBooking()</code> on an idempotency key prevents a retry from double-booking or double-charging — the same lesson Pub-Sub (Problem 10) established for message redelivery.</li>
+</ul>
+
+<h3 id="p17-x">X. Persistence</h3>
+<p>Bookings and confirmed seat status must survive a restart without question — a booking that vanishes after payment is a trust-destroying failure. Seat holds are a middle ground: they could technically be rebuilt from a fast in-memory/distributed cache (with the TTL as the natural expiry), but the confirmed <code>Booking</code> record itself is always durable, repository-backed data.</p>
+
+<h3 id="p17-y">Y. Scaling Boundary</h3>
+<table>
+<tr><th>Layer</th><th>What Belongs Here</th></tr>
+<tr><td><strong>LLD</strong></td><td>Seat/ShowSeat model, state machine, canonical lock ordering, TTL holds, idempotent confirmation</td></tr>
+<tr><td><strong>HLD</strong></td><td>Distributed locking across app servers (Redis/Zookeeper), flash-sale traffic shaping/queueing, multi-region show-inventory replication</td></tr>
+<tr><td><strong>Explicitly out of scope</strong></td><td>Distributed-systems infrastructure detail unless the round explicitly pivots to HLD</td></tr>
+</table>
+
+<h3 id="p17-z">Z. Failure Scenarios</h3>
+<ul>
+<li><strong>Payment gateway times out with an unknown result:</strong> the seat must stay LOCKED (not auto-release, not auto-confirm) until an explicit success/failure callback or a manual reconciliation job resolves it — assuming either outcome is a correctness bug in one direction or the other.</li>
+<li><strong>The service crashes between locking seats and returning the <code>SeatLock</code> to the caller:</strong> a background sweep that releases any lock past its TTL guarantees seats don't stay stuck forever even if the in-flight request never got its response.</li>
+</ul>
+
+<h3 id="p17-aa">AA. Common Bad Designs</h3>
+<ul>
+<li><strong>A single booked boolean per seat, shared across all shows</strong> — the defining mistake for this problem; see I.</li>
+<li><strong>Locking seats one at a time in whatever order the caller happened to request them</strong> — the deadlock trap; see W.</li>
+<li><strong>No TTL on a seat hold</strong> — an abandoned checkout permanently locks a seat no one else can ever book.</li>
+<li><strong>Treating payment confirmation as safe to process more than once</strong> — without an idempotency key, a retried webhook can double-book or double-charge.</li>
+</ul>
+
+<h3 id="p17-ab">AB. Design Trade-Offs</h3>
+<table>
+<tr><th>Decision</th><th>Option A</th><th>Option B</th><th>Recommendation</th></tr>
+<tr><td>Lock scope for multi-seat holds</td><td>Lock seats individually in sorted order</td><td>Lock the entire show for the duration of any hold attempt</td><td>Sorted individual locks — locking the whole show serializes unrelated bookings on unrelated seats, destroying throughput for a popular show</td></tr>
+<tr><td>Ambiguous payment result handling</td><td>Auto-release the seat after a short grace timeout</td><td>Keep the seat locked indefinitely pending manual reconciliation</td><td>A bounded grace timeout with a reconciliation job as backstop — indefinite locking on an ambiguous result is a worse failure mode than occasionally releasing a seat that later turns out to have been paid for (refundable) than double-selling one that wasn't (not always reversible)</td></tr>
+</table>
+
+<h3 id="p17-ac">AC. Interviewer Evaluation</h3>
+<p><strong>Strong signal:</strong> splitting Seat/ShowSeat unprompted; proposing a TTL-bound hold before being asked how checkout abandonment is handled; independently identifying the multi-seat deadlock risk and fixing it with canonical lock ordering; flagging idempotency for payment confirmation without being prompted.</p>
+<p><strong>Red flag:</strong> one booked flag per seat; per-seat locking with no defined acquisition order; no hold expiry; treating payment confirmation as safe to run twice.</p>
+
+<h3 id="p17-ad">AD. Interview Simulation</h3>
+<div class="dialog"><span class="who">Interviewer:</span> Design a movie ticket booking system for a popular show with thousands of concurrent users.</div>
+<div class="dialog"><span class="who">Candidate:</span> I'd split the physical <code>Seat</code> from <code>ShowSeat</code>, since booking status only makes sense relative to one specific show — the same seat is free for one showtime and booked for another. Each <code>ShowSeat</code> runs a small state machine: available, locked, booked.</div>
+<div class="dialog"><span class="who">Interviewer:</span> What happens between selecting a seat and actually paying for it?</div>
+<div class="dialog"><span class="who">Candidate:</span> Selecting seats acquires a TTL-bound <code>SeatLock</code> — a soft hold, not a booking. If payment succeeds within the window, the hold converts to a permanent BOOKED status; if it fails or the TTL expires, the seats revert to available automatically.</div>
+<div class="dialog"><span class="who">Interviewer:</span> What if a user tries to book two seats, and another user is simultaneously trying to book an overlapping pair in the opposite order?</div>
+<div class="dialog"><span class="who">Candidate:</span> That's a real deadlock risk if each request locks seats in whatever order the user clicked them. I'd sort the requested seat ids and always acquire locks in that canonical sorted order — the same fix I'd use for the file-lock-ordering problem — so every concurrent request converges on the same global order and none of them can circularly wait on each other.</div>
+<div class="dialog"><span class="who">Interviewer:</span> The payment provider retries its confirmation webhook due to a network blip. What happens?</div>
+<div class="dialog"><span class="who">Candidate:</span> <code>confirmBooking()</code> is keyed by an idempotency key derived from the payment transaction id. A retried call with the same key returns the already-created booking instead of creating a second one or charging twice.</div>
+
+<h3 id="p17-ae">AE. Online Solution Comparison</h3>
+<table>
+<tr><th>Source</th><th>Approach</th><th>Strength</th><th>Weakness</th><th>Worth Learning</th></tr>
+<tr><td><a href="https://www.geeksforgeeks.org/system-design/design-bookmyshow-a-system-design-interview-question/" target="_blank">GeeksforGeeks — Design BookMyShow</a></td><td>Requirements-and-entity walkthrough covering movies, shows, seats, and bookings</td><td>Clear breakdown of the browsing/search side of the problem (city → theater → show)</td><td>Seat locking is generally described at a conceptual level without a concrete deadlock-free multi-seat locking strategy or explicit idempotency handling for payment retries</td><td>Good for the browsing/search entity model; this document's canonical lock ordering and idempotent confirmation are the concurrency depth worth adding on top</td></tr>
+<tr><td><a href="https://algomaster.io/learn/lld/design-bookmyshow" target="_blank">AlgoMaster — Design BookMyShow</a></td><td>Structured walkthrough including a seat-locking discussion and class diagrams</td><td>Explicitly discusses temporary seat locking during checkout, which most treatments skip</td><td>Does not typically dive into the specific multi-seat deadlock scenario or a canonical-ordering fix — usually stops at single-seat locking</td><td>Strong starting point for the TTL-hold concept; this document extends it to the multi-seat deadlock case and payment-retry idempotency</td></tr>
+</table>
+
+<h3 id="p17-af">AF. Interview Cheat Sheet</h3>
+<table>
+<tr><td><strong>Problem</strong></td><td>Movie Ticket Booking System (BookMyShow-style)</td></tr>
+<tr><td><strong>Difficulty</strong></td><td>Advanced (concurrency showcase)</td></tr>
+<tr><td><strong>Core requirements</strong></td><td>Show browsing, seat-map viewing, temporary hold, payment-gated confirmation, category/show-based pricing</td></tr>
+<tr><td><strong>Key clarifications</strong></td><td>Hold TTL length? Multi-seat holds allowed? Synchronous or webhook-based payment? Waitlisting needed?</td></tr>
+<tr><td><strong>Core entities</strong></td><td>Seat, Show, ShowSeat, ShowSeatState, SeatLock, Booking, PricingStrategy, WaitlistNotifier, BookingService</td></tr>
+<tr><td><strong>Key relationships</strong></td><td>Seat/ShowSeat split; State machine for seat lifecycle; TTL soft lock → hard commit on payment; Strategy for pricing; Observer for waitlist</td></tr>
+<tr><td><strong>Key patterns</strong></td><td>State, Strategy, Observer</td></tr>
+<tr><td><strong>Most important decision</strong></td><td>Splitting per-show seat status from the physical seat, and locking multiple seats in canonical order</td></tr>
+<tr><td><strong>Likely-changing behavior</strong></td><td>Pricing rules, hold TTL, additional seat lifecycle states</td></tr>
+<tr><td><strong>Concurrency concern</strong></td><td>Multi-seat deadlock (fixed by canonical lock ordering) and idempotent payment confirmation under retries</td></tr>
+<tr><td><strong>Top follow-ups</strong></td><td>Opposite-order concurrent multi-seat locks, flash-sale-scale distributed locking, waitlist notifications</td></tr>
+<tr><td><strong>Common mistakes</strong></td><td>One booked flag per seat across all shows; unordered multi-seat locking; no hold TTL; non-idempotent payment confirmation</td></tr>
+<tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design the distributed-lock infrastructure itself unless the round explicitly pivots to HLD</td></tr>
+</table><div class="prevnext"><a class="prevnext-link prev" href="p16.html">&larr; 16. Hotel Reservation System</a><a class="prevnext-link next" href="p18.html">18. Restaurant / Food Delivery System &rarr;</a></div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>
