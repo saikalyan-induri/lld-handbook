@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.setAttribute('data-theme', localStorage.getItem('lld-theme') || 'light');</script>
+<title>21. Stock Brokerage System — LLD Handbook</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css">
+</head>
+<body>
+<button id="menu-toggle" aria-label="Toggle menu">&#9776;</button>
+<nav id="sidebar">
+  <div class="sidebar-top">
+    <a class="brand" href="index.html">LLD Handbook</a>
+    <button id="theme-toggle" aria-label="Toggle dark mode">&#127769;</button>
+  </div>
+  <div class="search-wrap">
+    <input id="search-box" type="text" placeholder="Search problems &amp; sections...">
+    <div id="search-results"></div>
+  </div>
+  <ul class="nav-list">
+    <li><a href="index.html" data-page="index.html">Home</a></li>
+    <li><a href="p1.html" data-page="p1.html">1. Parking Lot</a></li>
+    <li><a href="p2.html" data-page="p2.html">2. LRU Cache</a></li>
+    <li><a href="p3.html" data-page="p3.html">3. Rate Limiter</a></li>
+    <li><a href="p4.html" data-page="p4.html">4. Splitwise (Expense Sharing)</a></li>
+    <li><a href="p5.html" data-page="p5.html">5. Ride-Sharing Service (Uber/Lyft)</a></li>
+    <li><a href="p6.html" data-page="p6.html">6. Logging Framework</a></li>
+    <li><a href="p7.html" data-page="p7.html">7. Notification System</a></li>
+    <li><a href="p8.html" data-page="p8.html">8. Coffee Vending Machine</a></li>
+    <li><a href="p9.html" data-page="p9.html">9. File System</a></li>
+    <li><a href="p10.html" data-page="p10.html">10. Pub-Sub / Message Queue</a></li>
+    <li><a href="p11.html" data-page="p11.html">11. Elevator System</a></li>
+    <li><a href="p12.html" data-page="p12.html">12. Tic-Tac-Toe / Board Game Engine</a></li>
+    <li><a href="p13.html" data-page="p13.html">13. Chess Game</a></li>
+    <li><a href="p14.html" data-page="p14.html">14. ATM Machine</a></li>
+    <li><a href="p15.html" data-page="p15.html">15. Library Management System</a></li>
+    <li><a href="p16.html" data-page="p16.html">16. Hotel Reservation System</a></li>
+    <li><a href="p17.html" data-page="p17.html">17. Movie Ticket Booking System</a></li>
+    <li><a href="p18.html" data-page="p18.html">18. Restaurant / Food Delivery System</a></li>
+    <li><a href="p19.html" data-page="p19.html">19. E-commerce Shopping Cart &amp; Checkout</a></li>
+    <li><a href="p20.html" data-page="p20.html">20. Chat Application (WhatsApp-style)</a></li>
+    <li><a href="p21.html" data-page="p21.html">21. Stock Brokerage System</a></li>
+    <li><a href="synthesis.html" data-page="synthesis.html">Cross-Problem Synthesis</a></li>
+  </ul>
+</nav>
+<main id="content">
+<div class="content-inner">
+<h1 class="problem-title">21. Stock Brokerage System <span class="badge">Advanced (Concurrency &amp; Consistency)</span></h1>
+
+<div class="section-toc">
+<a href="#p21-a">A. Interview Prompt</a><a href="#p21-b">B. Difficulty</a><a href="#p21-c">C. What It Tests</a>
+<a href="#p21-d">D. Requirements</a><a href="#p21-e">E. Clarifying Questions</a><a href="#p21-f">F. Assumptions</a>
+<a href="#p21-g">G. Actors</a><a href="#p21-h">H. Core Entities</a><a href="#p21-i">I. Relationships</a>
+<a href="#p21-j">J. Class Diagram</a><a href="#p21-k">K. Responsibility Map</a><a href="#p21-l">L. SOLID Analysis</a>
+<a href="#p21-m">M. Design Patterns</a><a href="#p21-n">N. What Changes?</a><a href="#p21-o">O. Design Evolution</a>
+<a href="#p21-p">P. API Design</a><a href="#p21-q">Q. Pseudocode</a><a href="#p21-r">R. End-to-End Flow</a>
+<a href="#p21-s">S. Data Structures</a><a href="#p21-t">T. Complexity</a><a href="#p21-u">U. Testing Strategy</a>
+<a href="#p21-v">V. Interviewer Follow-Ups</a><a href="#p21-w">W. Concurrency</a><a href="#p21-x">X. Persistence</a>
+<a href="#p21-y">Y. Scaling Boundary</a><a href="#p21-z">Z. Failure Scenarios</a><a href="#p21-aa">AA. Bad Designs</a>
+<a href="#p21-ab">AB. Trade-Offs</a><a href="#p21-ac">AC. Interviewer Evaluation</a><a href="#p21-ad">AD. Simulation</a>
+<a href="#p21-ae">AE. Source Comparison</a><a href="#p21-af">AF. Cheat Sheet</a>
+</div><div class="jumpbar"><label for="jump-p21">Jump to section:</label><select id="jump-p21" class="jump-select" data-jump-select><option value="p21-a">A. Realistic Interview Prompt</option><option value="p21-b">B. Difficulty</option><option value="p21-c">C. What This Problem Tests</option><option value="p21-d">D. Requirements</option><option value="p21-e">E. Clarifying Questions</option><option value="p21-f">F. Assumptions</option><option value="p21-g">G. Actors</option><option value="p21-h">H. Core Domain Entities</option><option value="p21-i">I. Class Relationships</option><option value="p21-j">J. Class Diagram</option><option value="p21-k">K. Responsibility Mapping</option><option value="p21-l">L. SOLID Analysis</option><option value="p21-m">M. Design Patterns</option><option value="p21-n">N. What Is Likely to Change?</option><option value="p21-o">O. Design Evolution</option><option value="p21-p">P. API / Interface Design</option><option value="p21-q">Q. Pseudocode — Critical Logic</option><option value="p21-r">R. End-to-End Use Case</option><option value="p21-s">S. Data Structures</option><option value="p21-t">T. Complexity Analysis</option><option value="p21-u">U. Testing Strategy</option><option value="p21-v">V. Interviewer Follow-Ups</option><option value="p21-w">W. Concurrency</option><option value="p21-x">X. Persistence</option><option value="p21-y">Y. Scaling Boundary</option><option value="p21-z">Z. Failure Scenarios</option><option value="p21-aa">AA. Common Bad Designs</option><option value="p21-ab">AB. Design Trade-Offs</option><option value="p21-ac">AC. Interviewer Evaluation</option><option value="p21-ad">AD. Interview Simulation</option><option value="p21-ae">AE. Online Solution Comparison</option><option value="p21-af">AF. Interview Cheat Sheet</option></select></div>
+
+<h3 id="p21-a">A. Realistic Interview Prompt</h3>
+<div class="prompt">"Design a stock brokerage system. Users should be able to create an account, deposit and withdraw cash, place buy and sell orders for stocks, and view their portfolio and order history. Assume stock prices come from an external market data feed."</div>
+<p>Note what is <em>not</em> specified: whether only market orders are supported or limit orders too, whether an unfilled order sits pending or is rejected outright, and whether execution means "trade against the live feed price" or "match against other users' orders" (a full exchange). A strong candidate surfaces these before writing a single class — the last one in particular determines whether this is an LLD problem at all, or secretly an HLD/distributed-systems one.</p>
+
+<h3 id="p21-b">B. Difficulty</h3>
+<p><strong>Advanced</strong>, escalating to <strong>Advanced + Concurrency/Consistency</strong> once the interviewer asks about two orders racing on the same account's cash or holdings (an almost-guaranteed follow-up). It sits a notch above Parking-Lot-style problems because the domain has hard financial invariants — a balance must never go negative, a sell must never exceed held shares — that have to survive concurrent access, not just single-threaded correctness.</p>
+
+<h3 id="p21-c">C. What This Problem Tests</h3>
+<ul>
+<li>Modeling money and quantities correctly (no floating point for currency)</li>
+<li>State-machine thinking for order lifecycle (PENDING → EXECUTED / REJECTED / CANCELLED)</li>
+<li>Strategy pattern for execution logic (market vs. limit) — <em>only once justified by a requirement</em></li>
+<li>Observer pattern for reacting to price changes instead of polling</li>
+<li>Enforcing invariants (funds/holdings) at the right layer, not scattered across callers</li>
+<li>Concurrency reasoning once multiple orders can race on the same account</li>
+<li>Recognizing the LLD/HLD boundary — this is a brokerage placing orders against a price feed, not a matching engine for a stock exchange</li>
+</ul>
+
+<h3 id="p21-d">D. Requirements</h3>
+<p><strong>Functional</strong></p>
+<ol>
+<li>Create an account with a cash balance</li>
+<li>Deposit and withdraw cash from an account</li>
+<li>Place a buy or sell order for a stock, as a market or limit order</li>
+<li>Validate an order against available funds (buy) or available holdings (sell) before accepting it</li>
+<li>Execute an order against the current market price — immediately for market orders, or once the price condition is met for limit orders</li>
+<li>Maintain a portfolio of holdings per account</li>
+<li>Maintain an order/transaction history per account</li>
+<li>Allow cancelling an order that hasn't executed yet</li>
+<li>Look up the current price of a stock via a market data feed</li>
+</ol>
+<p><strong>Non-Functional</strong></p>
+<ul>
+<li>Extensibility — new order types (stop-loss, stop-limit) should not require touching existing order classes</li>
+<li>Correctness under concurrency — cash can never be double-spent and shares can never be double-sold, even with concurrent orders on the same account</li>
+<li>Interview-scale (a handful of accounts and stocks, not a full exchange's order volume)</li>
+<li>Out of scope by default: matching orders against other users' orders (a real order book/exchange), multi-currency, tax reporting, real payment-rail integration — unless the interviewer asks</li>
+</ul>
+
+<h3 id="p21-e">E. Clarifying Questions</h3>
+<table>
+<tr><th>#</th><th>Question</th><th>Why It Matters</th><th>Design Decision Affected</th></tr>
+<tr><td>1</td><td>Are both market and limit orders in scope, or market only?</td><td>Determines whether execution logic needs to be pluggable at all</td><td><code>ExecutionStrategy</code> abstraction vs. one inline calculation</td></tr>
+<tr><td>2</td><td>If a limit order's price isn't currently met, does it sit pending or get rejected outright?</td><td>Pending orders need a lifecycle and a way to be re-evaluated later</td><td><code>Order</code> status machine, feed subscription</td></tr>
+<tr><td>3</td><td>Do orders execute against a live price feed, or get matched against other users' orders?</td><td>The former is a brokerage (LLD-scale); the latter is a real exchange matching engine (HLD/distributed)</td><td>Whether an order book/matching engine is even built</td></tr>
+<tr><td>4</td><td>Should funds/holdings be reserved at order-placement time, or only checked at execution time?</td><td>Without a reservation, two pending orders could both "pass" a check against the same unspent balance</td><td>Hold-then-settle model on <code>Account</code>/<code>Portfolio</code></td></tr>
+<tr><td>5</td><td>Can a user place multiple concurrent orders, including on the same stock?</td><td>The single biggest driver of the concurrency design</td><td>Locking granularity, atomicity of reserve/settle</td></tr>
+<tr><td>6</td><td>Is a single currency assumed?</td><td>Avoids an unrequested currency-conversion layer</td><td><code>Money</code> modeling simplicity</td></tr>
+<tr><td>7</td><td>Can a placed order be cancelled?</td><td>Adds a <code>CANCELLED</code> terminal state and a release-reservation path</td><td><code>Order</code> lifecycle, <code>cancelOrder()</code></td></tr>
+<tr><td>8</td><td>Are fractional shares allowed?</td><td>Changes <code>Quantity</code> from an integer to a decimal type</td><td><code>Order</code>/<code>Portfolio</code> quantity type</td></tr>
+<tr><td>9</td><td>Are price updates pushed to the system, or does it need to poll?</td><td>Push enables an efficient Observer-based re-check of pending limit orders; poll wastes cycles and adds latency</td><td><code>MarketDataFeed</code> interface shape</td></tr>
+<tr><td>10</td><td>Must account/order state persist across restarts?</td><td>Affects ID durability and crash-recovery of in-flight reservations</td><td>Persistence section relevance</td></tr>
+<tr><td>11</td><td>Do we need commission/fees per trade?</td><td>If yes, pricing needs a second pluggable piece separate from execution</td><td>Optional <code>CommissionStrategy</code> (follow-up, not baked in)</td></tr>
+</table>
+
+<h3 id="p21-f">F. Assumptions</h3>
+<ul>
+<li><strong>Confirmed (from prompt):</strong> account creation, deposit/withdraw, buy/sell orders, portfolio, order history, external price feed.</li>
+<li><strong>Assumption:</strong> execution happens against a pluggable market-data feed's price — this is a brokerage routing orders, not a peer-to-peer order book. Real cross-user matching is called out explicitly as an HLD boundary (see Y), mirroring how a single parking lot's design doesn't try to solve city-wide allocation.</li>
+<li><strong>Assumption:</strong> market orders execute immediately at the current feed price; limit orders remain <code>PENDING</code> until a feed price update crosses the limit, re-checked via a subscription callback (Observer), never by polling.</li>
+<li><strong>Assumption:</strong> funds (for buys) and holdings (for sells) are <em>reserved</em> at order-placement time and released on cancel/rejection — this is what prevents two concurrently pending orders from both passing a check against the same unspent balance.</li>
+<li><strong>Assumption:</strong> single currency, whole-share (integer) quantities in the base design; fractional shares are a stated extension, not built preemptively.</li>
+<li><strong>Assumption:</strong> in-memory state; persistence discussed as an extension (section X).</li>
+<li><strong>Assumption:</strong> no Singleton for <code>Broker</code> — same testability reasoning used throughout this handbook (see M).</li>
+</ul>
+
+<h3 id="p21-g">G. Actors</h3>
+<table>
+<tr><th>Actor</th><th>Responsibility</th></tr>
+<tr><td>Investor / User</td><td>Owns an account; deposits/withdraws cash; places and cancels orders</td></tr>
+<tr><td>Market Data Provider</td><td>External source of current stock prices — feeds the system, isn't a human actor in the flow</td></tr>
+<tr><td>System</td><td>Validates orders, reserves funds/holdings, executes against the feed price, records history — no human decision in the core flow</td></tr>
+</table>
+
+<h3 id="p21-h">H. Core Domain Entities</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Key Attributes</th><th>Key Methods</th><th>Does NOT Handle</th></tr>
+<tr><td><code>Account</code></td><td>Holds cash and a portfolio for one investor</td><td><code>id</code>, <code>cashBalance</code>, <code>reservedCash</code></td><td><code>reserve()</code>, <code>release()</code>, <code>deposit()</code>, <code>withdraw()</code></td><td>Order validation rules, pricing</td></tr>
+<tr><td><code>Portfolio</code></td><td>Tracks per-stock holdings for one account</td><td>holdings map, reserved-quantity map</td><td><code>reserveShares()</code>, <code>releaseShares()</code>, <code>settle()</code></td><td>Pricing, order lifecycle</td></tr>
+<tr><td><code>Stock</code></td><td>Represents a tradable instrument and its last known price</td><td><code>symbol</code>, <code>currentPrice</code></td><td><code>updatePrice()</code></td><td>Deciding who trades it</td></tr>
+<tr><td><code>Order</code> (abstract)</td><td>Represents one order's lifecycle</td><td><code>id</code>, quantity, status, timestamps</td><td><code>cancel()</code></td><td>Fund/holding math, execution decision</td></tr>
+<tr><td><code>BuyOrder</code>/<code>SellOrder</code></td><td>Concrete order — fixes direction and which side (funds vs. holdings) gets reserved/settled</td><td>—</td><td>—</td><td>Any behavior beyond direction</td></tr>
+<tr><td><code>ExecutionStrategy</code> (interface)</td><td>Decides whether an order executes at a given price</td><td>—</td><td><code>tryExecute(Order, Price)</code></td><td>Reserving/settling funds itself</td></tr>
+<tr><td><code>MarketDataFeed</code> (interface)</td><td>Supplies current prices and notifies subscribers on change</td><td>—</td><td><code>getPrice()</code>, <code>subscribe()</code></td><td>Order logic, account state</td></tr>
+<tr><td><code>Broker</code> (facade)</td><td>Public entry point</td><td>accounts</td><td><code>placeOrder()</code>, <code>cancelOrder()</code>, <code>deposit()</code>, <code>withdraw()</code></td><td>Execution/validation logic itself (delegates)</td></tr>
+</table>
+<p class="callout"><strong>Deliberately not created (yet):</strong> a peer order-matching engine/order book, a <code>PaymentGateway</code> for real money movement, a multi-currency <code>FxConverter</code>, a <code>ComplianceEngine</code>. The reference GitHub write-up this problem is commonly modeled after (<a href="https://github.com/ashishps1/awesome-low-level-design/blob/main/problems/online-stock-brokerage-system.md" target="_blank">ashishps1/awesome-low-level-design</a>) keeps scope similarly narrow, but wires its central class as a Singleton — this handbook deliberately avoids that (see M) for the same reason it avoids Singleton everywhere else: it isn't a class-design requirement, it's an application-wiring decision, and baking it in makes the class harder to test.</p>
+
+<h3 id="p21-i">I. Class Relationships</h3>
+<ul>
+<li><strong>Composition:</strong> <code>Broker</code> owns <code>Account</code>s; <code>Account</code> owns its <code>Portfolio</code>. An account's holdings don't make sense detached from the account — composition, not aggregation.</li>
+<li><strong>Inheritance:</strong> <code>Order → BuyOrder/SellOrder</code>. Kept shallow — the two subclasses diverge only on direction (which side gets reserved, which side gets settled), not on unrelated behavior, so the split stays justified rather than becoming ceremony.</li>
+<li><strong>Dependency:</strong> <code>Broker → ExecutionStrategy</code> and <code>Broker → MarketDataFeed</code> — both injected interfaces, so the execution rule and the price source can each be swapped (e.g. a fake feed in tests) without touching <code>Broker</code>.</li>
+<li><strong>Association:</strong> <code>Order → Account</code>, <code>Order → Stock</code> — an order references both but owns the lifecycle of neither.</li>
+<li><strong>Observer:</strong> <code>MarketDataFeed</code> notifies subscribed pending orders on a price change, rather than the system polling the feed on a timer — the same "push, don't poll" reasoning used for the Pub-Sub problem elsewhere in this handbook.</li>
+<li><strong>Why composition over a standalone Account service?</strong> An account's cash and holdings are two views of one financial position that must stay consistent with each other during a trade — splitting them into unrelated services would make the reserve/settle step span a network call for no benefit at this scale.</li>
+</ul>
+
+<h3 id="p21-j">J. Class Diagram</h3>
+<div class="diagram-card">
+<svg id="diagram-p21" width="100%" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" class="classDiagram" style="max-width: 1299.62px; background-color: white;" viewBox="4 4 1299.625 716" role="graphics-document document" aria-roledescription="classDiagram"><style>#diagram-p21{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;fill:#1a1f26;}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#diagram-p21 .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#diagram-p21 .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#diagram-p21 .error-icon{fill:#fff7e6;}#diagram-p21 .error-text{fill:#000819;stroke:#000819;}#diagram-p21 .edge-thickness-normal{stroke-width:1px;}#diagram-p21 .edge-thickness-thick{stroke-width:3.5px;}#diagram-p21 .edge-pattern-solid{stroke-dasharray:0;}#diagram-p21 .edge-thickness-invisible{stroke-width:0;fill:none;}#diagram-p21 .edge-pattern-dashed{stroke-dasharray:3;}#diagram-p21 .edge-pattern-dotted{stroke-dasharray:2;}#diagram-p21 .marker{fill:#334155;stroke:#334155;}#diagram-p21 .marker.cross{stroke:#334155;}#diagram-p21 svg{font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:15px;}#diagram-p21 p{margin:0;}#diagram-p21 g.classGroup text{fill:#2563eb;stroke:none;font-family:-apple-system,Helvetica,Arial,sans-serif;font-size:10px;}#diagram-p21 g.classGroup text .title{font-weight:bolder;}#diagram-p21 .cluster-label text{fill:#000819;}#diagram-p21 .cluster-label span{color:#000819;}#diagram-p21 .cluster-label span p{background-color:transparent;}#diagram-p21 .cluster rect{fill:#f4f6f8;stroke:#d8dee5;stroke-width:1px;}#diagram-p21 .cluster text{fill:#000819;}#diagram-p21 .cluster span{color:#000819;}#diagram-p21 .nodeLabel,#diagram-p21 .edgeLabel{color:#0f2540;}#diagram-p21 .noteLabel .nodeLabel,#diagram-p21 .noteLabel .edgeLabel{color:#333;}#diagram-p21 .edgeLabel .label rect{fill:#eef6ff;}#diagram-p21 .label text{fill:#0f2540;}#diagram-p21 .labelBkg{background:#eef6ff;}#diagram-p21 .edgeLabel .label span{background:#eef6ff;}#diagram-p21 .classTitle{font-weight:bolder;}#diagram-p21 .node rect,#diagram-p21 .node circle,#diagram-p21 .node ellipse,#diagram-p21 .node polygon,#diagram-p21 .node path{fill:#eef6ff;stroke:#2563eb;stroke-width:1;}#diagram-p21 .divider{stroke:#2563eb;stroke-width:1;}#diagram-p21 g.clickable{cursor:pointer;}#diagram-p21 g.classGroup rect{fill:#eef6ff;stroke:#2563eb;}#diagram-p21 g.classGroup line{stroke:#2563eb;stroke-width:1;}#diagram-p21 .classLabel .box{stroke:none;stroke-width:0;fill:#eef6ff;opacity:0.5;}#diagram-p21 .classLabel .label{fill:#2563eb;font-size:10px;}#diagram-p21 .relation{stroke:#334155;stroke-width:1;fill:none;}#diagram-p21 .dashed-line{stroke-dasharray:3;}#diagram-p21 .dotted-line{stroke-dasharray:1 2;}#diagram-p21 [id$="-compositionStart"],#diagram-p21 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p21 [id$="-compositionEnd"],#diagram-p21 .composition{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p21 [id$="-dependencyStart"],#diagram-p21 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p21 [id$="-dependencyEnd"],#diagram-p21 .dependency{fill:#334155!important;stroke:#334155!important;stroke-width:1;}#diagram-p21 [id$="-extensionStart"],#diagram-p21 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p21 [id$="-extensionEnd"],#diagram-p21 .extension{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p21 [id$="-aggregationStart"],#diagram-p21 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p21 [id$="-aggregationEnd"],#diagram-p21 .aggregation{fill:transparent!important;stroke:#334155!important;stroke-width:1;}#diagram-p21 [id$="-lollipopStart"],#diagram-p21 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p21 [id$="-lollipopEnd"],#diagram-p21 .lollipop{fill:#eef6ff!important;stroke:#334155!important;stroke-width:1;}#diagram-p21 .edgeTerminals{font-size:11px;line-height:initial;}#diagram-p21 .classTitleText{text-anchor:middle;font-size:18px;fill:#1a1f26;}#diagram-p21 .edgeLabel[data-look="neo"]{background-color:#ffffff;text-align:center;}#diagram-p21 .edgeLabel[data-look="neo"] p{background-color:#ffffff;}#diagram-p21 .edgeLabel[data-look="neo"] rect{opacity:0.5;background-color:#ffffff;fill:#ffffff;}#diagram-p21 .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#diagram-p21 .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#diagram-p21 .node .neo-node{stroke:#2563eb;}#diagram-p21 [data-look="neo"].node rect,#diagram-p21 [data-look="neo"].cluster rect,#diagram-p21 [data-look="neo"].node polygon{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p21 [data-look="neo"].swimlane.cluster rect{filter:none;}#diagram-p21 [data-look="neo"].node path{stroke:#2563eb;stroke-width:1px;}#diagram-p21 [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p21 [data-look="neo"].node .neo-line path{stroke:#2563eb;filter:none;}#diagram-p21 [data-look="neo"].node circle{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p21 [data-look="neo"].node circle .state-start{fill:#000000;}#diagram-p21 [data-look="neo"].icon-shape .icon{fill:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p21 [data-look="neo"].icon-shape .icon-neo path{stroke:#2563eb;filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#diagram-p21 .classGroup text{font-size:14px!important;}#diagram-p21 .classGroup .title{font-size:16px!important;font-weight:700;}#diagram-p21 .classLabel .label{font-size:14px!important;}#diagram-p21 .edgeLabel,#diagram-p21 .edgeLabel .label{font-size:13px!important;}#diagram-p21 .relationshipLabelBox{font-size:13px!important;}#diagram-p21 .nodeLabel,#diagram-p21 .cluster-label{font-size:14px!important;}#diagram-p21 :root{--mermaid-font-family:"trebuchet ms",verdana,arial,sans-serif;}</style><g><defs><marker id="diagram-p21_classDiagram-aggregationStart" class="marker aggregation classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p21_classDiagram-aggregationEnd" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p21_classDiagram-aggregationStart-margin" class="marker aggregation classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p21_classDiagram-aggregationEnd-margin" class="marker aggregation classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 2;"/></marker></defs><defs><marker id="diagram-p21_classDiagram-extensionStart" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,7 L18,13 V 1 Z"/></marker></defs><defs><marker id="diagram-p21_classDiagram-extensionEnd" class="marker extension classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 1,1 V 13 L18,7 Z"/></marker></defs><marker id="diagram-p21_classDiagram-extensionStart-margin" class="marker extension classDiagram" refX="18" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,7 18,13 18,1" style="stroke-width: 2; stroke-dasharray: 0;"/></marker><defs><marker id="diagram-p21_classDiagram-extensionEnd-margin" class="marker extension classDiagram" refX="9" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse" viewBox="0 0 20 14"><polygon points="10,1 10,13 18,7" style="stroke-width: 2; stroke-dasharray: 0;"/></marker></defs><defs><marker id="diagram-p21_classDiagram-compositionStart" class="marker composition classDiagram" refX="18" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p21_classDiagram-compositionEnd" class="marker composition classDiagram" refX="1" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p21_classDiagram-compositionStart-margin" class="marker composition classDiagram" refX="15" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path viewBox="0 0 15 15" d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p21_classDiagram-compositionEnd-margin" class="marker composition classDiagram" refX="3.5" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p21_classDiagram-dependencyStart" class="marker dependency classDiagram" refX="6" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p21_classDiagram-dependencyEnd" class="marker dependency classDiagram" refX="13" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z"/></marker></defs><defs><marker id="diagram-p21_classDiagram-dependencyStart-margin" class="marker dependency classDiagram" refX="4" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><path d="M 5,7 L9,13 L1,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p21_classDiagram-dependencyEnd-margin" class="marker dependency classDiagram" refX="16" refY="7" markerWidth="20" markerHeight="28" orient="auto" markerUnits="userSpaceOnUse"><path d="M 18,7 L9,13 L14,7 L9,1 Z" style="stroke-width: 0;"/></marker></defs><defs><marker id="diagram-p21_classDiagram-lollipopStart" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p21_classDiagram-lollipopEnd" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6"/></marker></defs><defs><marker id="diagram-p21_classDiagram-lollipopStart-margin" class="marker lollipop classDiagram" refX="13" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><defs><marker id="diagram-p21_classDiagram-lollipopEnd-margin" class="marker lollipop classDiagram" refX="1" refY="7" markerWidth="190" markerHeight="240" orient="auto" markerUnits="userSpaceOnUse"><circle fill="transparent" cx="7" cy="7" r="6" stroke-width="2"/></marker></defs><g class="root"><g class="clusters"/><g class="edges edgePaths"><path d="M640.0214843750001,227.25L640.0214843750001,228.625Q640.0214843750001,230 641.3964843750001,230L766.5695571881347,230Q773.6406250000001,230 773.6406250000001,237.07106781186548L773.6406250000001,270" id="diagram-p21-id_Broker_Account_1" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 173.18699645996094 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Broker_Account_1" data-points="W3sieCI6NjQwLjAyMTQ4NDM3NTAwMDEsInkiOjIxMH0seyJ4Ijo2NDAuMDIxNDg0Mzc1MDAwMSwieSI6MjMwfSx7IngiOjc3My42NDA2MjUwMDAwMDAxLCJ5IjoyMzB9LHsieCI6NzczLjY0MDYyNTAwMDAwMDEsInkiOjI3MH1d" data-look="neo" marker-start="url(#diagram-p21_classDiagram-compositionStart-margin)"/><path d="M798.1015625000001,527.25L798.1015625000001,550" id="diagram-p21-id_Account_Portfolio_2" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 22.75 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Account_Portfolio_2" data-points="W3sieCI6Nzk4LjEwMTU2MjUwMDAwMDEsInkiOjUxMH0seyJ4Ijo3OTguMTAxNTYyNTAwMDAwMSwieSI6NTUwfV0=" data-look="neo" marker-start="url(#diagram-p21_classDiagram-compositionStart-margin)"/><path d="M417.74414062500006,210L417.74414062500006,222.92893218813452Q417.74414062500006,230 410.6730728131346,230L228.21169281186553,230Q221.14062500000006,230 221.14062500000006,237.07106781186548L221.14062500000006,330" id="diagram-p21-id_Broker_ExecutionStrategy_3" class="edge-thickness-normal edge-pattern-dashed relation" style="stroke-dasharray: 0 0 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Broker_ExecutionStrategy_3" data-points="W3sieCI6NDE3Ljc0NDE0MDYyNTAwMDA2LCJ5IjoyMTB9LHsieCI6NDE3Ljc0NDE0MDYyNTAwMDA2LCJ5IjoyMzB9LHsieCI6MjIxLjE0MDYyNTAwMDAwMDA2LCJ5IjoyMzB9LHsieCI6MjIxLjE0MDYyNTAwMDAwMDA2LCJ5IjozMzZ9XQ==" data-look="neo" marker-end="url(#diagram-p21_classDiagram-dependencyEnd-margin)"/><path d="M528.8828125,210L528.8828125,264" id="diagram-p21-id_Broker_MarketDataFeed_4" class="edge-thickness-normal edge-pattern-dashed relation" style="stroke-dasharray: 0 0 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Broker_MarketDataFeed_4" data-points="W3sieCI6NTI4Ljg4MjgxMjUsInkiOjIxMH0seyJ4Ijo1MjguODgyODEyNSwieSI6MjcwfV0=" data-look="neo" marker-end="url(#diagram-p21_classDiagram-dependencyEnd-margin)"/><path d="M183.83854166666669,494.25L183.83854166666669,522.9289321881345Q183.83854166666669,530 176.7674738548012,530L115.10231781186548,530Q108.03125,530 108.03125,537.0710678118655L108.03125,550" id="diagram-p21-id_ExecutionStrategy_MarketExecutionStrategy_5" class="edge-thickness-normal edge-pattern-dashed relation" style="stroke-dasharray: 0 0 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_ExecutionStrategy_MarketExecutionStrategy_5" data-points="W3sieCI6MTgzLjgzODU0MTY2NjY2NjY5LCJ5Ijo0Nzd9LHsieCI6MTgzLjgzODU0MTY2NjY2NjY5LCJ5Ijo1MzB9LHsieCI6MTA4LjAzMTI1LCJ5Ijo1MzB9LHsieCI6MTA4LjAzMTI1LCJ5Ijo1NTB9XQ==" data-look="neo" marker-start="url(#diagram-p21_classDiagram-extensionStart-margin)"/><path d="M258.44270833333337,494.25L258.44270833333337,522.9289321881345Q258.44270833333337,530 265.51377614519885,530L327.1789321881345,530Q334.25,530 334.25,537.0710678118655L334.25,550" id="diagram-p21-id_ExecutionStrategy_LimitExecutionStrategy_6" class="edge-thickness-normal edge-pattern-dashed relation" style="stroke-dasharray: 0 0 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_ExecutionStrategy_LimitExecutionStrategy_6" data-points="W3sieCI6MjU4LjQ0MjcwODMzMzMzMzM3LCJ5Ijo0Nzd9LHsieCI6MjU4LjQ0MjcwODMzMzMzMzM3LCJ5Ijo1MzB9LHsieCI6MzM0LjI1LCJ5Ijo1MzB9LHsieCI6MzM0LjI1LCJ5Ijo1NTB9XQ==" data-look="neo" marker-start="url(#diagram-p21_classDiagram-extensionStart-margin)"/><path d="M1020.2101562500001,227.25L1020.2101562500001,242.92893218813452Q1020.2101562500001,250 1013.1390884381346,250L972.8445053118655,250Q965.7734375000001,250 965.7734375000001,257.0710678118655L965.7734375000001,270" id="diagram-p21-id_Order_BuyOrder_7" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 91.85843658447266 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Order_BuyOrder_7" data-points="W3sieCI6MTAyMC4yMTAxNTYyNTAwMDAxLCJ5IjoyMTB9LHsieCI6MTAyMC4yMTAxNTYyNTAwMDAxLCJ5IjoyNTB9LHsieCI6OTY1Ljc3MzQzNzUwMDAwMDEsInkiOjI1MH0seyJ4Ijo5NjUuNzczNDM3NTAwMDAwMSwieSI6MjcwfV0=" data-look="neo" marker-start="url(#diagram-p21_classDiagram-extensionStart-margin)"/><path d="M1039.1414062500003,227.25L1039.1414062500003,242.92893218813452Q1039.1414062500003,250 1046.2124740618658,250L1086.5070571881345,250Q1093.578125,250 1093.578125,257.0710678118655L1093.578125,270" id="diagram-p21-id_Order_SellOrder_8" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 91.85845184326172 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Order_SellOrder_8" data-points="W3sieCI6MTAzOS4xNDE0MDYyNTAwMDAzLCJ5IjoyMTB9LHsieCI6MTAzOS4xNDE0MDYyNTAwMDAzLCJ5IjoyNTB9LHsieCI6MTA5My41NzgxMjUsInkiOjI1MH0seyJ4IjoxMDkzLjU3ODEyNSwieSI6MjcwfV0=" data-look="neo" marker-start="url(#diagram-p21_classDiagram-extensionStart-margin)"/><path d="M1001.2789062500001,210L1001.2789062500001,222.92893218813452Q1001.2789062500001,230 994.2078384381346,230L829.6335678118655,230Q822.5625000000001,230 822.5625000000001,237.07106781186548L822.5625000000001,264" id="diagram-p21-id_Order_Account_9" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 227.3881378173828 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Order_Account_9" data-points="W3sieCI6MTAwMS4yNzg5MDYyNTAwMDAxLCJ5IjoyMTB9LHsieCI6MTAwMS4yNzg5MDYyNTAwMDAxLCJ5IjoyMzB9LHsieCI6ODIyLjU2MjUwMDAwMDAwMDEsInkiOjIzMH0seyJ4Ijo4MjIuNTYyNTAwMDAwMDAwMSwieSI6MjcwfV0=" data-look="neo" marker-end="url(#diagram-p21_classDiagram-dependencyEnd-margin)"/><path d="M1058.0726562500001,210L1058.0726562500001,222.92893218813452Q1058.0726562500001,230 1065.1437240618657,230L1229.2883071881345,230Q1236.359375,230 1236.359375,237.07106781186548L1236.359375,264" id="diagram-p21-id_Order_Stock_10" class="edge-thickness-normal edge-pattern-solid relation" style="stroke-dasharray: 0 0 226.95851135253906 0; stroke-dashoffset: 0;;;;" data-edge="true" data-et="edge" data-id="id_Order_Stock_10" data-points="W3sieCI6MTA1OC4wNzI2NTYyNTAwMDAxLCJ5IjoyMTB9LHsieCI6MTA1OC4wNzI2NTYyNTAwMDAxLCJ5IjoyMzB9LHsieCI6MTIzNi4zNTkzNzUsInkiOjIzMH0seyJ4IjoxMjM2LjM1OTM3NSwieSI6MjcwfV0=" data-look="neo" marker-end="url(#diagram-p21_classDiagram-dependencyEnd-margin)"/></g><g class="edgeLabels"/><g class="nodes"><g class="node default" id="diagram-p21-classId-Broker-0" data-look="neo" transform="translate(528.8828125, 118.5)"><g class="basic label-container outer-path"><path d="M-232.27734375 -91.5 L232.27734375 -91.5 L232.27734375 91.5 L-232.27734375 91.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-232.27734375 -91.5 C-55.38475995777924 -91.5, 121.50782383444152 -91.5, 232.27734375 -91.5 M-232.27734375 -91.5 C-125.39019815025263 -91.5, -18.50305255050526 -91.5, 232.27734375 -91.5 M232.27734375 -91.5 C232.27734375 -26.455187041030527, 232.27734375 38.589625917938946, 232.27734375 91.5 M232.27734375 -91.5 C232.27734375 -41.958939523989905, 232.27734375 7.58212095202019, 232.27734375 91.5 M232.27734375 91.5 C108.25199520019642 91.5, -15.773353349607163 91.5, -232.27734375 91.5 M232.27734375 91.5 C134.04063314600143 91.5, 35.80392254200288 91.5, -232.27734375 91.5 M-232.27734375 91.5 C-232.27734375 21.56863459765036, -232.27734375 -48.36273080469928, -232.27734375 -91.5 M-232.27734375 91.5 C-232.27734375 54.499630433599634, -232.27734375 17.49926086719927, -232.27734375 -91.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -67.5)"/><g class="label-group text" transform="translate(-22.5703125, -67.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="45.140625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 95px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Broker</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-220.27734375, -22.5)"/><g class="methods-group text" transform="translate(-220.27734375, 7.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="417.984375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 497px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+placeOrder(Account, Stock, Side, Quantity, OrderType, LimitPrice)</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="141.21875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 203px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+cancelOrder(OrderId)</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="163.03125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 228px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+deposit(Account, Money)</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,52.5)"><foreignObject width="173.140625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 242px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+withdraw(Account, Money)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-232.27734375 -46.5 C-85.31329708022022 -46.49968364532611, 61.65074958955955 -46.499367290652216, 232.27734375 -46.499 M-232.27734375 -46.5 C-97.0086343560975 -46.499708820698544, 38.260075037804995 -46.499417641397095, 232.27734375 -46.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-232.27734375 -22.5 C-85.01252157174224 -22.49968299787702, 62.25230060651552 -22.499365995754037, 232.27734375 -22.499 M-232.27734375 -22.5 C-134.18355787419682 -22.499788843405277, -36.089771998393644 -22.49957768681055, 232.27734375 -22.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p21-classId-Account-1" data-look="neo" transform="translate(798.1015625000001, 390)"><g class="basic label-container outer-path"><path d="M-83.3828125 -120 L83.3828125 -120 L83.3828125 120 L-83.3828125 120" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-83.3828125 -120 C-44.431599966629435 -120, -5.480387433258869 -120, 83.3828125 -120 M-83.3828125 -120 C-45.692338584904995 -120, -8.00186466980999 -120, 83.3828125 -120 M83.3828125 -120 C83.3828125 -35.15044229806311, 83.3828125 49.699115403873776, 83.3828125 120 M83.3828125 -120 C83.3828125 -31.01016751547975, 83.3828125 57.9796649690405, 83.3828125 120 M83.3828125 120 C26.297472088289737 120, -30.787868323420525 120, -83.3828125 120 M83.3828125 120 C22.012836911641422 120, -39.357138676717156 120, -83.3828125 120 M-83.3828125 120 C-83.3828125 60.632239967474106, -83.3828125 1.2644799349482128, -83.3828125 -120 M-83.3828125 120 C-83.3828125 63.269960723759155, -83.3828125 6.53992144751831, -83.3828125 -120" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -96)"/><g class="label-group text" transform="translate(-28, -96)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="56" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 104px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Account</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-71.3828125, -51)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="10.90625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 62px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>id</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="80.171875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 130px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>cashBalance</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="87.15625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 136px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>reservedCash</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-71.3828125, 36)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="106.203125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 166px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+reserve(Money)</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="105.4375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 164px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+release(Money)</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="104.671875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 166px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+deposit(Money)</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,52.5)"><foreignObject width="114.765625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 180px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+withdraw(Money)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-83.3828125 -75 C-37.9498533420639 -74.99972756400392, 7.483105815872193 -74.99945512800785, 83.3828125 -74.999 M-83.3828125 -75 C-28.08683031779544 -74.99966842098195, 27.209151864409122 -74.9993368419639, 83.3828125 -74.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-83.3828125 12 C-37.206706936159804 12.000276892228623, 8.969398627680391 12.000553784457244, 83.3828125 12.001 M-83.3828125 12 C-34.25346885349086 12.00029460114245, 14.875874793018284 12.000589202284901, 83.3828125 12.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p21-classId-Portfolio-2" data-look="neo" transform="translate(798.1015625000001, 631)"><g class="basic label-container outer-path"><path d="M-128.12890625 -81 L128.12890625 -81 L128.12890625 81 L-128.12890625 81" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-128.12890625 -81 C-51.60069699053017 -81, 24.927512268939665 -81, 128.12890625 -81 M-128.12890625 -81 C-26.662416214033556 -81, 74.80407382193289 -81, 128.12890625 -81 M128.12890625 -81 C128.12890625 -34.94371884221427, 128.12890625 11.112562315571466, 128.12890625 81 M128.12890625 -81 C128.12890625 -19.07724138001612, 128.12890625 42.84551723996776, 128.12890625 81 M128.12890625 81 C75.80324899516393 81, 23.47759174032784 81, -128.12890625 81 M128.12890625 81 C38.427616701181876 81, -51.27367284763625 81, -128.12890625 81 M-128.12890625 81 C-128.12890625 43.24464052647476, -128.12890625 5.489281052949522, -128.12890625 -81 M-128.12890625 81 C-128.12890625 16.99616895143417, -128.12890625 -47.00766209713166, -128.12890625 -81" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -57)"/><g class="label-group text" transform="translate(-28.7734375, -57)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="57.546875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 107px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Portfolio</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-116.12890625, -12)"/><g class="methods-group text" transform="translate(-116.12890625, 18)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="203.484375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 263px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+reserveShares(Stock, Quantity)</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="202.71875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 262px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+releaseShares(Stock, Quantity)</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="180.671875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 244px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+settle(Stock, Quantity, Side)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-128.12890625 -36 C-72.61814590485827 -35.99978337924685, -17.107385559716548 -35.99956675849369, 128.12890625 -35.999 M-128.12890625 -36 C-26.86774414944219 -35.99960484653673, 74.39341795111562 -35.99920969307345, 128.12890625 -35.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-128.12890625 -12 C-61.417252404689705 -11.99973966977555, 5.2944014406205895 -11.9994793395511, 128.12890625 -11.999 M-128.12890625 -12 C-69.60135623691204 -11.999771606768036, -11.073806223824079 -11.999543213536072, 128.12890625 -11.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p21-classId-ExecutionStrategy-3" data-look="neo" transform="translate(221.14062500000006, 406.5)"><g class="basic label-container outer-path"><path d="M-121.90625 -70.5 L121.90625 -70.5 L121.90625 70.5 L-121.90625 70.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-121.90625 -70.5 C-29.694523568445604 -70.5, 62.51720286310879 -70.5, 121.90625 -70.5 M-121.90625 -70.5 C-34.879190892873396 -70.5, 52.14786821425321 -70.5, 121.90625 -70.5 M121.90625 -70.5 C121.90625 -18.147129354053426, 121.90625 34.20574129189315, 121.90625 70.5 M121.90625 -70.5 C121.90625 -27.343441779345667, 121.90625 15.813116441308665, 121.90625 70.5 M121.90625 70.5 C60.636318773744954 70.5, -0.6336124525100928 70.5, -121.90625 70.5 M121.90625 70.5 C45.546328626347474 70.5, -30.81359274730505 70.5, -121.90625 70.5 M-121.90625 70.5 C-121.90625 41.595707614043775, -121.90625 12.691415228087557, -121.90625 -70.5 M-121.90625 70.5 C-121.90625 15.92508310096435, -121.90625 -38.6498337980713, -121.90625 -70.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-34.640625, -46.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="69.28125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«interface»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-61.46875, -25.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="122.9375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 168px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>ExecutionStrategy</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-109.90625, 19.5)"/><g class="methods-group text" transform="translate(-109.90625, 49.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="158.34375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 221px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+tryExecute(Order, Price)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-121.90625 -4.5 C-32.23038138775263 -4.4996321933099725, 57.44548722449474 -4.499264386619945, 121.90625 -4.499 M-121.90625 -4.5 C-53.94919864241223 -4.499721273308967, 14.007852715175545 -4.499442546617933, 121.90625 -4.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-121.90625 19.5 C-41.42611993939795 19.50033009025403, 39.0540101212041 19.50066018050806, 121.90625 19.501 M-121.90625 19.5 C-67.10002754655386 19.500224788402782, -12.293805093107707 19.500449576805565, 121.90625 19.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p21-classId-MarketDataFeed-4" data-look="neo" transform="translate(528.8828125, 351)"><g class="basic label-container outer-path"><path d="M-145.8359375 -81 L145.8359375 -81 L145.8359375 81 L-145.8359375 81" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-145.8359375 -81 C-79.68466033808137 -81, -13.533383176162744 -81, 145.8359375 -81 M-145.8359375 -81 C-76.95143732594609 -81, -8.066937151892176 -81, 145.8359375 -81 M145.8359375 -81 C145.8359375 -32.716944203861175, 145.8359375 15.56611159227765, 145.8359375 81 M145.8359375 -81 C145.8359375 -36.91625145932002, 145.8359375 7.167497081359954, 145.8359375 81 M145.8359375 81 C74.00081840355942 81, 2.1656993071188424 81, -145.8359375 81 M145.8359375 81 C69.3842425236293 81, -7.067452452741406 81, -145.8359375 81 M-145.8359375 81 C-145.8359375 33.82659124502636, -145.8359375 -13.346817509947286, -145.8359375 -81 M-145.8359375 81 C-145.8359375 29.033495246943552, -145.8359375 -22.933009506112896, -145.8359375 -81" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-34.640625, -57)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="69.28125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 122px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«interface»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-54.078125, -36)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="108.15625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 158px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>MarketDataFeed</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-133.8359375, 9)"/><g class="methods-group text" transform="translate(-133.8359375, 39)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="115.546875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 176px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+getPrice(Symbol)</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="213.59375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 278px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+subscribe(Symbol, PriceListener)</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-145.8359375 -15 C-62.00996651504484 -14.999712601803019, 21.816004469910325 -14.99942520360604, 145.8359375 -14.999 M-145.8359375 -15 C-62.64437550222658 -14.999714776880706, 20.54718649554684 -14.999429553761413, 145.8359375 -14.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-145.8359375 9 C-75.83344705199757 9.000240004252888, -5.8309566039951335 9.000480008505777, 145.8359375 9.001 M-145.8359375 9 C-78.33877606847703 9.000231414706787, -10.841614636954063 9.000462829413577, 145.8359375 9.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p21-classId-Order-5" data-look="neo" transform="translate(1029.67578125, 111)"><g class="basic label-container outer-path"><path d="M-57.328125 -99 L57.328125 -99 L57.328125 99 L-57.328125 99" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-57.328125 -99 C-25.82289690697246 -99, 5.68233118605508 -99, 57.328125 -99 M-57.328125 -99 C-20.827101735510688 -99, 15.673921528978624 -99, 57.328125 -99 M57.328125 -99 C57.328125 -55.18182945975762, 57.328125 -11.363658919515245, 57.328125 99 M57.328125 -99 C57.328125 -35.469038166567934, 57.328125 28.061923666864132, 57.328125 99 M57.328125 99 C17.569621229100008 99, -22.188882541799984 99, -57.328125 99 M57.328125 99 C31.279049298388443 99, 5.229973596776887 99, -57.328125 99 M-57.328125 99 C-57.328125 30.00457522353362, -57.328125 -38.99084955293276, -57.328125 -99 M-57.328125 99 C-57.328125 48.53022712166167, -57.328125 -1.9395457566766652, -57.328125 -99" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(-32.6875, -75)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="65.375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 116px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>«abstract»</p></span></div></foreignObject></g></g><g class="label-group text" transform="translate(-19.0625, -54)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="38.125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 87px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Order</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-45.328125, -9)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="10.90625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 62px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>id</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="49.046875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 102px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>quantity</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,31.5)"><foreignObject width="37.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 86px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>status</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-45.328125, 78)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="57.96875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 115px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>+cancel()</p></span></div></foreignObject></g></g><g class="divider neo-line" style=""><path d="M-57.328125 -33 C-16.580416379730522 -32.99964460979127, 24.167292240538956 -32.99928921958253, 57.328125 -32.999 M-57.328125 -33 C-26.7408516525798 -32.999733226288605, 3.8464216948404015 -32.99946645257721, 57.328125 -32.999" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-57.328125 54 C-29.705440108504973 54.00024091739344, -2.0827552170099466 54.000481834786875, 57.328125 54.001 M-57.328125 54 C-12.047971154165815 54.00039492093842, 33.23218269166837 54.00078984187684, 57.328125 54.001" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p21-classId-Stock-6" data-look="neo" transform="translate(1236.359375, 337.5)"><g class="basic label-container outer-path"><path d="M-59.265625 -67.5 L59.265625 -67.5 L59.265625 67.5 L-59.265625 67.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-59.265625 -67.5 C-31.6905812776011 -67.5, -4.115537555202202 -67.5, 59.265625 -67.5 M-59.265625 -67.5 C-24.757034828628278 -67.5, 9.751555342743444 -67.5, 59.265625 -67.5 M59.265625 -67.5 C59.265625 -27.527745263121687, 59.265625 12.444509473756625, 59.265625 67.5 M59.265625 -67.5 C59.265625 -28.77666272267968, 59.265625 9.946674554640637, 59.265625 67.5 M59.265625 67.5 C24.04651190049941 67.5, -11.172601199001178 67.5, -59.265625 67.5 M59.265625 67.5 C12.381521281603895 67.5, -34.50258243679221 67.5, -59.265625 67.5 M-59.265625 67.5 C-59.265625 36.586370374966876, -59.265625 5.672740749933759, -59.265625 -67.5 M-59.265625 67.5 C-59.265625 23.050712103903813, -59.265625 -21.398575792192375, -59.265625 -67.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -43.5)"/><g class="label-group text" transform="translate(-19.0625, -43.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="38.125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 87px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>Stock</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-47.265625, 1.5)"><g class="label" style="" transform="translate(0,-10.5)"><foreignObject width="44.359375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 97px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>symbol</p></span></div></foreignObject></g><g class="label" style="" transform="translate(0,10.5)"><foreignObject width="75.46875" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 128px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>currentPrice</p></span></div></foreignObject></g></g><g class="methods-group text" transform="translate(-47.265625, 67.5)"/><g class="divider neo-line" style=""><path d="M-59.265625 -22.5 C-32.46096679449806 -22.499773859988775, -5.656308588996119 -22.49954771997755, 59.265625 -22.499 M-59.265625 -22.5 C-24.963722769021302 -22.499710608786874, 9.338179461957395 -22.499421217573744, 59.265625 -22.499" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-59.265625 43.5 C-13.857298147970525 43.50038309160539, 31.55102870405895 43.500766183210786, 59.265625 43.501 M-59.265625 43.5 C-33.37258555628816 43.500218449054096, -7.479546112576315 43.5004368981082, 59.265625 43.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p21-classId-MarketExecutionStrategy-7" data-look="neo" transform="translate(108.03125, 590.5)"><g class="basic label-container outer-path"><path d="M-96.03125 -40.5 L96.03125 -40.5 L96.03125 40.5 L-96.03125 40.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-96.03125 -40.5 C-30.60601221324781 -40.5, 34.81922557350438 -40.5, 96.03125 -40.5 M-96.03125 -40.5 C-34.421724437688695 -40.5, 27.18780112462261 -40.5, 96.03125 -40.5 M96.03125 -40.5 C96.03125 -8.48357235412604, 96.03125 23.53285529174792, 96.03125 40.5 M96.03125 -40.5 C96.03125 -24.17463751058477, 96.03125 -7.8492750211695395, 96.03125 40.5 M96.03125 40.5 C45.02605610980678 40.5, -5.979137780386438 40.5, -96.03125 40.5 M96.03125 40.5 C28.74180647662247 40.5, -38.54763704675506 40.5, -96.03125 40.5 M-96.03125 40.5 C-96.03125 18.79459230414105, -96.03125 -2.9108153917178967, -96.03125 -40.5 M-96.03125 40.5 C-96.03125 23.752126902828707, -96.03125 7.004253805657413, -96.03125 -40.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -16.5)"/><g class="label-group text" transform="translate(-84.03125, -16.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="168.0625" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 214px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>MarketExecutionStrategy</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-84.03125, 28.5)"/><g class="methods-group text" transform="translate(-84.03125, 58.5)"/><g class="divider neo-line" style=""><path d="M-96.03125 4.5 C-52.6961607802272 4.500225630142374, -9.361071560454405 4.500451260284748, 96.03125 4.501 M-96.03125 4.5 C-29.522182536326255 4.500346288668864, 36.98688492734749 4.500692577337728, 96.03125 4.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-96.03125 22.5 C-39.15591408641484 22.500296129311625, 17.719421827170322 22.500592258623247, 96.03125 22.501 M-96.03125 22.5 C-30.944513738355624 22.50033888310452, 34.14222252328875 22.500677766209037, 96.03125 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p21-classId-LimitExecutionStrategy-8" data-look="neo" transform="translate(334.25, 590.5)"><g class="basic label-container outer-path"><path d="M-90.1875 -40.5 L90.1875 -40.5 L90.1875 40.5 L-90.1875 40.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-90.1875 -40.5 C-18.147827184024976 -40.5, 53.89184563195005 -40.5, 90.1875 -40.5 M-90.1875 -40.5 C-28.910120200437277 -40.5, 32.36725959912545 -40.5, 90.1875 -40.5 M90.1875 -40.5 C90.1875 -22.78449042504851, 90.1875 -5.06898085009702, 90.1875 40.5 M90.1875 -40.5 C90.1875 -17.656310743145745, 90.1875 5.187378513708509, 90.1875 40.5 M90.1875 40.5 C51.77540128511981 40.5, 13.363302570239625 40.5, -90.1875 40.5 M90.1875 40.5 C49.2216418738187 40.5, 8.255783747637395 40.5, -90.1875 40.5 M-90.1875 40.5 C-90.1875 23.55479813357236, -90.1875 6.609596267144717, -90.1875 -40.5 M-90.1875 40.5 C-90.1875 22.930606469998683, -90.1875 5.361212939997365, -90.1875 -40.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -16.5)"/><g class="label-group text" transform="translate(-78.1875, -16.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="156.375" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 204px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>LimitExecutionStrategy</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-78.1875, 28.5)"/><g class="methods-group text" transform="translate(-78.1875, 58.5)"/><g class="divider neo-line" style=""><path d="M-90.1875 4.5 C-37.78035696409932 4.500290545491537, 14.626786071801362 4.500581090983073, 90.1875 4.501 M-90.1875 4.5 C-24.032759215542413 4.500366762249671, 42.121981568915174 4.500733524499343, 90.1875 4.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-90.1875 22.5 C-37.90933362042832 22.50028983044424, 14.36883275914336 22.50057966088848, 90.1875 22.501 M-90.1875 22.5 C-27.9670080879715 22.500344950752112, 34.253483824057 22.500689901504224, 90.1875 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p21-classId-BuyOrder-9" data-look="neo" transform="translate(965.7734375000001, 310.5)"><g class="basic label-container outer-path"><path d="M-44.2890625 -40.5 L44.2890625 -40.5 L44.2890625 40.5 L-44.2890625 40.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-44.2890625 -40.5 C-10.758215157814718 -40.5, 22.772632184370565 -40.5, 44.2890625 -40.5 M-44.2890625 -40.5 C-10.409120092207942 -40.5, 23.470822315584115 -40.5, 44.2890625 -40.5 M44.2890625 -40.5 C44.2890625 -14.125213198843891, 44.2890625 12.249573602312218, 44.2890625 40.5 M44.2890625 -40.5 C44.2890625 -18.946727609103235, 44.2890625 2.6065447817935308, 44.2890625 40.5 M44.2890625 40.5 C24.288985067429362 40.5, 4.288907634858724 40.5, -44.2890625 40.5 M44.2890625 40.5 C11.486139148883332 40.5, -21.316784202233336 40.5, -44.2890625 40.5 M-44.2890625 40.5 C-44.2890625 22.218767662285526, -44.2890625 3.9375353245710514, -44.2890625 -40.5 M-44.2890625 40.5 C-44.2890625 19.259513748644427, -44.2890625 -1.9809725027111469, -44.2890625 -40.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -16.5)"/><g class="label-group text" transform="translate(-32.2890625, -16.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="64.578125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 114px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>BuyOrder</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-32.2890625, 28.5)"/><g class="methods-group text" transform="translate(-32.2890625, 58.5)"/><g class="divider neo-line" style=""><path d="M-44.2890625 4.5 C-10.847842870734574 4.500377533613737, 22.59337675853085 4.500755067227473, 44.2890625 4.501 M-44.2890625 4.5 C-18.837877710669872 4.500287330362766, 6.613307078660256 4.500574660725531, 44.2890625 4.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-44.2890625 22.5 C-17.80941808102333 22.500298941125916, 8.670226337953338 22.50059788225183, 44.2890625 22.501 M-44.2890625 22.5 C-12.532868101381162 22.50035851057356, 19.223326297237676 22.50071702114712, 44.2890625 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g><g class="node default" id="diagram-p21-classId-SellOrder-10" data-look="neo" transform="translate(1093.578125, 310.5)"><g class="basic label-container outer-path"><path d="M-43.515625 -40.5 L43.515625 -40.5 L43.515625 40.5 L-43.515625 40.5" stroke="none" stroke-width="0" fill="#eef6ff" style=""/><path d="M-43.515625 -40.5 C-23.19537970660827 -40.5, -2.875134413216543 -40.5, 43.515625 -40.5 M-43.515625 -40.5 C-26.08202363662971 -40.5, -8.64842227325942 -40.5, 43.515625 -40.5 M43.515625 -40.5 C43.515625 -10.164435409567517, 43.515625 20.171129180864966, 43.515625 40.5 M43.515625 -40.5 C43.515625 -20.896975885158096, 43.515625 -1.2939517703161911, 43.515625 40.5 M43.515625 40.5 C18.11320557409158 40.5, -7.2892138518168395 40.5, -43.515625 40.5 M43.515625 40.5 C12.852090817028948 40.5, -17.811443365942104 40.5, -43.515625 40.5 M-43.515625 40.5 C-43.515625 12.589587797675119, -43.515625 -15.320824404649763, -43.515625 -40.5 M-43.515625 40.5 C-43.515625 12.072959854323326, -43.515625 -16.35408029135335, -43.515625 -40.5" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="annotation-group text" transform="translate(0, -16.5)"/><g class="label-group text" transform="translate(-31.515625, -16.5)"><g class="label" style="font-weight: bolder" transform="translate(0,-10.5)"><foreignObject width="63.03125" height="21"><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 112px; text-align: center;"><span class="nodeLabel markdown-node-label" style=""><p>SellOrder</p></span></div></foreignObject></g></g><g class="members-group text" transform="translate(-31.515625, 28.5)"/><g class="methods-group text" transform="translate(-31.515625, 58.5)"/><g class="divider neo-line" style=""><path d="M-43.515625 4.5 C-20.70634103702392 4.500262081539251, 2.1029429259521635 4.500524163078503, 43.515625 4.501 M-43.515625 4.5 C-23.92533099441377 4.500225094940101, -4.3350369888275395 4.5004501898802, 43.515625 4.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g><g class="divider neo-line" style=""><path d="M-43.515625 22.5 C-9.472272081442483 22.500391162403375, 24.571080837115034 22.500782324806746, 43.515625 22.501 M-43.515625 22.5 C-9.29098695193776 22.500393245392296, 24.93365109612448 22.500786490784588, 43.515625 22.501" stroke="#2563eb" stroke-width="1.3" fill="none" stroke-dasharray="0 0" style=""/></g></g></g></g></g><defs><filter id="diagram-p21-drop-shadow" height="130%" width="130%"><feDropShadow dx="4" dy="4" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs><defs><filter id="diagram-p21-drop-shadow-small" height="150%" width="150%"><feDropShadow dx="2" dy="2" stdDeviation="0" flood-opacity="0.06" flood-color="#000000"/></filter></defs></svg>
+</div>
+<details class="mermaid-src"><summary>View Mermaid source</summary>
+<pre><code>classDiagram
+  class Broker {
+    +placeOrder(Account, Stock, Side, Quantity, OrderType, LimitPrice)
+    +cancelOrder(OrderId)
+    +deposit(Account, Money)
+    +withdraw(Account, Money)
+  }
+  class Account {
+    id
+    cashBalance
+    reservedCash
+    +reserve(Money)
+    +release(Money)
+    +deposit(Money)
+    +withdraw(Money)
+  }
+  class Portfolio {
+    +reserveShares(Stock, Quantity)
+    +releaseShares(Stock, Quantity)
+    +settle(Stock, Quantity, Side)
+  }
+  class ExecutionStrategy {
+    &lt;&lt;interface&gt;&gt;
+    +tryExecute(Order, Price)
+  }
+  class MarketDataFeed {
+    &lt;&lt;interface&gt;&gt;
+    +getPrice(Symbol)
+    +subscribe(Symbol, PriceListener)
+  }
+  class Order {
+    &lt;&lt;abstract&gt;&gt;
+    id
+    quantity
+    status
+    +cancel()
+  }
+  class Stock {
+    symbol
+    currentPrice
+  }
+  Broker *-- Account
+  Account *-- Portfolio
+  Broker ..&gt; ExecutionStrategy
+  Broker ..&gt; MarketDataFeed
+  ExecutionStrategy &lt;|.. MarketExecutionStrategy
+  ExecutionStrategy &lt;|.. LimitExecutionStrategy
+  Order &lt;|-- BuyOrder
+  Order &lt;|-- SellOrder
+  Order --&gt; Account
+  Order --&gt; Stock</code></pre>
+</details>
+
+<h3 id="p21-k">K. Responsibility Mapping</h3>
+<table>
+<tr><th>Class</th><th>Responsibility</th><th>Does NOT Handle</th></tr>
+<tr><td>Broker</td><td>Coordinates order placement/cancellation, owns accounts</td><td>Execution decision, reservation math, price sourcing</td></tr>
+<tr><td>Account</td><td>Owns cash balance and reservation bookkeeping</td><td>Deciding whether an order can execute</td></tr>
+<tr><td>Portfolio</td><td>Owns holdings and share-reservation bookkeeping</td><td>Pricing, order lifecycle</td></tr>
+<tr><td>ExecutionStrategy</td><td>Decides if/at what price an order executes right now</td><td>Mutating account or portfolio state directly</td></tr>
+<tr><td>MarketDataFeed</td><td>Supplies prices, notifies subscribers on change</td><td>Any order or account logic</td></tr>
+<tr><td>Order</td><td>Records one order's facts and status</td><td>Any computation — it's a data holder with a status machine</td></tr>
+</table>
+
+<h3 id="p21-l">L. SOLID Analysis</h3>
+<table>
+<tr><th>Principle</th><th>How It's Applied</th><th>Naive Violation Example</th></tr>
+<tr><td>SRP</td><td><code>Broker</code> only coordinates; reservation lives on <code>Account</code>/<code>Portfolio</code>, execution logic lives in <code>ExecutionStrategy</code></td><td>One <code>Broker</code> class with <code>checkFunds()</code>, <code>checkPrice()</code>, <code>executeTrade()</code>, <code>updatePortfolio()</code>, <code>logHistory()</code> all inline</td></tr>
+<tr><td>OCP</td><td>New order type (stop-loss) = new <code>ExecutionStrategy</code>; zero edits to <code>Broker</code> or <code>Order</code></td><td><code>if (order.type == "LIMIT") ... else if (order.type == "STOP_LOSS") ...</code> chains that grow with every new type</td></tr>
+<tr><td>LSP</td><td>Any <code>Order</code> subtype can be passed through <code>placeOrder()</code>/<code>cancelOrder()</code> without special-casing</td><td>A subclass that throws "unsupported" for <code>cancel()</code>, breaking the base contract</td></tr>
+<tr><td>ISP</td><td><code>ExecutionStrategy</code> and <code>MarketDataFeed</code> are separate, narrow interfaces — no implementer is forced to implement methods it doesn't need</td><td>One fat <code>TradingEngine</code> interface with pricing + execution + notification + persistence methods</td></tr>
+<tr><td>DIP</td><td><code>Broker</code> depends on the <code>ExecutionStrategy</code>/<code>MarketDataFeed</code> abstractions, injected at construction — not concrete implementations</td><td><code>Broker</code> directly instantiates <code>new LiveMarketDataFeed()</code> internally, making it untestable without a real feed</td></tr>
+</table>
+
+<h3 id="p21-m">M. Design Patterns</h3>
+<table>
+<tr><th>Pattern</th><th>Problem It Solves</th><th>Where It Appears</th><th>Alternative</th><th>When NOT to Use</th></tr>
+<tr><td>Strategy</td><td>Market vs. limit (vs. future stop-loss) execution logic varies and grows over time</td><td><code>ExecutionStrategy</code></td><td>If only market orders existed: inline a single "execute at current price" method</td><td>If there's exactly one, permanent execution rule — don't add an interface "just in case"</td></tr>
+<tr><td>Observer</td><td>Pending limit orders need to react to price changes without polling</td><td><code>MarketDataFeed.subscribe()</code> notifying pending orders</td><td>Poll the feed on a timer for every pending order</td><td>If price updates are rare/manual — polling a tiny data set occasionally is fine and simpler</td></tr>
+<tr><td>Facade</td><td>Callers shouldn't need to know about reservation, execution strategy selection, and feed wiring</td><td><code>Broker.placeOrder()/cancelOrder()</code></td><td>Expose <code>Account</code>/<code>Portfolio</code>/<code>ExecutionStrategy</code> directly (leaky abstraction)</td><td>If the system is trivially small — a facade adds a layer of indirection</td></tr>
+<tr><td>State (light)</td><td><code>Order</code> lifecycle: PENDING → EXECUTED / REJECTED / CANCELLED</td><td><code>Order.status</code></td><td>Plain enum + guarded transitions (fine at this scale)</td><td>Don't build a full State-pattern class hierarchy for 4 states — an enum with guard checks is enough until per-state behavior gets complex</td></tr>
+</table>
+<p><strong>Explicitly avoided:</strong> Singleton for <code>Broker</code>. The reference implementation this problem is commonly based on defaults to a Singleton <code>StockBroker</code> "because there's only one broker in the process" — but that's an application-wiring decision (construct one instance, inject it everywhere), not a class-design constraint. Singleton would make it impossible to spin up two independent brokers side-by-side in a unit test, for no real production benefit.</p>
+
+<h3 id="p21-n">N. What Is Likely to Change?</h3>
+<table>
+<tr><th>Behavior</th><th>Current Design</th><th>Anticipated Change</th><th>Protecting Abstraction</th></tr>
+<tr><td>Execution rule</td><td>Market (immediate) or limit (price-crossing)</td><td>Stop-loss, stop-limit, trailing-stop orders</td><td><code>ExecutionStrategy</code> interface</td></tr>
+<tr><td>Price source</td><td>Single <code>MarketDataFeed</code></td><td>Best-price-across-multiple-exchanges aggregation</td><td><code>MarketDataFeed</code> interface</td></tr>
+<tr><td>Cost model</td><td>No commission</td><td>Per-trade commission, tiered fee schedules</td><td>Future <code>CommissionStrategy</code> interface (not built prematurely)</td></tr>
+<tr><td>Account structure</td><td>One portfolio per account</td><td>Multiple sub-accounts per user (e.g. individual + retirement)</td><td><code>User *-- Account[1..*]</code> composition (not built prematurely)</td></tr>
+<tr><td>Notification</td><td>Not in scope</td><td>Alert user on order fill via push/email</td><td>Future <code>Observer</code>/event bus on <code>Order</code> status changes</td></tr>
+</table>
+
+<h3 id="p21-o">O. Design Evolution</h3>
+<ul>
+<li><strong>V1 — Single account, single stock, market orders only:</strong> <code>Broker</code> executes directly against the feed price with no reservation step.</li>
+<li><strong>V2 — Multiple stocks + real validation:</strong> introduce <code>Portfolio</code>; buy/sell must be validated against funds/holdings before accepting.</li>
+<li><strong>V3 — Limit orders introduced:</strong> extract <code>ExecutionStrategy</code> so <code>Broker</code> doesn't special-case order type with if/else.</li>
+<li><strong>V4 — Orders can stay pending:</strong> extract <code>MarketDataFeed</code> as an observable source; pending limit orders subscribe instead of being polled.</li>
+<li><strong>V5 — Preventing double-spend across pending orders:</strong> introduce the reserve-then-settle model on <code>Account</code>/<code>Portfolio</code> instead of a plain balance check.</li>
+<li><strong>V6 — Concurrent orders on the same account:</strong> reserve/settle become atomic operations (lock or CAS per account); <code>Broker</code>'s public API signature doesn't change — only the internals of reservation gain synchronization.</li>
+</ul>
+<p><strong>What stays stable across all versions:</strong> the <code>Broker.placeOrder()/cancelOrder()</code> facade signature. That stability is the payoff of extracting <code>ExecutionStrategy</code> and <code>MarketDataFeed</code> early — callers never notice the internal evolution.</p>
+
+<h3 id="p21-p">P. API / Interface Design</h3>
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>class Broker {
+  Order placeOrder(Account account, Stock stock, Side side,
+                    int quantity, OrderType type, Money limitPrice);
+  // throws InsufficientFundsException, InsufficientHoldingsException, InvalidOrderException
+
+  void cancelOrder(OrderId orderId);
+  // throws OrderNotFoundException, InvalidOrderStateException
+
+  void deposit(Account account, Money amount);
+  void withdraw(Account account, Money amount);        // throws InsufficientFundsException
+}
+
+interface ExecutionStrategy {
+  Optional&lt;Money&gt; tryExecute(Order order, Money currentPrice);
+}
+
+interface MarketDataFeed {
+  Money getPrice(Symbol symbol);
+  void  subscribe(Symbol symbol, PriceListener listener);
+}
+
+class Account {
+  void reserve(Money amount);    // throws InsufficientFundsException
+  void release(Money amount);
+  void deposit(Money amount);
+  void withdraw(Money amount);   // throws InsufficientFundsException
+}</code></pre>
+<pre data-lang="java" hidden><code class="language-java">class Broker {
+  Order placeOrder(Account account, Stock stock, Side side, int quantity,
+                    OrderType type, Money limitPrice)
+      throws InsufficientFundsException, InsufficientHoldingsException, InvalidOrderException {
+    throw new UnsupportedOperationException();
+  }
+
+  void cancelOrder(OrderId orderId)
+      throws OrderNotFoundException, InvalidOrderStateException { throw new UnsupportedOperationException(); }
+
+  void deposit(Account account, Money amount) { throw new UnsupportedOperationException(); }
+  void withdraw(Account account, Money amount) throws InsufficientFundsException { throw new UnsupportedOperationException(); }
+}
+
+interface ExecutionStrategy {
+  Optional&lt;Money&gt; tryExecute(Order order, Money currentPrice);
+}
+
+interface MarketDataFeed {
+  Money getPrice(Symbol symbol);
+  void subscribe(Symbol symbol, PriceListener listener);
+}
+
+class Account {
+  void reserve(Money amount) throws InsufficientFundsException { throw new UnsupportedOperationException(); }
+  void release(Money amount) { throw new UnsupportedOperationException(); }
+  void deposit(Money amount) { throw new UnsupportedOperationException(); }
+  void withdraw(Money amount) throws InsufficientFundsException { throw new UnsupportedOperationException(); }
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">class Broker {
+public:
+  std::shared_ptr&lt;Order&gt; placeOrder(std::shared_ptr&lt;Account&gt; account, std::shared_ptr&lt;Stock&gt; stock,
+                                     Side side, int quantity, OrderType type, Money limitPrice) {
+    // throws InsufficientFundsException, InsufficientHoldingsException, InvalidOrderException
+    throw std::logic_error(&quot;not implemented&quot;);
+  }
+
+  void cancelOrder(OrderId orderId) {
+    // throws OrderNotFoundException, InvalidOrderStateException
+    throw std::logic_error(&quot;not implemented&quot;);
+  }
+
+  void deposit(std::shared_ptr&lt;Account&gt; account, Money amount) { throw std::logic_error(&quot;not implemented&quot;); }
+  void withdraw(std::shared_ptr&lt;Account&gt; account, Money amount) { throw std::logic_error(&quot;not implemented&quot;); }  // throws InsufficientFundsException
+};
+
+class ExecutionStrategy {
+public:
+  virtual std::optional&lt;Money&gt; tryExecute(const Order&amp; order, Money currentPrice) = 0;
+  virtual ~ExecutionStrategy() = default;
+};
+
+class MarketDataFeed {
+public:
+  virtual Money getPrice(const Symbol&amp; symbol) = 0;
+  virtual void subscribe(const Symbol&amp; symbol, PriceListener listener) = 0;
+  virtual ~MarketDataFeed() = default;
+};
+
+class Account {
+public:
+  void reserve(Money amount) { throw std::logic_error(&quot;not implemented&quot;); }   // throws InsufficientFundsException
+  void release(Money amount) { throw std::logic_error(&quot;not implemented&quot;); }
+  void deposit(Money amount) { throw std::logic_error(&quot;not implemented&quot;); }
+  void withdraw(Money amount) { throw std::logic_error(&quot;not implemented&quot;); }  // throws InsufficientFundsException
+};</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">class Broker {
+  placeOrder(account, stock, side, quantity, type, limitPrice) {
+    // throws InsufficientFundsException / InsufficientHoldingsException / InvalidOrderException
+    throw new Error(&#x27;not implemented&#x27;);
+  }
+
+  cancelOrder(orderId) {
+    // throws OrderNotFoundException / InvalidOrderStateException
+    throw new Error(&#x27;not implemented&#x27;);
+  }
+
+  deposit(account, amount) { throw new Error(&#x27;not implemented&#x27;); }
+  withdraw(account, amount) { throw new Error(&#x27;not implemented&#x27;); }   // throws InsufficientFundsException
+}
+
+// interface ExecutionStrategy: tryExecute(order, currentPrice) -&gt; Money | null
+// interface MarketDataFeed: getPrice(symbol), subscribe(symbol, listener)
+
+class Account {
+  reserve(amount) { throw new Error(&#x27;not implemented&#x27;); }   // throws InsufficientFundsException
+  release(amount) { throw new Error(&#x27;not implemented&#x27;); }
+  deposit(amount) { throw new Error(&#x27;not implemented&#x27;); }
+  withdraw(amount) { throw new Error(&#x27;not implemented&#x27;); }  // throws InsufficientFundsException
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">class Broker {
+  placeOrder(account: Account, stock: Stock, side: Side, quantity: number,
+             type: OrderType, limitPrice: Money): Order {
+    // throws InsufficientFundsException / InsufficientHoldingsException / InvalidOrderException
+    throw new Error(&#x27;not implemented&#x27;);
+  }
+
+  cancelOrder(orderId: OrderId): void {
+    // throws OrderNotFoundException / InvalidOrderStateException
+    throw new Error(&#x27;not implemented&#x27;);
+  }
+
+  deposit(account: Account, amount: Money): void { throw new Error(&#x27;not implemented&#x27;); }
+  withdraw(account: Account, amount: Money): void { throw new Error(&#x27;not implemented&#x27;); }   // throws InsufficientFundsException
+}
+
+interface ExecutionStrategy {
+  tryExecute(order: Order, currentPrice: Money): Money | null;
+}
+
+interface MarketDataFeed {
+  getPrice(symbol: Symbol): Money;
+  subscribe(symbol: Symbol, listener: PriceListener): void;
+}
+
+class Account {
+  reserve(amount: Money): void { throw new Error(&#x27;not implemented&#x27;); }    // throws InsufficientFundsException
+  release(amount: Money): void { throw new Error(&#x27;not implemented&#x27;); }
+  deposit(amount: Money): void { throw new Error(&#x27;not implemented&#x27;); }
+  withdraw(amount: Money): void { throw new Error(&#x27;not implemented&#x27;); }   // throws InsufficientFundsException
+}</code></pre>
+</div>
+<p><strong>Ownership/validation notes:</strong> <code>placeOrder</code> owns the reserve-then-attempt-execute atomicity — a caller never sees a half-reserved order. <code>cancelOrder</code> must validate the order is still <code>PENDING</code> before cancelling, and must release any funds/shares it reserved — this is the boundary where "cancel after it already executed" bugs occur if skipped.</p>
+
+<h3 id="p21-q">Q. Pseudocode — Critical Logic</h3>
+<div class="code-tabs">
+<pre data-lang="pseudo"><code>placeOrder(account, stock, side, qty, type, limitPrice):
+  if side == BUY:
+    estimatedCost = qty * (type == MARKET ? feed.getPrice(stock) : limitPrice)
+    account.reserve(estimatedCost)              // throws InsufficientFundsException
+  else:
+    account.portfolio.reserveShares(stock, qty)  // throws InsufficientHoldingsException
+
+  order = Order.create(account, stock, side, qty, type, limitPrice)
+  strategy = strategyFor(type, limitPrice)
+  price = feed.getPrice(stock)
+  result = strategy.tryExecute(order, price)     // must be atomic w.r.t. account state — see W
+
+  if result is present:
+    settle(order, result)
+  else:
+    order.status = PENDING
+    feed.subscribe(stock, order)                 // re-checked on future price ticks
+  return order
+
+onPriceUpdate(stock, newPrice):                   // Observer callback, not polling
+  for order in pendingOrdersFor(stock):
+    result = order.strategy.tryExecute(order, newPrice)
+    if result is present: settle(order, result)
+
+settle(order, executionPrice):
+  if order.side == BUY:
+    account.release(order.reservedEstimate)
+    account.withdraw(executionPrice * order.quantity)
+    portfolio.addHolding(order.stock, order.quantity)
+  else:
+    portfolio.settle(order.stock, order.quantity, SELL)   // removes reserved shares
+    account.deposit(executionPrice * order.quantity)
+  order.status = EXECUTED
+
+cancelOrder(orderId):
+  order = orderRepository.find(orderId)
+  if order.status != PENDING: raise InvalidOrderStateException
+  releaseReservation(order)                        // cash or shares, by side
+  order.status = CANCELLED</code></pre>
+<pre data-lang="java" hidden><code class="language-java">Order placeOrder(Account account, Stock stock, Side side, int qty, OrderType type, Money limitPrice)
+    throws InsufficientFundsException, InsufficientHoldingsException {
+  if (side == Side.BUY) {
+    Money estimatedCost = (type == OrderType.MARKET ? feed.getPrice(stock.getSymbol()) : limitPrice).times(qty);
+    account.reserve(estimatedCost);                       // throws InsufficientFundsException
+  } else {
+    account.getPortfolio().reserveShares(stock, qty);      // throws InsufficientHoldingsException
+  }
+
+  Order order = Order.create(account, stock, side, qty, type, limitPrice);
+  ExecutionStrategy strategy = strategyFor(type, limitPrice);
+  Money price = feed.getPrice(stock.getSymbol());
+  Optional&lt;Money&gt; result = strategy.tryExecute(order, price);   // must be atomic w.r.t. account state — see W
+
+  if (result.isPresent()) {
+    settle(order, result.get());
+  } else {
+    order.setStatus(OrderStatus.PENDING);
+    feed.subscribe(stock.getSymbol(), order);              // re-checked on future price ticks
+  }
+  return order;
+}
+
+void onPriceUpdate(Symbol symbol, Money newPrice) {          // Observer callback, not polling
+  for (Order order : pendingOrdersFor(symbol)) {
+    Optional&lt;Money&gt; result = order.getStrategy().tryExecute(order, newPrice);
+    result.ifPresent(price -&gt; settle(order, price));
+  }
+}
+
+void settle(Order order, Money executionPrice) {
+  if (order.getSide() == Side.BUY) {
+    account.release(order.getReservedEstimate());
+    account.withdraw(executionPrice.times(order.getQuantity()));
+    portfolio.addHolding(order.getStock(), order.getQuantity());
+  } else {
+    portfolio.settle(order.getStock(), order.getQuantity(), Side.SELL);   // removes reserved shares
+    account.deposit(executionPrice.times(order.getQuantity()));
+  }
+  order.setStatus(OrderStatus.EXECUTED);
+}
+
+void cancelOrder(OrderId orderId) throws InvalidOrderStateException {
+  Order order = orderRepository.find(orderId);
+  if (order.getStatus() != OrderStatus.PENDING) throw new InvalidOrderStateException();
+  releaseReservation(order);                                  // cash or shares, by side
+  order.setStatus(OrderStatus.CANCELLED);
+}</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">std::shared_ptr&lt;Order&gt; placeOrder(std::shared_ptr&lt;Account&gt; account, std::shared_ptr&lt;Stock&gt; stock,
+                                   Side side, int qty, OrderType type, Money limitPrice) {
+  if (side == Side::BUY) {
+    Money estimatedCost = (type == OrderType::MARKET ? feed.getPrice(stock-&gt;symbol) : limitPrice) * qty;
+    account-&gt;reserve(estimatedCost);                     // throws InsufficientFundsException
+  } else {
+    account-&gt;portfolio.reserveShares(stock, qty);         // throws InsufficientHoldingsException
+  }
+
+  auto order = Order::create(account, stock, side, qty, type, limitPrice);
+  auto strategy = strategyFor(type, limitPrice);
+  Money price = feed.getPrice(stock-&gt;symbol);
+  std::optional&lt;Money&gt; result = strategy-&gt;tryExecute(*order, price);   // must be atomic w.r.t. account state — see W
+
+  if (result.has_value()) {
+    settle(order, *result);
+  } else {
+    order-&gt;status = OrderStatus::PENDING;
+    feed.subscribe(stock-&gt;symbol, order);                // re-checked on future price ticks
+  }
+  return order;
+}
+
+void onPriceUpdate(const Symbol&amp; symbol, Money newPrice) {   // Observer callback, not polling
+  for (auto&amp; order : pendingOrdersFor(symbol)) {
+    auto result = order-&gt;strategy-&gt;tryExecute(*order, newPrice);
+    if (result.has_value()) settle(order, *result);
+  }
+}
+
+void settle(std::shared_ptr&lt;Order&gt; order, Money executionPrice) {
+  if (order-&gt;side == Side::BUY) {
+    account-&gt;release(order-&gt;reservedEstimate);
+    account-&gt;withdraw(executionPrice * order-&gt;quantity);
+    portfolio.addHolding(order-&gt;stock, order-&gt;quantity);
+  } else {
+    portfolio.settle(order-&gt;stock, order-&gt;quantity, Side::SELL);   // removes reserved shares
+    account-&gt;deposit(executionPrice * order-&gt;quantity);
+  }
+  order-&gt;status = OrderStatus::EXECUTED;
+}
+
+void cancelOrder(OrderId orderId) {
+  auto order = orderRepository.find(orderId);
+  if (order-&gt;status != OrderStatus::PENDING) throw InvalidOrderStateException();
+  releaseReservation(order);                                // cash or shares, by side
+  order-&gt;status = OrderStatus::CANCELLED;
+}</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">function placeOrder(account, stock, side, qty, type, limitPrice) {
+  if (side === Side.BUY) {
+    const estimatedCost = (type === OrderType.MARKET ? feed.getPrice(stock.symbol) : limitPrice) * qty;
+    account.reserve(estimatedCost);                      // throws InsufficientFundsException
+  } else {
+    account.portfolio.reserveShares(stock, qty);          // throws InsufficientHoldingsException
+  }
+
+  const order = Order.create(account, stock, side, qty, type, limitPrice);
+  const strategy = strategyFor(type, limitPrice);
+  const price = feed.getPrice(stock.symbol);
+  const result = strategy.tryExecute(order, price);       // must be atomic w.r.t. account state — see W
+
+  if (result !== null) {
+    settle(order, result);
+  } else {
+    order.status = &#x27;PENDING&#x27;;
+    feed.subscribe(stock.symbol, order);                   // re-checked on future price ticks
+  }
+  return order;
+}
+
+function onPriceUpdate(symbol, newPrice) {                  // Observer callback, not polling
+  for (const order of pendingOrdersFor(symbol)) {
+    const result = order.strategy.tryExecute(order, newPrice);
+    if (result !== null) settle(order, result);
+  }
+}
+
+function settle(order, executionPrice) {
+  if (order.side === Side.BUY) {
+    account.release(order.reservedEstimate);
+    account.withdraw(executionPrice * order.quantity);
+    portfolio.addHolding(order.stock, order.quantity);
+  } else {
+    portfolio.settle(order.stock, order.quantity, Side.SELL);   // removes reserved shares
+    account.deposit(executionPrice * order.quantity);
+  }
+  order.status = &#x27;EXECUTED&#x27;;
+}
+
+function cancelOrder(orderId) {
+  const order = orderRepository.find(orderId);
+  if (order.status !== &#x27;PENDING&#x27;) throw new Error(&#x27;InvalidOrderStateException&#x27;);
+  releaseReservation(order);                                 // cash or shares, by side
+  order.status = &#x27;CANCELLED&#x27;;
+}</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">function placeOrder(account: Account, stock: Stock, side: Side, qty: number,
+                    type: OrderType, limitPrice: Money): Order {
+  if (side === Side.BUY) {
+    const estimatedCost: Money = (type === OrderType.MARKET ? feed.getPrice(stock.symbol) : limitPrice) * qty;
+    account.reserve(estimatedCost);                      // throws InsufficientFundsException
+  } else {
+    account.portfolio.reserveShares(stock, qty);          // throws InsufficientHoldingsException
+  }
+
+  const order: Order = Order.create(account, stock, side, qty, type, limitPrice);
+  const strategy: ExecutionStrategy = strategyFor(type, limitPrice);
+  const price: Money = feed.getPrice(stock.symbol);
+  const result: Money | null = strategy.tryExecute(order, price);   // must be atomic w.r.t. account state — see W
+
+  if (result !== null) {
+    settle(order, result);
+  } else {
+    order.status = OrderStatus.PENDING;
+    feed.subscribe(stock.symbol, order);                   // re-checked on future price ticks
+  }
+  return order;
+}
+
+function onPriceUpdate(symbol: Symbol, newPrice: Money): void {   // Observer callback, not polling
+  for (const order of pendingOrdersFor(symbol)) {
+    const result: Money | null = order.strategy.tryExecute(order, newPrice);
+    if (result !== null) settle(order, result);
+  }
+}
+
+function settle(order: Order, executionPrice: Money): void {
+  if (order.side === Side.BUY) {
+    account.release(order.reservedEstimate);
+    account.withdraw(executionPrice * order.quantity);
+    portfolio.addHolding(order.stock, order.quantity);
+  } else {
+    portfolio.settle(order.stock, order.quantity, Side.SELL);   // removes reserved shares
+    account.deposit(executionPrice * order.quantity);
+  }
+  order.status = OrderStatus.EXECUTED;
+}
+
+function cancelOrder(orderId: OrderId): void {
+  const order: Order = orderRepository.find(orderId);
+  if (order.status !== OrderStatus.PENDING) throw new Error(&#x27;InvalidOrderStateException&#x27;);
+  releaseReservation(order);                                 // cash or shares, by side
+  order.status = OrderStatus.CANCELLED;
+}</code></pre>
+</div>
+
+<h3 id="p21-r">R. End-to-End Use Case</h3>
+<pre>
+Investor
+  │  places a limit buy order
+  ▼
+Broker.placeOrder(account, stock, BUY, qty, LIMIT, limitPrice)
+  │
+  ▼
+Account.reserve(estimatedCost)        // funds held, not yet spent
+  │
+  ▼
+LimitExecutionStrategy.tryExecute(order, feed.getPrice(stock))
+  │  price hasn't crossed the limit yet → returns empty
+  ▼
+Order.status = PENDING
+  │
+  ▼
+MarketDataFeed.subscribe(stock, order)
+  ...time passes, price ticks arrive...
+MarketDataFeed → onPriceUpdate(stock, newPrice)
+  │
+  ▼
+LimitExecutionStrategy.tryExecute(order, newPrice)   // now crosses the limit
+  │
+  ▼
+settle(order, executionPrice)
+  │  Account.withdraw(), Portfolio.addHolding()
+  ▼
+Order.status = EXECUTED                 // investor sees the fill in history
+</pre>
+
+<h3 id="p21-s">S. Data Structures</h3>
+<table>
+<tr><th>Structure</th><th>Used For</th><th>Why</th><th>Alternative &amp; Trade-off</th></tr>
+<tr><td><code>Map&lt;OrderId, Order&gt;</code></td><td>Order lookup for cancel/status checks</td><td>O(1) lookup by order ID</td><td>DB-backed lookup if persistence is required (see X)</td></tr>
+<tr><td><code>Map&lt;Symbol, List&lt;Order&gt;&gt;</code></td><td>Pending limit orders subscribed per stock</td><td>O(k) re-check on a price tick, where k = pending orders for that stock only — not all orders</td><td>A single global pending-order list — simpler, but forces scanning irrelevant orders on every tick</td></tr>
+<tr><td>Integer cents (not float) for <code>Money</code></td><td>All cash and price arithmetic</td><td>Avoids floating-point rounding errors compounding across trades</td><td>Arbitrary-precision decimal type — safer at odd fractions, slightly more overhead than plain integers</td></tr>
+</table>
+
+<h3 id="p21-t">T. Complexity Analysis</h3>
+<table>
+<tr><th>Operation</th><th>Time</th><th>Space</th></tr>
+<tr><td><code>placeOrder</code> (market, immediate execution)</td><td>O(1)</td><td>O(1) extra per order</td></tr>
+<tr><td><code>placeOrder</code> (limit, goes pending)</td><td>O(1) to enqueue for the subscribed stock</td><td>O(1) per pending order</td></tr>
+<tr><td><code>onPriceUpdate</code> re-check</td><td>O(k), k = pending orders for that one stock</td><td>O(1) extra</td></tr>
+<tr><td><code>cancelOrder</code></td><td>O(1) with an order-ID map</td><td>O(1)</td></tr>
+<tr><td>Overall order/account storage</td><td>—</td><td>O(accounts + orders)</td></tr>
+</table>
+
+<h3 id="p21-u">U. Testing Strategy</h3>
+<ul>
+<li><strong>Happy path:</strong> deposit funds, place a market buy, portfolio reflects the new holding, cash balance decreases correctly.</li>
+<li><strong>Edge cases:</strong> buy that spends the balance down to exactly zero; sell of exactly all held shares; limit order placed exactly at the current price.</li>
+<li><strong>Invalid input:</strong> buy exceeding available funds; sell exceeding held shares; cancel of an unknown or already-executed order.</li>
+<li><strong>Failure scenarios:</strong> feed returns a stale or non-positive price (see Z); a pending order's stock is delisted mid-wait.</li>
+<li><strong>Concurrency tests:</strong> N concurrent buy orders on the same account that individually fit the balance but collectively exceed it — exactly the affordable prefix (by arrival or a defined tie-break) must succeed, the rest must get <code>InsufficientFundsException</code>, never an overdraft.</li>
+</ul>
+
+<h3 id="p21-v">V. Interviewer Follow-Ups</h3>
+<table>
+<tr><th>Follow-Up</th><th>Testing</th><th>Design Change</th><th>Classes Changed</th><th>Classes Unchanged</th><th>Pattern/Trade-off</th></tr>
+<tr><td>"Add stop-loss orders."</td><td>OCP under a new requirement</td><td>New execution rule triggered by price falling below a threshold</td><td>New <code>StopLossExecutionStrategy</code> only</td><td><code>Broker</code>, <code>Order</code></td><td>Validates the Strategy investment made in V3</td></tr>
+<tr><td>"Two sell orders for the same stock race, but holdings only cover one."</td><td>Concurrency / race conditions</td><td>Share reservation on <code>Portfolio</code> must be atomic</td><td><code>Portfolio.reserveShares()</code></td><td>External API signature</td><td>Optimistic (CAS) vs. pessimistic (lock) per account — see W</td></tr>
+<tr><td>"Add a commission per trade."</td><td>Recognizing a second, independent variability axis</td><td>New pluggable fee calculation consulted during <code>settle()</code></td><td>New <code>CommissionStrategy</code> only</td><td><code>Order</code>, <code>Broker</code> API</td><td>Don't fold this into <code>ExecutionStrategy</code> — pricing and fees vary independently</td></tr>
+<tr><td>"Support real matching against other users' orders."</td><td>LLD → HLD boundary awareness</td><td>This crosses into an exchange matching engine / order book design</td><td>None in-process — this is a new subsystem</td><td>All core classes — the account/order model doesn't change, only how execution is sourced</td><td>Recognize the boundary rather than trying to build a matching engine inline</td></tr>
+<tr><td>"The price feed goes down mid-trade."</td><td>Failure handling</td><td><code>Broker</code> must reject/hold rather than execute against a stale price</td><td><code>MarketDataFeed</code> gains a staleness/health check</td><td><code>Order</code>, <code>Account</code></td><td>Fail closed, not silently trade on old data</td></tr>
+<tr><td>"A cancel request arrives just as the order is executing."</td><td>Concurrency / race conditions</td><td>Cancel and execute must both go through an atomic status transition on the order</td><td><code>Order.status</code> transition (CAS)</td><td>External API signature</td><td>Whichever wins the CAS is final — no double-outcome</td></tr>
+<tr><td>"Support margin / short-selling."</td><td>Business-rule modeling</td><td><code>Account</code> gains a borrowing limit; <code>Portfolio</code> allows constrained negative holdings</td><td><code>Account</code>, <code>Portfolio</code> validation logic</td><td><code>Broker</code>, <code>Order</code> API</td><td>Push the new rule into validation, not into the allocator/execution path</td></tr>
+<tr><td>"Millions of users trading simultaneously."</td><td>LLD → HLD boundary awareness</td><td>Sharding accounts by user ID, a message bus fanning out price ticks, a database instead of in-memory maps</td><td>None in-process</td><td>All core classes — the object model doesn't change, only where it runs</td><td>Recognize the boundary rather than trying to distributed-system-ify the domain classes</td></tr>
+<tr><td>"How would you test this without a real market feed?"</td><td>Testability awareness</td><td>Inject a fake <code>MarketDataFeed</code> with a scriptable price sequence</td><td>None — this is exactly why <code>MarketDataFeed</code> is an interface</td><td>—</td><td>Dependency injection over a hardcoded live feed call</td></tr>
+</table>
+
+<h3 id="p21-w">W. Concurrency</h3>
+<p><strong>Shared mutable state:</strong> an account's <code>cashBalance</code>/<code>reservedCash</code> and a portfolio's holdings/reserved-quantity. Two orders racing to spend or sell against the same account is the canonical hazard here.</p>
+<ul>
+<li><strong>Critical section:</strong> "check available balance/holdings" + "reserve it" must be one atomic step — never two steps a thread could be pre-empted between.</li>
+<li><strong>Pessimistic approach:</strong> a mutex per account guarding reserve/release/settle. Simple, safe, and cheap in practice because accounts are naturally independent — locking Account A never blocks an order on Account B.</li>
+<li><strong>Optimistic approach:</strong> model the balance as a versioned/CAS-based field and retry the reserve on a failed compare-and-swap — avoids holding a lock, at the cost of retry logic.</li>
+<li><strong>Lock granularity trade-off:</strong> per-account locking is the natural boundary here (unlike a parking lot's shared spot pool) — different users' orders never need to contend, so granularity is close to free parallelism. A single global lock would be simpler but would serialize unrelated users' trades for no reason.</li>
+<li><strong>Idempotency:</strong> if a client retries a <code>placeOrder</code> call after a timeout (not knowing if it succeeded), the system must not double-reserve — this argues for an idempotency key on order placement.</li>
+<li><strong>Deadlock avoidance:</strong> a feature this base design doesn't need (transferring funds between two accounts) would require locking two accounts at once — always acquire such locks in a consistent global order (e.g., by account ID) to avoid circular wait.</li>
+</ul>
+
+<h3 id="p21-x">X. Persistence</h3>
+<p>If state must survive a restart: <code>Account</code>, <code>Portfolio</code>, and <code>Order</code> become persistent entities with durable IDs, not in-memory object references. An <code>AccountRepository</code>/<code>OrderRepository</code> abstraction replaces direct in-memory maps — same interface shape, different backing store. The reserve-then-settle step becomes a database transaction (or an optimistic-locking update with a version column), so a crash between "reserve" and "settle" can't leave cash permanently held or shares double-counted. Order IDs should be generated in a way that's safe across restarts (UUID, not an in-memory counter).</p>
+
+<h3 id="p21-y">Y. Scaling Boundary</h3>
+<table>
+<tr><th>Layer</th><th>What Belongs Here</th></tr>
+<tr><td><strong>LLD</strong> (this document)</td><td>Object relationships, responsibilities, APIs, in-process state, patterns for one brokerage instance</td></tr>
+<tr><td><strong>HLD</strong></td><td>A BrokerService behind a load balancer, a database sharded by account/user ID, a message bus fanning out price ticks to interested pending orders, a cache for "current price" reads</td></tr>
+<tr><td><strong>Distributed Systems</strong></td><td>Only relevant if building a real exchange: a matching engine/order book that pairs buyers with sellers directly, consensus on trade sequencing, and fairness guarantees across data centers — a fundamentally different problem than a brokerage that trades against a price feed</td></tr>
+</table>
+
+<h3 id="p21-z">Z. Failure Scenarios</h3>
+<ul>
+<li><strong>Duplicate order-placement retry:</strong> a client retries <code>placeOrder</code> after a timeout — must not double-reserve funds/shares (idempotency key on the request).</li>
+<li><strong>Crash between "reserve" and "settle":</strong> reconciliation on restart should treat "reserved but never settled or released" as an anomaly to flag, not silently trust as normal pending state.</li>
+<li><strong>Stale or invalid feed price:</strong> a price feed delivering a stale, zero, or negative price must be rejected by validation before it's ever used to execute a trade — never trade on unchecked external input.</li>
+<li><strong>Withdrawal racing a pending buy's reservation:</strong> a withdraw request must check against the <em>available</em> balance (total minus reserved), never the raw total, or a pending order's funds could be withdrawn out from under it.</li>
+</ul>
+
+<h3 id="p21-aa">AA. Common Bad Designs</h3>
+<ul>
+<li><strong>One giant <code>Broker</code> god class</strong> doing validation + execution + portfolio updates + history logging inline. Looks reasonable early (fewer files!) but every new order type or fee rule means editing the same massive class — violates SRP and OCP simultaneously. Fix: extract <code>ExecutionStrategy</code> and repositories as soon as either shows signs of variability.</li>
+<li><strong>Singleton <code>StockBroker</code></strong>. Common in reference implementations "because there's only one broker" — but that's an application-wiring decision, not a class-design constraint, and it makes side-by-side testing awkward. Fix: a single instance via dependency injection at the wiring layer.</li>
+<li><strong>Using floating-point for money.</strong> Looks fine in a demo, quietly accumulates rounding errors across many trades. Fix: integer cents (or a fixed-point/decimal <code>Money</code> type) for all currency arithmetic.</li>
+<li><strong>Polling the price feed on a timer for every pending order.</strong> Looks simple to write, wastes cycles and adds latency at any real scale. Fix: subscribe pending orders to price-change notifications (Observer) so only actual changes trigger a re-check.</li>
+<li><strong>Type-string switch statements</strong> (<code>if order.type == "limit"</code>) instead of polymorphism. Every new order type means hunting down every switch statement across the codebase. Fix: polymorphic <code>ExecutionStrategy</code> selected once at order creation.</li>
+</ul>
+
+<h3 id="p21-ab">AB. Design Trade-Offs</h3>
+<table>
+<tr><th>Decision</th><th>Option A</th><th>Option B</th><th>Trade-off</th></tr>
+<tr><td>Money representation</td><td>Integer cents</td><td>Floating-point</td><td>Integer cents is exact but needs care converting for display; float is convenient but silently accumulates rounding errors across many trades</td></tr>
+<tr><td>Fund/holding validation timing</td><td>Reserve at order-placement time</td><td>Check only at execution time</td><td>Reserve-then-settle prevents overselling/overspending under concurrent pending orders, at the cost of extra bookkeeping (release paths on cancel/failure)</td></tr>
+<tr><td>Limit-order price re-check</td><td>Push (Observer on feed updates)</td><td>Poll on a timer</td><td>Push is real-time and efficient but needs pub-sub wiring; poll is simpler to write but wastes cycles and adds latency proportional to the polling interval</td></tr>
+<tr><td>Lock granularity</td><td>One lock per account</td><td>One global lock</td><td>Per-account is naturally parallel since accounts are independent; a global lock is simpler to reason about but serializes unrelated users' trades for no reason</td></tr>
+</table>
+
+<h3 id="p21-ac">AC. Interviewer Evaluation</h3>
+<ul>
+<li><strong>Weak candidate:</strong> jumps straight to code; one big <code>Broker</code> class; uses floats for money; never asks whether execution is against a feed or a real order book.</li>
+<li><strong>Average candidate:</strong> asks 1–2 clarifying questions; produces a reasonable class split (Account, Order, Portfolio, Broker) but reservation and execution logic are still inline inside <code>Broker</code>.</li>
+<li><strong>Strong candidate:</strong> asks clarifying questions up front, including the order-book-vs-feed question; extracts <code>ExecutionStrategy</code> proactively because they identify execution rules as "likely to change"; models money as integers without being prompted.</li>
+<li><strong>Exceptional candidate:</strong> does all of the above, then anticipates the concurrency follow-up before being asked ("reserve needs to be atomic per account once orders can race"), and can clearly draw the line between this brokerage LLD and a full exchange's matching engine if pushed on scale.</li>
+</ul>
+
+<h3 id="p21-ad">AD. Interview Simulation</h3>
+<div class="dialog"><span class="who">Interviewer:</span> Design a stock brokerage system.</div>
+<div class="dialog"><span class="who">Candidate:</span> Before I start — when I place an order, does it execute against a live market price feed, or does it get matched against other users' orders directly?</div>
+<div class="dialog"><span class="who">Interviewer:</span> Assume it executes against a market data feed — you're not building an exchange.</div>
+<div class="dialog"><span class="who">Candidate:</span> Good, that keeps this in LLD territory. I'll model a <code>MarketDataFeed</code> interface the broker depends on, so the price source is swappable and testable.</div>
+<div class="dialog"><span class="who">Interviewer:</span> We need both market and limit orders, and pricing rules like commissions may come later.</div>
+<div class="dialog"><span class="who">Candidate:</span> Then I'll isolate execution behind an <code>ExecutionStrategy</code> interface — market executes immediately, limit checks the price condition — and keep commission as a separate, future strategy rather than bolting it onto the same interface, since they vary independently.</div>
+<div class="dialog"><span class="who">Interviewer:</span> What stops a user from placing two orders that together overdraw their balance?</div>
+<div class="dialog"><span class="who">Candidate:</span> I'll reserve funds at order-placement time rather than only checking the balance — the reservation itself has to be atomic, guarded by a per-account lock, so two concurrent orders on the same account can't both pass a check against the same unspent cash.</div>
+<div class="dialog"><span class="who">Interviewer:</span> The price feed goes down for thirty seconds. What happens to pending limit orders?</div>
+<div class="dialog"><span class="who">Candidate:</span> They should just stay pending — I wouldn't execute against a stale or missing price. I'd add a staleness check on the feed and fail closed rather than trade on old data.</div>
+<div class="dialog"><span class="who">Interviewer:</span> Last one — how would this look for millions of users trading at once?</div>
+<div class="dialog"><span class="who">Candidate:</span> That crosses from LLD into HLD — I'd keep this exact account/order model, but shard accounts by user ID, put a message bus in front of price-tick fan-out instead of in-process subscriptions, and back the repositories with a real database. The object design here doesn't need to change; only where it runs does.</div>
+
+<h3 id="p21-ae">AE. Online Solution Comparison</h3>
+<table>
+<tr><th>Source</th><th>Approach</th><th>Strength</th><th>Weakness</th><th>Worth Learning</th></tr>
+<tr><td><a href="https://github.com/ashishps1/awesome-low-level-design/blob/main/problems/online-stock-brokerage-system.md" target="_blank">ashishps1/awesome-low-level-design (GitHub)</a></td><td>Abstract <code>Order</code> with <code>BuyOrder</code>/<code>SellOrder</code>, an <code>OrderStatus</code> enum, a <code>Portfolio</code> for holdings, and a Singleton <code>StockBroker</code> as the central coordinator</td><td>Clean, minimal entity set that maps closely to the real domain; good baseline vocabulary (Order/Account/Portfolio/Stock)</td><td>Singleton on the central coordinator is a questionable default (see M); execution is a same-thread call with no explicit reservation step, so it doesn't address the double-spend race this document calls out in W</td><td>The core entity shape (Order/Account/Portfolio/Stock) — adopted and then hardened with reservation semantics and a pluggable execution strategy in this document</td></tr>
+</table>
+<p style="font-size:11.5px; color:#666;">This problem is less standardized across public LLD write-ups than something like Parking Lot — most tutorial-style sources converge on a similar entity shape (Account/Order/Portfolio) but rarely address the concurrent-reservation problem directly, which is why section W here goes further than most references do.</p>
+
+<h3 id="p21-af">AF. Interview Cheat Sheet</h3>
+<table>
+<tr><td><strong>Problem</strong></td><td>Stock Brokerage System</td></tr>
+<tr><td><strong>Difficulty</strong></td><td>Advanced (Concurrency &amp; Consistency)</td></tr>
+<tr><td><strong>Core requirements</strong></td><td>Account with cash + portfolio; buy/sell orders (market/limit); execution against a price feed; order/history tracking</td></tr>
+<tr><td><strong>Key clarifications</strong></td><td>Feed-execution or real order matching? Reserve-at-placement or check-at-execution? Limit orders pending or rejected?</td></tr>
+<tr><td><strong>Core entities</strong></td><td>Account, Portfolio, Stock, Order (Buy/Sell), ExecutionStrategy, MarketDataFeed, Broker (facade)</td></tr>
+<tr><td><strong>Key relationships</strong></td><td>Composition: Broker→Account→Portfolio. Dependency: Broker→ExecutionStrategy/MarketDataFeed (interfaces). Observer: feed→pending orders</td></tr>
+<tr><td><strong>Key patterns</strong></td><td>Strategy (execution), Observer (price updates), Facade (Broker)</td></tr>
+<tr><td><strong>Most important decision</strong></td><td>Reserving funds/holdings at order-placement time, not just checking a balance — this is what prevents concurrent double-spend</td></tr>
+<tr><td><strong>Likely-changing behavior</strong></td><td>New order types, commission model, multi-account ownership</td></tr>
+<tr><td><strong>Concurrency concern</strong></td><td>Atomic reserve-then-settle per account under concurrent orders</td></tr>
+<tr><td><strong>Top follow-ups</strong></td><td>Stop-loss orders, cancel/execute race, feed outage, margin/short-selling, city-scale users (HLD boundary)</td></tr>
+<tr><td><strong>Common mistakes</strong></td><td>God-class Broker; Singleton by default; float for money; polling instead of Observer</td></tr>
+<tr><td><strong>What NOT to over-engineer</strong></td><td>A real order-matching engine, multi-currency, tax reporting — unless explicitly asked</td></tr>
+</table><div class="prevnext"><a class="prevnext-link prev" href="p20.html">&larr; 20. Chat Application (WhatsApp-style)</a><a class="prevnext-link next" href="synthesis.html">Cross-Problem Synthesis &rarr;</a></div>
+</div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlightjs-line-numbers.js/2.8.0/highlightjs-line-numbers.min.js"></script>
+<script src="assets/app.js"></script>
+</body>
+</html>

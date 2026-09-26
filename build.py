@@ -4,7 +4,7 @@ single-file source at ../lld-handbook.html.
 
 Run: python3 build.py
 Reads:  ../lld-handbook.html
-Writes: index.html, p1.html..p20.html, synthesis.html, search-index.json,
+Writes: index.html, p1.html..p21.html, synthesis.html, search-index.json,
         assets/style.css, assets/app.js, .nojekyll, README.md
 """
 import re
@@ -35,14 +35,14 @@ style_m = re.search(r"<style>(.*?)</style>", src, re.S)
 orig_css = style_m.group(1).strip()
 
 # ---------------------------------------------------------------------------
-# 2. Extract the 21 <section id="p1|..|p20|synthesis" class="page-break">
+# 2. Extract the 22 <section id="p1|..|p21|synthesis" class="page-break">
 #    ... </section> blocks. Confirmed non-nested / sequential, so pairing by
 #    index position is safe.
 # ---------------------------------------------------------------------------
 starts = [(m.group(1), m.end()) for m in re.finditer(
     r'<section id="(p\d+|synthesis)" class="page-break">', src)]
 ends = [m.start() for m in re.finditer(r"</section>", src)]
-assert len(starts) == len(ends) == 21, f"expected 21/21 section pairs, got {len(starts)}/{len(ends)}"
+assert len(starts) == len(ends) == 22, f"expected 22/22 section pairs, got {len(starts)}/{len(ends)}"
 
 sections = [(sid, src[s_end:e_start].strip()) for (sid, s_end), e_start in zip(starts, ends)]
 
@@ -233,7 +233,7 @@ cards_html = "\n".join(cards)
 HOME_MAIN = (
     '<div class="cover">\n'
     '<h1>Low-Level Design (LLD) / OOD<br>Interview Preparation Handbook</h1>\n'
-    '<p><strong>20 Problems, Full Depth</strong> &middot; each covering requirements, class diagrams, '
+    '<p><strong>21 Problems, Full Depth</strong> &middot; each covering requirements, class diagrams, '
     'design patterns, concurrency, scaling, trade-offs, and more.</p>\n'
     '<p><a href="synthesis.html">View Cross-Problem Synthesis &rarr;</a></p>\n'
     '</div>\n'

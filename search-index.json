@@ -3965,8 +3965,206 @@
   "type": "section"
  },
  {
+  "title": "21. Stock Brokerage System",
+  "badge": "Advanced (Concurrency &amp; Consistency)",
+  "url": "p21.html",
+  "type": "problem"
+ },
+ {
+  "title": "A. Realistic Interview Prompt",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-a",
+  "type": "section"
+ },
+ {
+  "title": "B. Difficulty",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-b",
+  "type": "section"
+ },
+ {
+  "title": "C. What This Problem Tests",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-c",
+  "type": "section"
+ },
+ {
+  "title": "D. Requirements",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-d",
+  "type": "section"
+ },
+ {
+  "title": "E. Clarifying Questions",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-e",
+  "type": "section"
+ },
+ {
+  "title": "F. Assumptions",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-f",
+  "type": "section"
+ },
+ {
+  "title": "G. Actors",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-g",
+  "type": "section"
+ },
+ {
+  "title": "H. Core Domain Entities",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-h",
+  "type": "section"
+ },
+ {
+  "title": "I. Class Relationships",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-i",
+  "type": "section"
+ },
+ {
+  "title": "J. Class Diagram",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-j",
+  "type": "section"
+ },
+ {
+  "title": "K. Responsibility Mapping",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-k",
+  "type": "section"
+ },
+ {
+  "title": "L. SOLID Analysis",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-l",
+  "type": "section"
+ },
+ {
+  "title": "M. Design Patterns",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-m",
+  "type": "section"
+ },
+ {
+  "title": "N. What Is Likely to Change?",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-n",
+  "type": "section"
+ },
+ {
+  "title": "O. Design Evolution",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-o",
+  "type": "section"
+ },
+ {
+  "title": "P. API / Interface Design",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-p",
+  "type": "section"
+ },
+ {
+  "title": "Q. Pseudocode — Critical Logic",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-q",
+  "type": "section"
+ },
+ {
+  "title": "R. End-to-End Use Case",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-r",
+  "type": "section"
+ },
+ {
+  "title": "S. Data Structures",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-s",
+  "type": "section"
+ },
+ {
+  "title": "T. Complexity Analysis",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-t",
+  "type": "section"
+ },
+ {
+  "title": "U. Testing Strategy",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-u",
+  "type": "section"
+ },
+ {
+  "title": "V. Interviewer Follow-Ups",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-v",
+  "type": "section"
+ },
+ {
+  "title": "W. Concurrency",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-w",
+  "type": "section"
+ },
+ {
+  "title": "X. Persistence",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-x",
+  "type": "section"
+ },
+ {
+  "title": "Y. Scaling Boundary",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-y",
+  "type": "section"
+ },
+ {
+  "title": "Z. Failure Scenarios",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-z",
+  "type": "section"
+ },
+ {
+  "title": "AA. Common Bad Designs",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-aa",
+  "type": "section"
+ },
+ {
+  "title": "AB. Design Trade-Offs",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-ab",
+  "type": "section"
+ },
+ {
+  "title": "AC. Interviewer Evaluation",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-ac",
+  "type": "section"
+ },
+ {
+  "title": "AD. Interview Simulation",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-ad",
+  "type": "section"
+ },
+ {
+  "title": "AE. Online Solution Comparison",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-ae",
+  "type": "section"
+ },
+ {
+  "title": "AF. Interview Cheat Sheet",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-af",
+  "type": "section"
+ },
+ {
   "title": "Cross-Problem Synthesis",
-  "badge": "Problems 1–20",
+  "badge": "Problems 1–21",
   "url": "synthesis.html",
   "type": "problem"
  }
