@@ -45,6 +45,7 @@
   </ul>
 </nav>
 <main id="content">
+<div class="content-inner">
 <h1 class="problem-title">11. Elevator System <span class="badge">Intermediate → Advanced+Concurrency</span></h1>
 
 <div class="section-toc">
@@ -390,6 +391,7 @@ selectFloor("B", 7) → addStop(7) → doors close → MovingState → arrives 7
 <tr><td><strong>Common mistakes</strong></td><td>Elevator class deciding fleet-wide assignment itself; FIFO instead of SCAN-ordered stops; non-atomic select-then-assign; Singleton Dispatcher</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design multi-building fleet management or ML-based predictive dispatch unless asked</td></tr>
 </table><div class="prevnext"><a class="prevnext-link prev" href="p10.html">&larr; 10. Pub-Sub / Message Queue</a><a class="prevnext-link next" href="p12.html">12. Tic-Tac-Toe / Board Game Engine &rarr;</a></div>
+</div>
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>

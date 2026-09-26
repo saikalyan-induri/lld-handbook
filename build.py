@@ -123,7 +123,8 @@ SCRIPTS = (
 
 def render_page(title, main_html):
     return (HEAD_TOP + title + HEAD_BOTTOM + SIDEBAR
-            + '<main id="content">\n' + main_html + '\n</main>\n' + SCRIPTS)
+            + '<main id="content">\n<div class="content-inner">\n' + main_html
+            + '\n</div>\n</main>\n' + SCRIPTS)
 
 
 def prevnext(idx, seq):
@@ -261,6 +262,7 @@ html[data-theme="dark"]{
 html[data-theme="dark"] body{background:#0f172a; color:#e2e8f0;}
 html[data-theme="dark"] tr:nth-child(even) td{background:#1a2332;}
 html[data-theme="dark"] code{background:#1e2530; color:#e2e8f0;}
+html[data-theme="dark"] pre code{background:none; color:inherit;}
 html[data-theme="dark"] .toc-master{background:#132238;}
 html[data-theme="dark"] .filter-btn{background:#1e293b; color:#e2e8f0;}
 html[data-theme="dark"] .problem-card{background:#16202e;}
@@ -269,7 +271,8 @@ html[data-theme="dark"] #search-results a{color:#e2e8f0; border-bottom-color:#24
 html[data-theme="dark"] #search-results a:hover{background:#1e293b;}
 
 body{padding:0;}
-#content{margin-left:250px; padding:0 36px 40px; max-width:1100px;}
+#content{margin-left:250px;}
+.content-inner{padding:0 36px 40px; max-width:1100px; margin:0 auto;}
 
 #sidebar{
   position:fixed; top:0; left:0; width:250px; height:100vh; overflow-y:auto;
@@ -331,11 +334,22 @@ html[data-theme="dark"] .jump-select{background:#0f172a; color:#e2e8f0;}
 .hljs-ln td{padding:0;}
 .hljs-ln-numbers{text-align:right; color:#516074; padding:0 10px 0 6px !important; border-right:1px solid #334155; user-select:none; white-space:nowrap; vertical-align:top; width:1%;}
 .hljs-ln-code{padding:0 0 0 14px !important; vertical-align:top;}
+/* the generic table zebra-striping rule (tr:nth-child(even) td) also matches the
+   line-number table injected into code blocks -- kill it there so code stays on
+   one consistent dark background instead of alternating with light rows */
+.hljs-ln tr:nth-child(even) td, .hljs-ln tr td{background:none !important;}
+
+/* callout/prompt boxes keep their light, colorful backgrounds even in dark mode
+   (by design from the original single-page doc) -- give them dark-mode-safe
+   backgrounds + text color so they stay readable instead of light-gray-on-pale-yellow */
+html[data-theme="dark"] .callout{background:#132238; color:#dbeafe; border-left-color:#60a5fa;}
+html[data-theme="dark"] .prompt{background:#3a2f14; color:#f5e6c8; border-left-color:#f59e0b;}
 
 @media (max-width: 880px){
   #sidebar{left:-260px; transition:left .22s; box-shadow:2px 0 10px rgba(0,0,0,.2);}
   #sidebar.open{left:0;}
-  #content{margin-left:0; padding:0 18px 40px;}
+  #content{margin-left:0;}
+  .content-inner{padding:0 18px 40px;}
   #menu-toggle{display:block;}
   .section-toc{column-count:2 !important;}
 }

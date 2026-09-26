@@ -45,6 +45,7 @@
   </ul>
 </nav>
 <main id="content">
+<div class="content-inner">
 <h1 class="problem-title">Cross-Problem Synthesis <span class="badge">Problems 1–20</span></h1>
 <p>This section spans all twenty problems in this document. The same handful of lessons recur throughout — the value of working through this many problems isn't twenty independent tricks, it's watching a small set of ideas (check-then-act races, idempotent retries, template-vs-snapshot splits, and a short list of patterns) show up again and again in different clothing.</p>
 
@@ -108,6 +109,7 @@
 <li><strong>Mediator and Observer can coexist on the same class, solving different problems</strong> — Chat's <code>Conversation</code> is simultaneously a Mediator (decoupling participants from direct references to each other) and an Observer subject (fanning out messages to connected clients). Recognizing that these are complementary lenses, not competing pattern choices, is the clearest illustration in this document that pattern selection isn't always "pick exactly one."</li>
 <li><strong>Recognizing the LLD/HLD boundary explicitly</strong> (clearest in Ride-Sharing, Pub-Sub, Movie Ticket Booking, and Chat, but present in every problem once "scale this to millions of users" or "run this across a cluster" comes up) separates strong candidates from those who either over-engineer infrastructure they weren't asked for or hand-wave scale entirely.</li>
 </ul><div class="prevnext"><a class="prevnext-link prev" href="p20.html">&larr; 20. Chat Application (WhatsApp-style)</a><span></span></div>
+</div>
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
