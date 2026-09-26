@@ -331,7 +331,7 @@ html[data-theme="dark"] .jump-select{background:#0f172a; color:#e2e8f0;}
 
 /* highlightjs-line-numbers.js gutter */
 .hljs-ln{border-collapse:collapse; width:100%;}
-.hljs-ln td{padding:0;}
+.hljs-ln td{padding:0; border:none;}
 .hljs-ln-numbers{text-align:right; color:#516074; padding:0 10px 0 6px !important; border-right:1px solid #334155; user-select:none; white-space:nowrap; vertical-align:top; width:1%;}
 .hljs-ln-code{padding:0 0 0 14px !important; vertical-align:top;}
 /* the generic table zebra-striping rule (tr:nth-child(even) td) also matches the
