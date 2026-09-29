@@ -61,7 +61,8 @@
 <a href="#p10-y">Y. Scaling Boundary</a><a href="#p10-z">Z. Failure Scenarios</a><a href="#p10-aa">AA. Bad Designs</a>
 <a href="#p10-ab">AB. Trade-Offs</a><a href="#p10-ac">AC. Interviewer Evaluation</a><a href="#p10-ad">AD. Simulation</a>
 <a href="#p10-ae">AE. Source Comparison</a><a href="#p10-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p10">Jump to section:</label><select id="jump-p10" class="jump-select" data-jump-select><option value="p10-a">A. Realistic Interview Prompt</option><option value="p10-b">B. Difficulty</option><option value="p10-c">C. What This Problem Tests</option><option value="p10-d">D. Requirements</option><option value="p10-e">E. Clarifying Questions</option><option value="p10-f">F. Assumptions</option><option value="p10-g">G. Actors</option><option value="p10-h">H. Core Domain Entities</option><option value="p10-i">I. Class Relationships</option><option value="p10-j">J. Class Diagram</option><option value="p10-k">K. Responsibility Mapping</option><option value="p10-l">L. SOLID Analysis</option><option value="p10-m">M. Design Patterns</option><option value="p10-n">N. What Is Likely to Change?</option><option value="p10-o">O. Design Evolution</option><option value="p10-p">P. API / Interface Design</option><option value="p10-q">Q. Pseudocode — Critical Logic</option><option value="p10-r">R. End-to-End Use Case</option><option value="p10-s">S. Data Structures</option><option value="p10-t">T. Complexity Analysis</option><option value="p10-u">U. Testing Strategy</option><option value="p10-v">V. Interviewer Follow-Ups</option><option value="p10-w">W. Concurrency</option><option value="p10-x">X. Persistence</option><option value="p10-y">Y. Scaling Boundary</option><option value="p10-z">Z. Failure Scenarios</option><option value="p10-aa">AA. Common Bad Designs</option><option value="p10-ab">AB. Design Trade-Offs</option><option value="p10-ac">AC. Interviewer Evaluation</option><option value="p10-ad">AD. Interview Simulation</option><option value="p10-ae">AE. Online Solution Comparison</option><option value="p10-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p10-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p10">Jump to section:</label><select id="jump-p10" class="jump-select" data-jump-select><option value="p10-a">A. Realistic Interview Prompt</option><option value="p10-b">B. Difficulty</option><option value="p10-c">C. What This Problem Tests</option><option value="p10-d">D. Requirements</option><option value="p10-e">E. Clarifying Questions</option><option value="p10-f">F. Assumptions</option><option value="p10-g">G. Actors</option><option value="p10-h">H. Core Domain Entities</option><option value="p10-i">I. Class Relationships</option><option value="p10-j">J. Class Diagram</option><option value="p10-k">K. Responsibility Mapping</option><option value="p10-l">L. SOLID Analysis</option><option value="p10-m">M. Design Patterns</option><option value="p10-n">N. What Is Likely to Change?</option><option value="p10-o">O. Design Evolution</option><option value="p10-p">P. API / Interface Design</option><option value="p10-q">Q. Pseudocode — Critical Logic</option><option value="p10-r">R. End-to-End Use Case</option><option value="p10-s">S. Data Structures</option><option value="p10-t">T. Complexity Analysis</option><option value="p10-u">U. Testing Strategy</option><option value="p10-v">V. Interviewer Follow-Ups</option><option value="p10-w">W. Concurrency</option><option value="p10-x">X. Persistence</option><option value="p10-y">Y. Scaling Boundary</option><option value="p10-z">Z. Failure Scenarios</option><option value="p10-aa">AA. Common Bad Designs</option><option value="p10-ab">AB. Design Trade-Offs</option><option value="p10-ac">AC. Interviewer Evaluation</option><option value="p10-ad">AD. Interview Simulation</option><option value="p10-ae">AE. Online Solution Comparison</option><option value="p10-af">AF. Interview Cheat Sheet</option><option value="p10-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p10-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design an in-process publish-subscribe / message queue system. Publishers publish messages to named topics; subscribers subscribe to topics and receive every message published to them. Support multiple independent subscribers per topic, and don't lose messages if a subscriber is temporarily slow."</div>
@@ -612,7 +613,1106 @@ nack() → retry count incremented → redelivered once more → succeeds → ac
 <tr><td><strong>Top follow-ups</strong></td><td>Isolating a slow subscriber, duplicate-delivery handling, distributed-broker pivot (LLD/HLD boundary), dead-letter queue</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Synchronous in-line subscriber calls; unbounded queues; assuming free exactly-once delivery; assuming global ordering</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design a distributed Kafka-style broker when the prompt is in-process; don't build exactly-once semantics unless explicitly required</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p9.html">&larr; 9. File System</a><a class="prevnext-link next" href="p11.html">11. Elevator System &rarr;</a></div>
+</table>
+
+<h3 id="p10-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * Pub-Sub / Message Queue — full class-diagram implementation.
+ *
+ * Broker owns Topics; a Topic owns Subscriptions (one per Subscriber); each Subscription
+ * has its own bounded queue + background consumer thread so a slow subscriber can never
+ * block the publisher or other subscribers (decoupling publish() from consumption).
+ */
+public class p10 {
+
+    // ---------- Message ----------
+    /** Immutable unit of data plus metadata. */
+    static final class Message {
+        final String id;
+        final String payload;
+        final String partitionKey;
+        final long timestamp;
+
+        Message(String id, String payload, String partitionKey) {
+            this.id = id;
+            this.payload = payload;
+            this.partitionKey = partitionKey;
+            this.timestamp = System.currentTimeMillis();
+        }
+
+        @Override
+        public String toString() {
+            return &quot;Message{id=&quot; + id + &quot;, payload=&quot; + payload + &quot;}&quot;;
+        }
+    }
+
+    // ---------- Subscriber (interface) ----------
+    /** Business logic for handling one message. Must be idempotent (at-least-once delivery). */
+    interface Subscriber {
+        void onMessage(Message message) throws Exception;
+    }
+
+    // ---------- OverflowPolicy (Strategy interface) ----------
+    /** What happens when a subscriber&#x27;s queue is full. */
+    interface OverflowPolicy {
+        void onOverflow(Subscription subscription, Message incoming);
+    }
+
+    /** Drop the oldest queued message to make room for the incoming one. */
+    static final class DropOldest implements OverflowPolicy {
+        @Override
+        public void onOverflow(Subscription subscription, Message incoming) {
+            subscription.queue.poll();               // discard oldest
+            subscription.queue.offer(incoming);       // make room for the new message
+        }
+    }
+
+    /** Block the publishing thread until space is available (backpressure). */
+    static final class BlockPublisher implements OverflowPolicy {
+        @Override
+        public void onOverflow(Subscription subscription, Message incoming) {
+            try {
+                subscription.queue.put(incoming);      // blocks caller thread until room frees up
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
+    }
+
+    /** Simply drop the new incoming message, keeping what&#x27;s already queued. */
+    static final class DropNewest implements OverflowPolicy {
+        @Override
+        public void onOverflow(Subscription subscription, Message incoming) {
+            // intentionally no-op: newest message is dropped
+        }
+    }
+
+    // ---------- DeadLetterQueue ----------
+    /** Holds messages that exhausted their retry budget. Reprocessing is manual/operator-triggered. */
+    static final class DeadLetterQueue {
+        private final List&lt;String&gt; entries = new CopyOnWriteArrayList&lt;&gt;();
+
+        void add(Message message, String reason) {
+            entries.add(message.id + &quot; :: &quot; + reason);
+        }
+
+        List&lt;String&gt; entries() {
+            return entries;
+        }
+    }
+
+    // ---------- Subscription ----------
+    /** Per-subscriber delivery state on a topic: bounded queue, ack/retry tracking, background consumer. */
+    static final class Subscription {
+        private static final int MAX_RETRIES = 3;
+        private static final int CAPACITY = 16;
+
+        final String id = UUID.randomUUID().toString();
+        final BlockingQueue&lt;Message&gt; queue = new ArrayBlockingQueue&lt;&gt;(CAPACITY);
+        private final Subscriber subscriber;
+        private final OverflowPolicy overflowPolicy;
+        private final DeadLetterQueue deadLetterQueue;
+        private final Map&lt;String, Message&gt; inFlight = new ConcurrentHashMap&lt;&gt;();
+        private final Map&lt;String, AtomicInteger&gt; retryCount = new ConcurrentHashMap&lt;&gt;();
+        private volatile boolean running = true;
+        private Thread consumerThread;
+
+        Subscription(Subscriber subscriber, OverflowPolicy overflowPolicy, DeadLetterQueue dlq) {
+            this.subscriber = subscriber;
+            this.overflowPolicy = overflowPolicy;
+            this.deadLetterQueue = dlq;
+        }
+
+        /** Try to enqueue; on a full queue delegate to the overflow policy. */
+        void enqueue(Message message) {
+            if (!queue.offer(message)) {
+                overflowPolicy.onOverflow(this, message);
+            }
+        }
+
+        void start() {
+            consumerThread = new Thread(this::consumeLoop, &quot;sub-&quot; + id.substring(0, 8));
+            consumerThread.setDaemon(true);
+            consumerThread.start();
+        }
+
+        void stop() {
+            running = false;
+            if (consumerThread != null) consumerThread.interrupt();
+        }
+
+        /** One consumer loop per subscriber, running on its own background thread. */
+        private void consumeLoop() {
+            while (running) {
+                try {
+                    Message message = queue.poll(200, TimeUnit.MILLISECONDS);
+                    if (message == null) continue;
+                    inFlight.put(message.id, message);
+                    try {
+                        subscriber.onMessage(message);   // must be idempotent -- may be a redelivery
+                        ack(message.id);
+                    } catch (Exception e) {
+                        nack(message.id);
+                    }
+                } catch (InterruptedException ie) {
+                    if (!running) break;
+                }
+            }
+        }
+
+        void ack(String messageId) {
+            inFlight.remove(messageId);
+            retryCount.remove(messageId);
+        }
+
+        void nack(String messageId) {
+            Message message = inFlight.remove(messageId);
+            if (message == null) return;
+            int attempts = retryCount.computeIfAbsent(messageId, k -&gt; new AtomicInteger(0))
+                    .incrementAndGet();
+            if (attempts &gt; MAX_RETRIES) {
+                deadLetterQueue.add(message, &quot;retry exhausted&quot;);
+                retryCount.remove(messageId);
+            } else {
+                enqueue(message);   // redeliver -- subscriber will see this message again
+            }
+        }
+    }
+
+    // ---------- Topic ----------
+    /** A named channel; owns its subscriber list and fans out on publish. */
+    static final class Topic {
+        final String name;
+        private final List&lt;Subscription&gt; subscriptions = new CopyOnWriteArrayList&lt;&gt;();
+
+        Topic(String name) {
+            this.name = name;
+        }
+
+        Subscription subscribe(Subscriber subscriber, OverflowPolicy policy, DeadLetterQueue dlq) {
+            Subscription subscription = new Subscription(subscriber, policy, dlq);
+            subscriptions.add(subscription);
+            subscription.start();
+            return subscription;
+        }
+
+        void unsubscribe(Subscription subscription) {
+            subscriptions.remove(subscription);
+            subscription.stop();
+        }
+
+        /** Fan out to every subscription&#x27;s own bounded queue -- never calls the subscriber inline. */
+        void publish(Message message) {
+            for (Subscription subscription : subscriptions) {
+                subscription.enqueue(message);
+            }
+        }
+    }
+
+    // ---------- Broker (facade) ----------
+    /** Owns all topics; top-level publish/subscribe entry point. */
+    static final class Broker {
+        private final Map&lt;String, Topic&gt; topics = new ConcurrentHashMap&lt;&gt;();
+        private final DeadLetterQueue deadLetterQueue = new DeadLetterQueue();
+
+        Topic createTopic(String name) {
+            return topics.computeIfAbsent(name, Topic::new);
+        }
+
+        void publish(String topicName, Message message) {
+            Topic topic = topics.get(topicName);
+            if (topic == null) throw new IllegalArgumentException(&quot;No such topic: &quot; + topicName);
+            topic.publish(message);
+        }
+
+        Subscription subscribe(String topicName, Subscriber subscriber, OverflowPolicy policy) {
+            Topic topic = topics.get(topicName);
+            if (topic == null) throw new IllegalArgumentException(&quot;No such topic: &quot; + topicName);
+            return topic.subscribe(subscriber, policy, deadLetterQueue);
+        }
+
+        void unsubscribe(String topicName, Subscription subscription) {
+            Topic topic = topics.get(topicName);
+            if (topic != null) topic.unsubscribe(subscription);
+        }
+
+        DeadLetterQueue deadLetterQueue() {
+            return deadLetterQueue;
+        }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) throws InterruptedException {
+        Broker broker = new Broker();
+        broker.createTopic(&quot;orders&quot;);
+
+        List&lt;String&gt; fastReceived = new CopyOnWriteArrayList&lt;&gt;();
+        Subscriber fastSubscriber = msg -&gt; fastReceived.add(msg.payload);
+
+        // Always fails for one specific message id to deterministically exercise
+        // the retry -&gt; dead-letter path while other messages succeed normally.
+        Subscriber flakySubscriber = msg -&gt; {
+            if (msg.id.equals(&quot;m2&quot;)) {
+                throw new RuntimeException(&quot;permanent failure for m2&quot;);
+            }
+        };
+
+        broker.subscribe(&quot;orders&quot;, fastSubscriber, new DropOldest());
+        broker.subscribe(&quot;orders&quot;, flakySubscriber, new DropOldest());
+
+        for (int i = 0; i &lt; 5; i++) {
+            broker.publish(&quot;orders&quot;, new Message(&quot;m&quot; + i, &quot;order-&quot; + i, &quot;p0&quot;));
+        }
+
+        Thread.sleep(1000);
+
+        System.out.println(&quot;Fast subscriber received: &quot; + fastReceived);
+        System.out.println(&quot;Dead letters: &quot; + broker.deadLetterQueue().entries());
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Pub-Sub / Message Queue -- full class-diagram implementation.
+//
+// Broker owns Topics; a Topic owns Subscriptions (one per Subscriber); each Subscription
+// has its own bounded queue + background consumer thread so a slow subscriber can never
+// block the publisher or other subscribers.
+
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+#include &lt;map&gt;
+#include &lt;unordered_map&gt;
+#include &lt;deque&gt;
+#include &lt;memory&gt;
+#include &lt;thread&gt;
+#include &lt;mutex&gt;
+#include &lt;condition_variable&gt;
+#include &lt;atomic&gt;
+#include &lt;chrono&gt;
+#include &lt;functional&gt;
+#include &lt;sstream&gt;
+#include &lt;algorithm&gt;
+#include &lt;stdexcept&gt;
+
+// ---------- Message ----------
+struct Message {
+    std::string id;
+    std::string payload;
+    std::string partitionKey;
+    long long timestamp;
+
+    Message(std::string id_, std::string payload_, std::string partitionKey_)
+        : id(std::move(id_)), payload(std::move(payload_)), partitionKey(std::move(partitionKey_)) {
+        timestamp = std::chrono::duration_cast&lt;std::chrono::milliseconds&gt;(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+    }
+};
+
+// ---------- Subscriber (interface) ----------
+// Business logic for handling one message. Must be idempotent (at-least-once delivery).
+struct Subscriber {
+    virtual ~Subscriber() = default;
+    virtual void onMessage(const Message&amp; message) = 0; // throws on failure
+};
+
+class Subscription; // fwd decl
+
+// ---------- OverflowPolicy (Strategy interface) ----------
+struct OverflowPolicy {
+    virtual ~OverflowPolicy() = default;
+    virtual void onOverflow(Subscription&amp; subscription, const Message&amp; incoming) = 0;
+};
+
+// ---------- DeadLetterQueue ----------
+class DeadLetterQueue {
+    std::mutex mtx;
+    std::vector&lt;std::string&gt; entries_;
+public:
+    void add(const Message&amp; message, const std::string&amp; reason) {
+        std::lock_guard&lt;std::mutex&gt; lock(mtx);
+        entries_.push_back(message.id + &quot; :: &quot; + reason);
+    }
+    std::vector&lt;std::string&gt; entries() {
+        std::lock_guard&lt;std::mutex&gt; lock(mtx);
+        return entries_;
+    }
+};
+
+// ---------- Subscription ----------
+// Per-subscriber delivery state on a topic: bounded queue, ack/retry tracking, background consumer.
+class Subscription {
+public:
+    static const size_t CAPACITY = 16;
+    static const int MAX_RETRIES = 3;
+
+    std::string id;
+    std::deque&lt;Message&gt; queue;
+    std::mutex queueMutex;
+    std::condition_variable queueCv;
+
+    Subscription(std::shared_ptr&lt;Subscriber&gt; subscriber,
+                 std::shared_ptr&lt;OverflowPolicy&gt; overflowPolicy,
+                 std::shared_ptr&lt;DeadLetterQueue&gt; dlq,
+                 std::string subId)
+        : id(std::move(subId)), subscriber_(std::move(subscriber)),
+          overflowPolicy_(std::move(overflowPolicy)), deadLetterQueue_(std::move(dlq)) {}
+
+    ~Subscription() { stop(); }
+
+    // Try to enqueue; on a full queue delegate to the overflow policy.
+    void enqueue(const Message&amp; message) {
+        std::unique_lock&lt;std::mutex&gt; lock(queueMutex);
+        if (queue.size() &lt; CAPACITY) {
+            queue.push_back(message);
+            lock.unlock();
+            queueCv.notify_one();
+        } else {
+            lock.unlock();
+            overflowPolicy_-&gt;onOverflow(*this, message);   // policy may itself re-lock and enqueue
+        }
+    }
+
+    // Raw push used only by overflow policies that already decided to bypass capacity checks.
+    void forcePush(const Message&amp; message) {
+        std::unique_lock&lt;std::mutex&gt; lock(queueMutex);
+        queue.push_back(message);
+        lock.unlock();
+        queueCv.notify_one();
+    }
+
+    void popOldest() {
+        std::lock_guard&lt;std::mutex&gt; lock(queueMutex);
+        if (!queue.empty()) queue.pop_front();
+    }
+
+    void start() {
+        running_ = true;
+        thread_ = std::thread(&amp;Subscription::consumeLoop, this);
+    }
+
+    void stop() {
+        if (!running_) return;
+        running_ = false;
+        queueCv.notify_all();
+        if (thread_.joinable()) thread_.join();
+    }
+
+    void ack(const std::string&amp; messageId) {
+        std::lock_guard&lt;std::mutex&gt; lock(stateMutex_);
+        inFlight_.erase(messageId);
+        retryCount_.erase(messageId);
+    }
+
+    void nack(const std::string&amp; messageId) {
+        std::lock_guard&lt;std::mutex&gt; lock(stateMutex_);
+        auto it = inFlight_.find(messageId);
+        if (it == inFlight_.end()) return;
+        Message message = it-&gt;second;
+        inFlight_.erase(it);
+        int attempts = ++retryCount_[messageId];
+        if (attempts &gt; MAX_RETRIES) {
+            deadLetterQueue_-&gt;add(message, &quot;retry exhausted&quot;);
+            retryCount_.erase(messageId);
+        } else {
+            enqueue(message);   // redeliver -- subscriber will see this message again
+        }
+    }
+
+private:
+    std::shared_ptr&lt;Subscriber&gt; subscriber_;
+    std::shared_ptr&lt;OverflowPolicy&gt; overflowPolicy_;
+    std::shared_ptr&lt;DeadLetterQueue&gt; deadLetterQueue_;
+    std::atomic&lt;bool&gt; running_{false};
+    std::thread thread_;
+
+    std::mutex stateMutex_;
+    std::unordered_map&lt;std::string, Message&gt; inFlight_;
+    std::unordered_map&lt;std::string, int&gt; retryCount_;
+
+    // One consumer loop per subscriber, running on its own background thread.
+    void consumeLoop() {
+        while (running_) {
+            Message message(&quot;&quot;, &quot;&quot;, &quot;&quot;);
+            bool got = false;
+            {
+                std::unique_lock&lt;std::mutex&gt; lock(queueMutex);
+                queueCv.wait_for(lock, std::chrono::milliseconds(200),
+                                  [this] { return !queue.empty() || !running_; });
+                if (!queue.empty()) {
+                    message = queue.front();
+                    queue.pop_front();
+                    got = true;
+                }
+            }
+            if (!got) continue;
+            {
+                std::lock_guard&lt;std::mutex&gt; lock(stateMutex_);
+                inFlight_.emplace(message.id, message);
+            }
+            try {
+                subscriber_-&gt;onMessage(message);   // must be idempotent -- may be a redelivery
+                ack(message.id);
+            } catch (...) {
+                nack(message.id);
+            }
+        }
+    }
+};
+
+// Drop the oldest queued message to make room for the incoming one.
+struct DropOldest : OverflowPolicy {
+    void onOverflow(Subscription&amp; subscription, const Message&amp; incoming) override {
+        subscription.popOldest();
+        subscription.forcePush(incoming);
+    }
+};
+
+// Block the publishing thread until space is available (backpressure).
+struct BlockPublisher : OverflowPolicy {
+    void onOverflow(Subscription&amp; subscription, const Message&amp; incoming) override {
+        std::unique_lock&lt;std::mutex&gt; lock(subscription.queueMutex);
+        subscription.queueCv.wait(lock, [&amp;] { return subscription.queue.size() &lt; Subscription::CAPACITY; });
+        subscription.queue.push_back(incoming);
+        lock.unlock();
+        subscription.queueCv.notify_one();
+    }
+};
+
+// Simply drop the new incoming message, keeping what&#x27;s already queued.
+struct DropNewest : OverflowPolicy {
+    void onOverflow(Subscription&amp; subscription, const Message&amp; incoming) override {
+        (void)subscription; (void)incoming; // intentionally no-op
+    }
+};
+
+// ---------- Topic ----------
+// A named channel; owns its subscriber list and fans out on publish.
+class Topic {
+public:
+    std::string name;
+    explicit Topic(std::string name_) : name(std::move(name_)) {}
+
+    std::shared_ptr&lt;Subscription&gt; subscribe(std::shared_ptr&lt;Subscriber&gt; subscriber,
+                                             std::shared_ptr&lt;OverflowPolicy&gt; policy,
+                                             std::shared_ptr&lt;DeadLetterQueue&gt; dlq) {
+        std::lock_guard&lt;std::mutex&gt; lock(mtx_);
+        auto sub = std::make_shared&lt;Subscription&gt;(subscriber, policy, dlq,
+                                                    &quot;sub&quot; + std::to_string(nextId_++));
+        subscriptions_.push_back(sub);
+        sub-&gt;start();
+        return sub;
+    }
+
+    void unsubscribe(const std::shared_ptr&lt;Subscription&gt;&amp; subscription) {
+        std::lock_guard&lt;std::mutex&gt; lock(mtx_);
+        subscription-&gt;stop();
+        subscriptions_.erase(std::remove(subscriptions_.begin(), subscriptions_.end(), subscription),
+                              subscriptions_.end());
+    }
+
+    // Fan out to every subscription&#x27;s own bounded queue -- never calls the subscriber inline.
+    void publish(const Message&amp; message) {
+        std::vector&lt;std::shared_ptr&lt;Subscription&gt;&gt; snapshot;
+        {
+            std::lock_guard&lt;std::mutex&gt; lock(mtx_);
+            snapshot = subscriptions_;
+        }
+        for (auto&amp; sub : snapshot) sub-&gt;enqueue(message);
+    }
+
+private:
+    std::mutex mtx_;
+    std::vector&lt;std::shared_ptr&lt;Subscription&gt;&gt; subscriptions_;
+    int nextId_ = 0;
+};
+
+// ---------- Broker (facade) ----------
+// Owns all topics; top-level publish/subscribe entry point.
+class Broker {
+public:
+    Broker() : deadLetterQueue_(std::make_shared&lt;DeadLetterQueue&gt;()) {}
+
+    std::shared_ptr&lt;Topic&gt; createTopic(const std::string&amp; name) {
+        std::lock_guard&lt;std::mutex&gt; lock(mtx_);
+        auto it = topics_.find(name);
+        if (it != topics_.end()) return it-&gt;second;
+        auto topic = std::make_shared&lt;Topic&gt;(name);
+        topics_[name] = topic;
+        return topic;
+    }
+
+    void publish(const std::string&amp; topicName, const Message&amp; message) {
+        auto topic = getTopic(topicName);
+        topic-&gt;publish(message);
+    }
+
+    std::shared_ptr&lt;Subscription&gt; subscribe(const std::string&amp; topicName,
+                                             std::shared_ptr&lt;Subscriber&gt; subscriber,
+                                             std::shared_ptr&lt;OverflowPolicy&gt; policy) {
+        auto topic = getTopic(topicName);
+        return topic-&gt;subscribe(subscriber, policy, deadLetterQueue_);
+    }
+
+    void unsubscribe(const std::string&amp; topicName, const std::shared_ptr&lt;Subscription&gt;&amp; subscription) {
+        auto topic = getTopic(topicName);
+        topic-&gt;unsubscribe(subscription);
+    }
+
+    std::shared_ptr&lt;DeadLetterQueue&gt; deadLetterQueue() { return deadLetterQueue_; }
+
+private:
+    std::mutex mtx_;
+    std::map&lt;std::string, std::shared_ptr&lt;Topic&gt;&gt; topics_;
+    std::shared_ptr&lt;DeadLetterQueue&gt; deadLetterQueue_;
+
+    std::shared_ptr&lt;Topic&gt; getTopic(const std::string&amp; name) {
+        std::lock_guard&lt;std::mutex&gt; lock(mtx_);
+        auto it = topics_.find(name);
+        if (it == topics_.end()) throw std::invalid_argument(&quot;No such topic: &quot; + name);
+        return it-&gt;second;
+    }
+};
+
+// ---------- Demo subscribers ----------
+struct FastSubscriber : Subscriber {
+    std::mutex mtx;
+    std::vector&lt;std::string&gt; received;
+    void onMessage(const Message&amp; message) override {
+        std::lock_guard&lt;std::mutex&gt; lock(mtx);
+        received.push_back(message.payload);
+    }
+};
+
+// Always fails for one specific message id to deterministically exercise
+// the retry -&gt; dead-letter path while other messages succeed normally.
+struct FlakySubscriber : Subscriber {
+    void onMessage(const Message&amp; message) override {
+        if (message.id == &quot;m2&quot;) throw std::runtime_error(&quot;permanent failure for m2&quot;);
+    }
+};
+
+int main() {
+    Broker broker;
+    broker.createTopic(&quot;orders&quot;);
+
+    auto fast = std::make_shared&lt;FastSubscriber&gt;();
+    auto flaky = std::make_shared&lt;FlakySubscriber&gt;();
+
+    broker.subscribe(&quot;orders&quot;, fast, std::make_shared&lt;DropOldest&gt;());
+    broker.subscribe(&quot;orders&quot;, flaky, std::make_shared&lt;DropOldest&gt;());
+
+    for (int i = 0; i &lt; 5; i++) {
+        broker.publish(&quot;orders&quot;, Message(&quot;m&quot; + std::to_string(i), &quot;order-&quot; + std::to_string(i), &quot;p0&quot;));
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    std::cout &lt;&lt; &quot;Fast subscriber received: &quot;;
+    for (auto&amp; p : fast-&gt;received) std::cout &lt;&lt; p &lt;&lt; &quot; &quot;;
+    std::cout &lt;&lt; &quot;\n&quot;;
+
+    std::cout &lt;&lt; &quot;Dead letters: &quot;;
+    for (auto&amp; e : broker.deadLetterQueue()-&gt;entries()) std::cout &lt;&lt; e &lt;&lt; &quot; | &quot;;
+    std::cout &lt;&lt; &quot;\n&quot;;
+
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">&#x27;use strict&#x27;;
+/**
+ * Pub-Sub / Message Queue -- full class-diagram implementation.
+ *
+ * Broker owns Topics; a Topic owns Subscriptions (one per Subscriber); each Subscription
+ * has its own bounded queue + async consumption loop so a slow subscriber can never
+ * block the publisher or other subscribers (decoupling publish() from consumption).
+ *
+ * Node is single-threaded, so &quot;concurrency&quot; here means interleaved async consumer loops
+ * (via setImmediate) rather than OS threads -- the same bounded-queue-per-subscriber
+ * design guards against one subscriber starving another, and enqueue/ack/nack are each
+ * atomic within a single synchronous turn of the event loop.
+ */
+
+const { randomUUID } = require(&#x27;crypto&#x27;);
+
+// ---------- Message ----------
+class Message {
+  constructor(id, payload, partitionKey) {
+    this.id = id;
+    this.payload = payload;
+    this.partitionKey = partitionKey;
+    this.timestamp = Date.now();
+  }
+}
+
+// ---------- OverflowPolicy (Strategy interface) ----------
+class OverflowPolicy {
+  onOverflow(_subscription, _incoming) {
+    throw new Error(&#x27;not implemented&#x27;);
+  }
+}
+
+class DropOldest extends OverflowPolicy {
+  onOverflow(subscription, incoming) {
+    subscription.queue.shift();     // discard oldest
+    subscription.queue.push(incoming);
+  }
+}
+
+class DropNewest extends OverflowPolicy {
+  onOverflow(_subscription, _incoming) {
+    // intentionally no-op: newest message is dropped
+  }
+}
+
+class BlockPublisher extends OverflowPolicy {
+  onOverflow(subscription, incoming) {
+    // No real OS blocking available in single-threaded JS; approximate
+    // backpressure by force-pushing past capacity (publisher &quot;waits its turn&quot;
+    // conceptually -- the queue will drain before growing further).
+    subscription.queue.push(incoming);
+  }
+}
+
+// ---------- DeadLetterQueue ----------
+class DeadLetterQueue {
+  constructor() {
+    this._entries = [];
+  }
+  add(message, reason) {
+    this._entries.push(`${message.id} :: ${reason}`);
+  }
+  entries() {
+    return this._entries;
+  }
+}
+
+// ---------- Subscription ----------
+const CAPACITY = 16;
+const MAX_RETRIES = 3;
+
+class Subscription {
+  constructor(subscriber, overflowPolicy, deadLetterQueue) {
+    this.id = randomUUID();
+    this.subscriber = subscriber;       // Subscriber: { onMessage(message) }
+    this.overflowPolicy = overflowPolicy;
+    this.deadLetterQueue = deadLetterQueue;
+    this.queue = [];
+    this.inFlight = new Map();
+    this.retryCount = new Map();
+    this.running = false;
+    this._timer = null;
+  }
+
+  // Try to enqueue; on a full queue delegate to the overflow policy.
+  enqueue(message) {
+    if (this.queue.length &lt; CAPACITY) {
+      this.queue.push(message);
+    } else {
+      this.overflowPolicy.onOverflow(this, message);
+    }
+  }
+
+  start() {
+    this.running = true;
+    this._scheduleNext();
+  }
+
+  stop() {
+    this.running = false;
+    if (this._timer) clearImmediate(this._timer);
+  }
+
+  _scheduleNext() {
+    if (!this.running) return;
+    this._timer = setImmediate(() =&gt; this._consumeOne());
+  }
+
+  // One &quot;tick&quot; of the consumer loop -- pulls one message and processes it.
+  async _consumeOne() {
+    if (!this.running) return;
+    const message = this.queue.shift();
+    if (!message) {
+      this._scheduleNext();
+      return;
+    }
+    this.inFlight.set(message.id, message);
+    try {
+      await this.subscriber.onMessage(message); // must be idempotent -- may be a redelivery
+      this.ack(message.id);
+    } catch (_err) {
+      this.nack(message.id);
+    }
+    this._scheduleNext();
+  }
+
+  ack(messageId) {
+    this.inFlight.delete(messageId);
+    this.retryCount.delete(messageId);
+  }
+
+  nack(messageId) {
+    const message = this.inFlight.get(messageId);
+    this.inFlight.delete(messageId);
+    if (!message) return;
+    const attempts = (this.retryCount.get(messageId) || 0) + 1;
+    this.retryCount.set(messageId, attempts);
+    if (attempts &gt; MAX_RETRIES) {
+      this.deadLetterQueue.add(message, &#x27;retry exhausted&#x27;);
+      this.retryCount.delete(messageId);
+    } else {
+      this.enqueue(message); // redeliver -- subscriber will see this message again
+    }
+  }
+}
+
+// ---------- Topic ----------
+class Topic {
+  constructor(name) {
+    this.name = name;
+    this.subscriptions = [];
+  }
+
+  subscribe(subscriber, policy, dlq) {
+    const subscription = new Subscription(subscriber, policy, dlq);
+    this.subscriptions.push(subscription);
+    subscription.start();
+    return subscription;
+  }
+
+  unsubscribe(subscription) {
+    subscription.stop();
+    this.subscriptions = this.subscriptions.filter((s) =&gt; s !== subscription);
+  }
+
+  // Fan out to every subscription&#x27;s own bounded queue -- never calls the subscriber inline.
+  publish(message) {
+    for (const subscription of this.subscriptions) {
+      subscription.enqueue(message);
+    }
+  }
+}
+
+// ---------- Broker (facade) ----------
+class Broker {
+  constructor() {
+    this.topics = new Map();
+    this.deadLetterQueue = new DeadLetterQueue();
+  }
+
+  createTopic(name) {
+    if (!this.topics.has(name)) this.topics.set(name, new Topic(name));
+    return this.topics.get(name);
+  }
+
+  _getTopic(name) {
+    const topic = this.topics.get(name);
+    if (!topic) throw new Error(`No such topic: ${name}`);
+    return topic;
+  }
+
+  publish(topicName, message) {
+    this._getTopic(topicName).publish(message);
+  }
+
+  subscribe(topicName, subscriber, policy) {
+    return this._getTopic(topicName).subscribe(subscriber, policy, this.deadLetterQueue);
+  }
+
+  unsubscribe(topicName, subscription) {
+    this._getTopic(topicName).unsubscribe(subscription);
+  }
+}
+
+// ---------- Demo ----------
+function main() {
+  const broker = new Broker();
+  broker.createTopic(&#x27;orders&#x27;);
+
+  const fastReceived = [];
+  const fastSubscriber = { onMessage: (msg) =&gt; { fastReceived.push(msg.payload); } };
+
+  // Always fails for one specific message id to deterministically exercise
+  // the retry -&gt; dead-letter path while other messages succeed normally.
+  const flakySubscriber = {
+    onMessage: (msg) =&gt; {
+      if (msg.id === &#x27;m2&#x27;) throw new Error(&#x27;permanent failure for m2&#x27;);
+    },
+  };
+
+  broker.subscribe(&#x27;orders&#x27;, fastSubscriber, new DropOldest());
+  broker.subscribe(&#x27;orders&#x27;, flakySubscriber, new DropOldest());
+
+  for (let i = 0; i &lt; 5; i++) {
+    broker.publish(&#x27;orders&#x27;, new Message(`m${i}`, `order-${i}`, &#x27;p0&#x27;));
+  }
+
+  setTimeout(() =&gt; {
+    console.log(&#x27;Fast subscriber received:&#x27;, fastReceived);
+    console.log(&#x27;Dead letters:&#x27;, broker.deadLetterQueue.entries());
+  }, 500);
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  Message, Topic, Broker, Subscription,
+  DropOldest, DropNewest, BlockPublisher, DeadLetterQueue,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">/**
+ * Pub-Sub / Message Queue -- full class-diagram implementation.
+ *
+ * Broker owns Topics; a Topic owns Subscriptions (one per Subscriber); each Subscription
+ * has its own bounded queue + async consumption loop so a slow subscriber can never
+ * block the publisher or other subscribers (decoupling publish() from consumption).
+ */
+
+import { randomUUID } from &#x27;crypto&#x27;;
+
+// ---------- Message ----------
+class Message {
+  readonly timestamp: number;
+  constructor(
+    readonly id: string,
+    readonly payload: string,
+    readonly partitionKey: string,
+  ) {
+    this.timestamp = Date.now();
+  }
+}
+
+// ---------- Subscriber (interface) ----------
+interface Subscriber {
+  onMessage(message: Message): void | Promise&lt;void&gt;;
+}
+
+// ---------- OverflowPolicy (Strategy interface) ----------
+interface OverflowPolicy {
+  onOverflow(subscription: Subscription, incoming: Message): void;
+}
+
+class DropOldest implements OverflowPolicy {
+  onOverflow(subscription: Subscription, incoming: Message): void {
+    subscription.queue.shift();
+    subscription.queue.push(incoming);
+  }
+}
+
+class DropNewest implements OverflowPolicy {
+  onOverflow(_subscription: Subscription, _incoming: Message): void {
+    // intentionally no-op: newest message is dropped
+  }
+}
+
+class BlockPublisher implements OverflowPolicy {
+  onOverflow(subscription: Subscription, incoming: Message): void {
+    // Single-threaded JS has no real blocking primitive; approximate
+    // backpressure by force-pushing -- the queue drains before growing further.
+    subscription.queue.push(incoming);
+  }
+}
+
+// ---------- DeadLetterQueue ----------
+class DeadLetterQueue {
+  private readonly _entries: string[] = [];
+
+  add(message: Message, reason: string): void {
+    this._entries.push(`${message.id} :: ${reason}`);
+  }
+
+  entries(): string[] {
+    return this._entries;
+  }
+}
+
+// ---------- Subscription ----------
+const CAPACITY = 16;
+const MAX_RETRIES = 3;
+
+class Subscription {
+  readonly id: string = randomUUID();
+  readonly queue: Message[] = [];
+  private readonly inFlight = new Map&lt;string, Message&gt;();
+  private readonly retryCount = new Map&lt;string, number&gt;();
+  private running = false;
+
+  constructor(
+    private readonly subscriber: Subscriber,
+    private readonly overflowPolicy: OverflowPolicy,
+    private readonly deadLetterQueue: DeadLetterQueue,
+  ) {}
+
+  /** Try to enqueue; on a full queue delegate to the overflow policy. */
+  enqueue(message: Message): void {
+    if (this.queue.length &lt; CAPACITY) {
+      this.queue.push(message);
+    } else {
+      this.overflowPolicy.onOverflow(this, message);
+    }
+  }
+
+  start(): void {
+    this.running = true;
+    this.scheduleNext();
+  }
+
+  stop(): void {
+    this.running = false;
+  }
+
+  private scheduleNext(): void {
+    if (!this.running) return;
+    setImmediate(() =&gt; this.consumeOne());
+  }
+
+  /** One &quot;tick&quot; of the consumer loop -- pulls one message and processes it. */
+  private async consumeOne(): Promise&lt;void&gt; {
+    if (!this.running) return;
+    const message = this.queue.shift();
+    if (!message) {
+      this.scheduleNext();
+      return;
+    }
+    this.inFlight.set(message.id, message);
+    try {
+      await this.subscriber.onMessage(message); // must be idempotent -- may be a redelivery
+      this.ack(message.id);
+    } catch {
+      this.nack(message.id);
+    }
+    this.scheduleNext();
+  }
+
+  ack(messageId: string): void {
+    this.inFlight.delete(messageId);
+    this.retryCount.delete(messageId);
+  }
+
+  nack(messageId: string): void {
+    const message = this.inFlight.get(messageId);
+    this.inFlight.delete(messageId);
+    if (!message) return;
+    const attempts = (this.retryCount.get(messageId) ?? 0) + 1;
+    this.retryCount.set(messageId, attempts);
+    if (attempts &gt; MAX_RETRIES) {
+      this.deadLetterQueue.add(message, &#x27;retry exhausted&#x27;);
+      this.retryCount.delete(messageId);
+    } else {
+      this.enqueue(message); // redeliver -- subscriber will see this message again
+    }
+  }
+}
+
+// ---------- Topic ----------
+class Topic {
+  private subscriptions: Subscription[] = [];
+
+  constructor(readonly name: string) {}
+
+  subscribe(subscriber: Subscriber, policy: OverflowPolicy, dlq: DeadLetterQueue): Subscription {
+    const subscription = new Subscription(subscriber, policy, dlq);
+    this.subscriptions.push(subscription);
+    subscription.start();
+    return subscription;
+  }
+
+  unsubscribe(subscription: Subscription): void {
+    subscription.stop();
+    this.subscriptions = this.subscriptions.filter((s) =&gt; s !== subscription);
+  }
+
+  /** Fan out to every subscription&#x27;s own bounded queue -- never calls the subscriber inline. */
+  publish(message: Message): void {
+    for (const subscription of this.subscriptions) {
+      subscription.enqueue(message);
+    }
+  }
+}
+
+// ---------- Broker (facade) ----------
+class Broker {
+  private readonly topics = new Map&lt;string, Topic&gt;();
+  private readonly _deadLetterQueue = new DeadLetterQueue();
+
+  createTopic(name: string): Topic {
+    if (!this.topics.has(name)) this.topics.set(name, new Topic(name));
+    return this.topics.get(name)!;
+  }
+
+  private getTopic(name: string): Topic {
+    const topic = this.topics.get(name);
+    if (!topic) throw new Error(`No such topic: ${name}`);
+    return topic;
+  }
+
+  publish(topicName: string, message: Message): void {
+    this.getTopic(topicName).publish(message);
+  }
+
+  subscribe(topicName: string, subscriber: Subscriber, policy: OverflowPolicy): Subscription {
+    return this.getTopic(topicName).subscribe(subscriber, policy, this._deadLetterQueue);
+  }
+
+  unsubscribe(topicName: string, subscription: Subscription): void {
+    this.getTopic(topicName).unsubscribe(subscription);
+  }
+
+  deadLetterQueue(): DeadLetterQueue {
+    return this._deadLetterQueue;
+  }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const broker = new Broker();
+  broker.createTopic(&#x27;orders&#x27;);
+
+  const fastReceived: string[] = [];
+  const fastSubscriber: Subscriber = {
+    onMessage: (msg) =&gt; {
+      fastReceived.push(msg.payload);
+    },
+  };
+
+  // Always fails for one specific message id to deterministically exercise
+  // the retry -&gt; dead-letter path while other messages succeed normally.
+  const flakySubscriber: Subscriber = {
+    onMessage: (msg) =&gt; {
+      if (msg.id === &#x27;m2&#x27;) throw new Error(&#x27;permanent failure for m2&#x27;);
+    },
+  };
+
+  broker.subscribe(&#x27;orders&#x27;, fastSubscriber, new DropOldest());
+  broker.subscribe(&#x27;orders&#x27;, flakySubscriber, new DropOldest());
+
+  for (let i = 0; i &lt; 5; i++) {
+    broker.publish(&#x27;orders&#x27;, new Message(`m${i}`, `order-${i}`, &#x27;p0&#x27;));
+  }
+
+  setTimeout(() =&gt; {
+    console.log(&#x27;Fast subscriber received:&#x27;, fastReceived);
+    console.log(&#x27;Dead letters:&#x27;, broker.deadLetterQueue().entries());
+  }, 500);
+}
+
+if (require.main === module) {
+  main();
+}
+
+export {
+  Message, Subscriber, Topic, Broker, Subscription,
+  OverflowPolicy, DropOldest, DropNewest, BlockPublisher, DeadLetterQueue,
+};
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p9.html">&larr; 9. File System</a><a class="prevnext-link next" href="p11.html">11. Elevator System &rarr;</a></div>
 </div>
 </main>
 

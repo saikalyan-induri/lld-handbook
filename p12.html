@@ -61,7 +61,8 @@
 <a href="#p12-y">Y. Scaling Boundary</a><a href="#p12-z">Z. Failure Scenarios</a><a href="#p12-aa">AA. Bad Designs</a>
 <a href="#p12-ab">AB. Trade-Offs</a><a href="#p12-ac">AC. Interviewer Evaluation</a><a href="#p12-ad">AD. Simulation</a>
 <a href="#p12-ae">AE. Source Comparison</a><a href="#p12-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p12">Jump to section:</label><select id="jump-p12" class="jump-select" data-jump-select><option value="p12-a">A. Realistic Interview Prompt</option><option value="p12-b">B. Difficulty</option><option value="p12-c">C. What This Problem Tests</option><option value="p12-d">D. Requirements</option><option value="p12-e">E. Clarifying Questions</option><option value="p12-f">F. Assumptions</option><option value="p12-g">G. Actors</option><option value="p12-h">H. Core Domain Entities</option><option value="p12-i">I. Class Relationships</option><option value="p12-j">J. Class Diagram</option><option value="p12-k">K. Responsibility Mapping</option><option value="p12-l">L. SOLID Analysis</option><option value="p12-m">M. Design Patterns</option><option value="p12-n">N. What Is Likely to Change?</option><option value="p12-o">O. Design Evolution</option><option value="p12-p">P. API / Interface Design</option><option value="p12-q">Q. Pseudocode — Critical Logic</option><option value="p12-r">R. End-to-End Use Case</option><option value="p12-s">S. Data Structures</option><option value="p12-t">T. Complexity Analysis</option><option value="p12-u">U. Testing Strategy</option><option value="p12-v">V. Interviewer Follow-Ups</option><option value="p12-w">W. Concurrency</option><option value="p12-x">X. Persistence</option><option value="p12-y">Y. Scaling Boundary</option><option value="p12-z">Z. Failure Scenarios</option><option value="p12-aa">AA. Common Bad Designs</option><option value="p12-ab">AB. Design Trade-Offs</option><option value="p12-ac">AC. Interviewer Evaluation</option><option value="p12-ad">AD. Interview Simulation</option><option value="p12-ae">AE. Online Solution Comparison</option><option value="p12-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p12-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p12">Jump to section:</label><select id="jump-p12" class="jump-select" data-jump-select><option value="p12-a">A. Realistic Interview Prompt</option><option value="p12-b">B. Difficulty</option><option value="p12-c">C. What This Problem Tests</option><option value="p12-d">D. Requirements</option><option value="p12-e">E. Clarifying Questions</option><option value="p12-f">F. Assumptions</option><option value="p12-g">G. Actors</option><option value="p12-h">H. Core Domain Entities</option><option value="p12-i">I. Class Relationships</option><option value="p12-j">J. Class Diagram</option><option value="p12-k">K. Responsibility Mapping</option><option value="p12-l">L. SOLID Analysis</option><option value="p12-m">M. Design Patterns</option><option value="p12-n">N. What Is Likely to Change?</option><option value="p12-o">O. Design Evolution</option><option value="p12-p">P. API / Interface Design</option><option value="p12-q">Q. Pseudocode — Critical Logic</option><option value="p12-r">R. End-to-End Use Case</option><option value="p12-s">S. Data Structures</option><option value="p12-t">T. Complexity Analysis</option><option value="p12-u">U. Testing Strategy</option><option value="p12-v">V. Interviewer Follow-Ups</option><option value="p12-w">W. Concurrency</option><option value="p12-x">X. Persistence</option><option value="p12-y">Y. Scaling Boundary</option><option value="p12-z">Z. Failure Scenarios</option><option value="p12-aa">AA. Common Bad Designs</option><option value="p12-ab">AB. Design Trade-Offs</option><option value="p12-ac">AC. Interviewer Evaluation</option><option value="p12-ad">AD. Interview Simulation</option><option value="p12-ae">AE. Online Solution Comparison</option><option value="p12-af">AF. Interview Cheat Sheet</option><option value="p12-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p12-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a Tic-Tac-Toe game for two players. Then generalize it: support an arbitrary board size and an arbitrary number of symbols in a row to win, and support both human and computer-controlled players."</div>
@@ -549,7 +550,1049 @@ checkWinner(board, lastMove) scans diagonal through last move → count=3 → de
 <tr><td><strong>Top follow-ups</strong></td><td>Generalize board/win-length, smarter AI, build a second game reusing the engine</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Hardcoded win-lines; isAI boolean instead of Player subclasses; premature Template Method framework for one game</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't build a multi-game engine or networked multiplayer unless actually asked</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p11.html">&larr; 11. Elevator System</a><a class="prevnext-link next" href="p13.html">13. Chess Game &rarr;</a></div>
+</table>
+
+<h3 id="p12-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">import java.util.*;
+
+/**
+ * Tic-Tac-Toe / Board Game Engine — full class-diagram implementation.
+ *
+ * TurnBasedGame is a Template Method: play() defines the fixed skeleton (setup -&gt; loop
+ * of get move / validate / place / check win-or-draw / switch turn) while setupBoard()
+ * and the WinningStrategy are the pluggable hooks. WinningStrategy generically scans
+ * K-in-a-row through the last move in every direction, so board size/win-length are
+ * just parameters, never hardcoded coordinate lists.
+ */
+public class p12 {
+
+    // ---------- Symbol (value) ----------
+    static final class Symbol {
+        final char value;
+        Symbol(char value) { this.value = value; }
+        @Override public String toString() { return String.valueOf(value); }
+        @Override public boolean equals(Object o) { return o instanceof Symbol &amp;&amp; ((Symbol) o).value == value; }
+        @Override public int hashCode() { return value; }
+    }
+
+    // ---------- Move (value) ----------
+    static final class Move {
+        final int row, col;
+        final Symbol symbol;
+        Move(int row, int col, Symbol symbol) { this.row = row; this.col = col; this.symbol = symbol; }
+    }
+
+    enum MoveResultType { OK, INVALID, WIN, DRAW }
+    static final class MoveResult {
+        final MoveResultType type;
+        final String message;
+        MoveResult(MoveResultType type, String message) { this.type = type; this.message = message; }
+    }
+
+    // ---------- Board ----------
+    /** Owns the grid and cell occupancy. Does NOT decide whether a placement wins. */
+    static final class Board {
+        final int size;
+        private final Symbol[][] grid;
+
+        Board(int size) {
+            this.size = size;
+            this.grid = new Symbol[size][size];
+        }
+
+        boolean isValidMove(int row, int col) {
+            return row &gt;= 0 &amp;&amp; row &lt; size &amp;&amp; col &gt;= 0 &amp;&amp; col &lt; size &amp;&amp; grid[row][col] == null;
+        }
+
+        void placeMark(int row, int col, Symbol symbol) {
+            if (!isValidMove(row, col)) throw new IllegalArgumentException(&quot;Illegal move at &quot; + row + &quot;,&quot; + col);
+            grid[row][col] = symbol;
+        }
+
+        Symbol get(int row, int col) {
+            if (row &lt; 0 || row &gt;= size || col &lt; 0 || col &gt;= size) return null;
+            return grid[row][col];
+        }
+
+        boolean isFull() {
+            for (Symbol[] r : grid) for (Symbol s : r) if (s == null) return false;
+            return true;
+        }
+
+        void print() {
+            for (Symbol[] r : grid) {
+                StringBuilder sb = new StringBuilder();
+                for (Symbol s : r) sb.append(s == null ? &#x27;.&#x27; : s.value).append(&#x27; &#x27;);
+                System.out.println(sb.toString().trim());
+            }
+        }
+    }
+
+    // ---------- WinningStrategy (interface, Strategy) ----------
+    interface WinningStrategy {
+        boolean checkWinner(Board board, Move lastMove);
+    }
+
+    /** Generic K-in-a-row check: scans every row/col/diagonal direction through the last move. */
+    static final class LineScanWinningStrategy implements WinningStrategy {
+        private final int k;
+        LineScanWinningStrategy(int k) { this.k = k; }
+
+        @Override
+        public boolean checkWinner(Board board, Move lastMove) {
+            Symbol symbol = board.get(lastMove.row, lastMove.col);
+            if (symbol == null) return false;
+            int[][] directions = { {0, 1}, {1, 0}, {1, 1}, {1, -1} }; // horizontal, vertical, diag, anti-diag
+            for (int[] dir : directions) {
+                int count = 1;
+                count += countMatching(board, lastMove, dir[0], dir[1], symbol);
+                count += countMatching(board, lastMove, -dir[0], -dir[1], symbol);
+                if (count &gt;= k) return true;
+            }
+            return false;
+        }
+
+        private int countMatching(Board board, Move move, int dRow, int dCol, Symbol symbol) {
+            int count = 0;
+            int r = move.row + dRow, c = move.col + dCol;
+            while (symbol.equals(board.get(r, c))) {
+                count++;
+                r += dRow;
+                c += dCol;
+            }
+            return count;
+        }
+    }
+
+    // ---------- MoveStrategy (interface, Strategy) ----------
+    interface MoveStrategy {
+        Move decideMove(Board board, Symbol symbol);
+    }
+
+    /** Picks the first available empty cell -- trivially valid, deliberately simple default AI. */
+    static final class FirstAvailableMoveStrategy implements MoveStrategy {
+        @Override
+        public Move decideMove(Board board, Symbol symbol) {
+            for (int r = 0; r &lt; board.size; r++) {
+                for (int c = 0; c &lt; board.size; c++) {
+                    if (board.isValidMove(r, c)) return new Move(r, c, symbol);
+                }
+            }
+            throw new IllegalStateException(&quot;No available moves&quot;);
+        }
+    }
+
+    // ---------- Player (abstract) ----------
+    /** Common identity for anything that produces a move. How the move is decided is delegated. */
+    abstract static class Player {
+        final String id;
+        final Symbol symbol;
+        Player(String id, Symbol symbol) { this.id = id; this.symbol = symbol; }
+        abstract Move getMove(Board board);
+    }
+
+    /** Returns externally-supplied input as the move. */
+    static final class HumanPlayer extends Player {
+        private final Deque&lt;int[]&gt; pendingInputs = new ArrayDeque&lt;&gt;();
+
+        HumanPlayer(String id, Symbol symbol) { super(id, symbol); }
+
+        /** Feed the next external move (e.g. from UI/CLI input) before calling getMove(). */
+        void supplyMove(int row, int col) { pendingInputs.addLast(new int[]{row, col}); }
+
+        @Override
+        Move getMove(Board board) {
+            if (pendingInputs.isEmpty()) throw new IllegalStateException(&quot;No input supplied for human player &quot; + id);
+            int[] rc = pendingInputs.pollFirst();
+            return new Move(rc[0], rc[1], symbol);
+        }
+    }
+
+    /** Delegates move selection to a MoveStrategy -- the algorithm itself is not hardcoded here. */
+    static final class AIPlayer extends Player {
+        private final MoveStrategy moveStrategy;
+        AIPlayer(String id, Symbol symbol, MoveStrategy moveStrategy) {
+            super(id, symbol);
+            this.moveStrategy = moveStrategy;
+        }
+        @Override
+        Move getMove(Board board) { return moveStrategy.decideMove(board, symbol); }
+    }
+
+    // ---------- TurnBasedGame (abstract, Template Method) ----------
+    abstract static class TurnBasedGame {
+        Board board;
+        final List&lt;Player&gt; players;
+        final WinningStrategy winningStrategy;
+        private int turnIndex = 0;
+        private boolean finished = false;
+
+        TurnBasedGame(List&lt;Player&gt; players, WinningStrategy winningStrategy) {
+            this.players = players;
+            this.winningStrategy = winningStrategy;
+        }
+
+        /** Hook: board dimensions/shape -- subclasses plug in their own structural piece. */
+        protected abstract void setupBoard();
+
+        protected abstract void declareResult(MoveResultType type, Player player);
+
+        private Player nextPlayer() {
+            Player p = players.get(turnIndex % players.size());
+            turnIndex++;
+            return p;
+        }
+
+        /** Template method: the fixed skeleton shared by any turn-based grid game. */
+        MoveResult play() {
+            setupBoard();
+            while (!finished) {
+                Player player = players.get(turnIndex % players.size());
+                Move move = player.getMove(board);
+                if (!board.isValidMove(move.row, move.col)) continue; // human retries; AI never produces one
+                board.placeMark(move.row, move.col, player.symbol);
+                nextPlayer();
+                if (winningStrategy.checkWinner(board, move)) {
+                    finished = true;
+                    declareResult(MoveResultType.WIN, player);
+                    return new MoveResult(MoveResultType.WIN, player.id + &quot; wins&quot;);
+                }
+                if (board.isFull()) {
+                    finished = true;
+                    declareResult(MoveResultType.DRAW, null);
+                    return new MoveResult(MoveResultType.DRAW, &quot;draw&quot;);
+                }
+            }
+            return new MoveResult(MoveResultType.OK, &quot;game already finished&quot;);
+        }
+
+        boolean isFinished() { return finished; }
+    }
+
+    /** Concrete N x N, K-in-a-row game (default Tic-Tac-Toe: 3x3, 3-in-a-row). */
+    static final class TicTacToeGame extends TurnBasedGame {
+        private final int size;
+
+        TicTacToeGame(int size, List&lt;Player&gt; players, WinningStrategy winningStrategy) {
+            super(players, winningStrategy);
+            this.size = size;
+        }
+
+        @Override
+        protected void setupBoard() { this.board = new Board(size); }
+
+        @Override
+        protected void declareResult(MoveResultType type, Player player) {
+            if (type == MoveResultType.WIN) System.out.println(&quot;Result: &quot; + player.id + &quot; (&quot; + player.symbol + &quot;) wins!&quot;);
+            else System.out.println(&quot;Result: draw&quot;);
+            board.print();
+        }
+    }
+
+    // ---------- GameController (facade) ----------
+    static final class GameController {
+        private final TurnBasedGame game;
+        GameController(TurnBasedGame game) { this.game = game; }
+
+        MoveResult startGame() { return game.play(); }
+
+        MoveResult makeMove(String playerId, int row, int col) {
+            // For human players, external input is supplied before play()/loop consumes it.
+            for (Player p : game.players) {
+                if (p.id.equals(playerId) &amp;&amp; p instanceof HumanPlayer) {
+                    ((HumanPlayer) p).supplyMove(row, col);
+                    return new MoveResult(MoveResultType.OK, &quot;queued&quot;);
+                }
+            }
+            return new MoveResult(MoveResultType.INVALID, &quot;no such human player: &quot; + playerId);
+        }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) {
+        Symbol X = new Symbol(&#x27;X&#x27;);
+        Symbol O = new Symbol(&#x27;O&#x27;);
+
+        HumanPlayer human = new HumanPlayer(&quot;P1&quot;, X);
+        AIPlayer ai = new AIPlayer(&quot;P2&quot;, O, new FirstAvailableMoveStrategy());
+
+        // Pre-supply a scripted sequence of human moves for this non-interactive demo.
+        // Column 0 is targeted (rather than row 0) so it never collides with the AI&#x27;s
+        // deterministic &quot;first empty cell&quot; picks, which fill row 0 left-to-right first.
+        human.supplyMove(0, 0);
+        human.supplyMove(1, 0);
+        human.supplyMove(2, 0); // completes left column -&gt; human should win
+
+        TicTacToeGame game = new TicTacToeGame(3, List.of(human, ai), new LineScanWinningStrategy(3));
+        GameController controller = new GameController(game);
+
+        MoveResult result = controller.startGame();
+        System.out.println(&quot;Final: &quot; + result.type + &quot; -- &quot; + result.message);
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Tic-Tac-Toe / Board Game Engine -- full class-diagram implementation.
+//
+// TurnBasedGame is a Template Method: play() defines the fixed skeleton (setup -&gt; loop
+// of get move / validate / place / check win-or-draw / switch turn) while setupBoard()
+// and the WinningStrategy are the pluggable hooks. WinningStrategy generically scans
+// K-in-a-row through the last move in every direction, so board size/win-length are
+// just parameters, never hardcoded coordinate lists.
+
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+#include &lt;string&gt;
+#include &lt;memory&gt;
+#include &lt;deque&gt;
+#include &lt;stdexcept&gt;
+
+// ---------- Symbol (value) ----------
+struct Symbol {
+    char value;
+    bool operator==(const Symbol&amp; other) const { return value == other.value; }
+};
+
+// ---------- Move (value) ----------
+struct Move {
+    int row, col;
+    Symbol symbol;
+};
+
+enum class MoveResultType { OK, INVALID, WIN, DRAW };
+struct MoveResult { MoveResultType type; std::string message; };
+
+// ---------- Board ----------
+// Owns the grid and cell occupancy. Does NOT decide whether a placement wins.
+class Board {
+public:
+    int size;
+    explicit Board(int size_) : size(size_), grid_(size_, std::vector&lt;bool&gt;(size_, false)),
+                                  symbols_(size_, std::vector&lt;char&gt;(size_, &#x27;\0&#x27;)) {}
+
+    bool isValidMove(int row, int col) const {
+        return row &gt;= 0 &amp;&amp; row &lt; size &amp;&amp; col &gt;= 0 &amp;&amp; col &lt; size &amp;&amp; !grid_[row][col];
+    }
+
+    void placeMark(int row, int col, Symbol symbol) {
+        if (!isValidMove(row, col)) throw std::invalid_argument(&quot;Illegal move&quot;);
+        grid_[row][col] = true;
+        symbols_[row][col] = symbol.value;
+    }
+
+    // Returns &#x27;\0&#x27; via hasSymbol=false when the cell is out of bounds or empty.
+    bool get(int row, int col, Symbol&amp; out) const {
+        if (row &lt; 0 || row &gt;= size || col &lt; 0 || col &gt;= size || !grid_[row][col]) return false;
+        out.value = symbols_[row][col];
+        return true;
+    }
+
+    bool isFull() const {
+        for (auto&amp; r : grid_) for (bool occupied : r) if (!occupied) return false;
+        return true;
+    }
+
+    void print() const {
+        for (int r = 0; r &lt; size; r++) {
+            std::string line;
+            for (int c = 0; c &lt; size; c++) {
+                line += grid_[r][c] ? symbols_[r][c] : &#x27;.&#x27;;
+                line += &#x27; &#x27;;
+            }
+            std::cout &lt;&lt; line &lt;&lt; &quot;\n&quot;;
+        }
+    }
+
+private:
+    std::vector&lt;std::vector&lt;bool&gt;&gt; grid_;
+    std::vector&lt;std::vector&lt;char&gt;&gt; symbols_;
+};
+
+// ---------- WinningStrategy (interface, Strategy) ----------
+struct WinningStrategy {
+    virtual ~WinningStrategy() = default;
+    virtual bool checkWinner(const Board&amp; board, const Move&amp; lastMove) = 0;
+};
+
+// Generic K-in-a-row check: scans every row/col/diagonal direction through the last move.
+class LineScanWinningStrategy : public WinningStrategy {
+public:
+    explicit LineScanWinningStrategy(int k) : k_(k) {}
+
+    bool checkWinner(const Board&amp; board, const Move&amp; lastMove) override {
+        Symbol symbol;
+        if (!board.get(lastMove.row, lastMove.col, symbol)) return false;
+        static const int dirs[4][2] = { {0, 1}, {1, 0}, {1, 1}, {1, -1} };
+        for (auto&amp; d : dirs) {
+            int count = 1;
+            count += countMatching(board, lastMove, d[0], d[1], symbol);
+            count += countMatching(board, lastMove, -d[0], -d[1], symbol);
+            if (count &gt;= k_) return true;
+        }
+        return false;
+    }
+
+private:
+    int k_;
+
+    int countMatching(const Board&amp; board, const Move&amp; move, int dRow, int dCol, const Symbol&amp; symbol) const {
+        int count = 0;
+        int r = move.row + dRow, c = move.col + dCol;
+        Symbol cell;
+        while (board.get(r, c, cell) &amp;&amp; cell == symbol) {
+            count++;
+            r += dRow;
+            c += dCol;
+        }
+        return count;
+    }
+};
+
+// ---------- MoveStrategy (interface, Strategy) ----------
+struct MoveStrategy {
+    virtual ~MoveStrategy() = default;
+    virtual Move decideMove(const Board&amp; board, Symbol symbol) = 0;
+};
+
+// Picks the first available empty cell -- trivially valid, deliberately simple default AI.
+struct FirstAvailableMoveStrategy : MoveStrategy {
+    Move decideMove(const Board&amp; board, Symbol symbol) override {
+        for (int r = 0; r &lt; board.size; r++)
+            for (int c = 0; c &lt; board.size; c++)
+                if (board.isValidMove(r, c)) return Move{r, c, symbol};
+        throw std::runtime_error(&quot;No available moves&quot;);
+    }
+};
+
+// ---------- Player (abstract) ----------
+// Common identity for anything that produces a move. How the move is decided is delegated.
+class Player {
+public:
+    std::string id;
+    Symbol symbol;
+    Player(std::string id_, Symbol symbol_) : id(std::move(id_)), symbol(symbol_) {}
+    virtual ~Player() = default;
+    virtual Move getMove(const Board&amp; board) = 0;
+};
+
+// Returns externally-supplied input as the move.
+class HumanPlayer : public Player {
+public:
+    HumanPlayer(std::string id_, Symbol symbol_) : Player(std::move(id_), symbol_) {}
+
+    void supplyMove(int row, int col) { pendingInputs_.push_back({row, col}); }
+
+    Move getMove(const Board&amp;) override {
+        if (pendingInputs_.empty()) throw std::runtime_error(&quot;No input supplied for human player &quot; + id);
+        auto rc = pendingInputs_.front();
+        pendingInputs_.pop_front();
+        return Move{rc.first, rc.second, symbol};
+    }
+
+private:
+    std::deque&lt;std::pair&lt;int, int&gt;&gt; pendingInputs_;
+};
+
+// Delegates move selection to a MoveStrategy -- the algorithm itself is not hardcoded here.
+class AIPlayer : public Player {
+public:
+    AIPlayer(std::string id_, Symbol symbol_, std::shared_ptr&lt;MoveStrategy&gt; strategy)
+        : Player(std::move(id_), symbol_), moveStrategy_(std::move(strategy)) {}
+
+    Move getMove(const Board&amp; board) override { return moveStrategy_-&gt;decideMove(board, symbol); }
+
+private:
+    std::shared_ptr&lt;MoveStrategy&gt; moveStrategy_;
+};
+
+// ---------- TurnBasedGame (abstract, Template Method) ----------
+class TurnBasedGame {
+public:
+    std::unique_ptr&lt;Board&gt; board;
+    std::vector&lt;std::shared_ptr&lt;Player&gt;&gt; players;
+
+    TurnBasedGame(std::vector&lt;std::shared_ptr&lt;Player&gt;&gt; players_, std::shared_ptr&lt;WinningStrategy&gt; winningStrategy)
+        : players(std::move(players_)), winningStrategy_(std::move(winningStrategy)) {}
+    virtual ~TurnBasedGame() = default;
+
+    // Template method: the fixed skeleton shared by any turn-based grid game.
+    MoveResult play() {
+        setupBoard();
+        while (!finished_) {
+            auto player = players[turnIndex_ % players.size()];
+            Move move = player-&gt;getMove(*board);
+            if (!board-&gt;isValidMove(move.row, move.col)) continue; // human retries; AI never produces one
+            board-&gt;placeMark(move.row, move.col, player-&gt;symbol);
+            turnIndex_++;
+            if (winningStrategy_-&gt;checkWinner(*board, move)) {
+                finished_ = true;
+                declareResult(MoveResultType::WIN, player);
+                return MoveResult{MoveResultType::WIN, player-&gt;id + &quot; wins&quot;};
+            }
+            if (board-&gt;isFull()) {
+                finished_ = true;
+                declareResult(MoveResultType::DRAW, nullptr);
+                return MoveResult{MoveResultType::DRAW, &quot;draw&quot;};
+            }
+        }
+        return MoveResult{MoveResultType::OK, &quot;game already finished&quot;};
+    }
+
+protected:
+    // Hook: board dimensions/shape -- subclasses plug in their own structural piece.
+    virtual void setupBoard() = 0;
+    virtual void declareResult(MoveResultType type, std::shared_ptr&lt;Player&gt; player) = 0;
+
+private:
+    std::shared_ptr&lt;WinningStrategy&gt; winningStrategy_;
+    size_t turnIndex_ = 0;
+    bool finished_ = false;
+};
+
+// Concrete N x N, K-in-a-row game (default Tic-Tac-Toe: 3x3, 3-in-a-row).
+class TicTacToeGame : public TurnBasedGame {
+public:
+    TicTacToeGame(int size, std::vector&lt;std::shared_ptr&lt;Player&gt;&gt; players, std::shared_ptr&lt;WinningStrategy&gt; strategy)
+        : TurnBasedGame(std::move(players), std::move(strategy)), size_(size) {}
+
+protected:
+    void setupBoard() override { board = std::make_unique&lt;Board&gt;(size_); }
+
+    void declareResult(MoveResultType type, std::shared_ptr&lt;Player&gt; player) override {
+        if (type == MoveResultType::WIN) std::cout &lt;&lt; &quot;Result: &quot; &lt;&lt; player-&gt;id &lt;&lt; &quot; (&quot; &lt;&lt; player-&gt;symbol.value &lt;&lt; &quot;) wins!\n&quot;;
+        else std::cout &lt;&lt; &quot;Result: draw\n&quot;;
+        board-&gt;print();
+    }
+
+private:
+    int size_;
+};
+
+// ---------- GameController (facade) ----------
+class GameController {
+public:
+    explicit GameController(std::shared_ptr&lt;TurnBasedGame&gt; game) : game_(std::move(game)) {}
+
+    MoveResult startGame() { return game_-&gt;play(); }
+
+    MoveResult makeMove(const std::string&amp; playerId, int row, int col) {
+        for (auto&amp; p : game_-&gt;players) {
+            if (p-&gt;id == playerId) {
+                auto human = std::dynamic_pointer_cast&lt;HumanPlayer&gt;(p);
+                if (human) {
+                    human-&gt;supplyMove(row, col);
+                    return MoveResult{MoveResultType::OK, &quot;queued&quot;};
+                }
+            }
+        }
+        return MoveResult{MoveResultType::INVALID, &quot;no such human player: &quot; + playerId};
+    }
+
+private:
+    std::shared_ptr&lt;TurnBasedGame&gt; game_;
+};
+
+int main() {
+    Symbol X{&#x27;X&#x27;};
+    Symbol O{&#x27;O&#x27;};
+
+    auto human = std::make_shared&lt;HumanPlayer&gt;(&quot;P1&quot;, X);
+    auto ai = std::make_shared&lt;AIPlayer&gt;(&quot;P2&quot;, O, std::make_shared&lt;FirstAvailableMoveStrategy&gt;());
+
+    // Pre-supply a scripted sequence of human moves for this non-interactive demo.
+    // Column 0 is targeted (rather than row 0) so it never collides with the AI&#x27;s
+    // deterministic &quot;first empty cell&quot; picks, which fill row 0 left-to-right first.
+    human-&gt;supplyMove(0, 0);
+    human-&gt;supplyMove(1, 0);
+    human-&gt;supplyMove(2, 0); // completes left column -&gt; human should win
+
+    auto game = std::make_shared&lt;TicTacToeGame&gt;(3, std::vector&lt;std::shared_ptr&lt;Player&gt;&gt;{human, ai},
+                                                 std::make_shared&lt;LineScanWinningStrategy&gt;(3));
+    GameController controller(game);
+
+    MoveResult result = controller.startGame();
+    std::cout &lt;&lt; &quot;Final: &quot; &lt;&lt; (result.type == MoveResultType::WIN ? &quot;WIN&quot; : &quot;DRAW&quot;) &lt;&lt; &quot; -- &quot; &lt;&lt; result.message &lt;&lt; &quot;\n&quot;;
+
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">&#x27;use strict&#x27;;
+/**
+ * Tic-Tac-Toe / Board Game Engine -- full class-diagram implementation.
+ *
+ * TurnBasedGame is a Template Method: play() defines the fixed skeleton (setup -&gt; loop
+ * of get move / validate / place / check win-or-draw / switch turn) while setupBoard()
+ * and the WinningStrategy are the pluggable hooks. WinningStrategy generically scans
+ * K-in-a-row through the last move in every direction, so board size/win-length are
+ * just parameters, never hardcoded coordinate lists.
+ */
+
+// ---------- Board ----------
+// Owns the grid and cell occupancy. Does NOT decide whether a placement wins.
+class Board {
+  constructor(size) {
+    this.size = size;
+    this.grid = Array.from({ length: size }, () =&gt; Array(size).fill(null));
+  }
+
+  isValidMove(row, col) {
+    return row &gt;= 0 &amp;&amp; row &lt; this.size &amp;&amp; col &gt;= 0 &amp;&amp; col &lt; this.size &amp;&amp; this.grid[row][col] === null;
+  }
+
+  placeMark(row, col, symbol) {
+    if (!this.isValidMove(row, col)) throw new Error(`Illegal move at ${row},${col}`);
+    this.grid[row][col] = symbol;
+  }
+
+  get(row, col) {
+    if (row &lt; 0 || row &gt;= this.size || col &lt; 0 || col &gt;= this.size) return null;
+    return this.grid[row][col];
+  }
+
+  isFull() {
+    return this.grid.every((r) =&gt; r.every((cell) =&gt; cell !== null));
+  }
+
+  print() {
+    for (const row of this.grid) {
+      console.log(row.map((c) =&gt; (c === null ? &#x27;.&#x27; : c)).join(&#x27; &#x27;));
+    }
+  }
+}
+
+// ---------- WinningStrategy (interface, Strategy) ----------
+class WinningStrategy {
+  checkWinner(_board, _lastMove) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+// Generic K-in-a-row check: scans every row/col/diagonal direction through the last move.
+class LineScanWinningStrategy extends WinningStrategy {
+  constructor(k) { super(); this.k = k; }
+
+  checkWinner(board, lastMove) {
+    const symbol = board.get(lastMove.row, lastMove.col);
+    if (symbol === null) return false;
+    const directions = [[0, 1], [1, 0], [1, 1], [1, -1]]; // horizontal, vertical, diag, anti-diag
+    for (const [dRow, dCol] of directions) {
+      let count = 1;
+      count += this._countMatching(board, lastMove, dRow, dCol, symbol);
+      count += this._countMatching(board, lastMove, -dRow, -dCol, symbol);
+      if (count &gt;= this.k) return true;
+    }
+    return false;
+  }
+
+  _countMatching(board, move, dRow, dCol, symbol) {
+    let count = 0;
+    let r = move.row + dRow;
+    let c = move.col + dCol;
+    while (board.get(r, c) === symbol) {
+      count++;
+      r += dRow;
+      c += dCol;
+    }
+    return count;
+  }
+}
+
+// ---------- MoveStrategy (interface, Strategy) ----------
+class MoveStrategy {
+  decideMove(_board, _symbol) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+// Picks the first available empty cell -- trivially valid, deliberately simple default AI.
+class FirstAvailableMoveStrategy extends MoveStrategy {
+  decideMove(board, symbol) {
+    for (let r = 0; r &lt; board.size; r++) {
+      for (let c = 0; c &lt; board.size; c++) {
+        if (board.isValidMove(r, c)) return { row: r, col: c, symbol };
+      }
+    }
+    throw new Error(&#x27;No available moves&#x27;);
+  }
+}
+
+// ---------- Player (abstract) ----------
+// Common identity for anything that produces a move. How the move is decided is delegated.
+class Player {
+  constructor(id, symbol) {
+    if (new.target === Player) throw new Error(&#x27;Player is abstract&#x27;);
+    this.id = id;
+    this.symbol = symbol;
+  }
+  getMove(_board) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+// Returns externally-supplied input as the move.
+class HumanPlayer extends Player {
+  constructor(id, symbol) {
+    super(id, symbol);
+    this._pendingInputs = [];
+  }
+
+  supplyMove(row, col) { this._pendingInputs.push([row, col]); }
+
+  getMove(_board) {
+    if (this._pendingInputs.length === 0) throw new Error(`No input supplied for human player ${this.id}`);
+    const [row, col] = this._pendingInputs.shift();
+    return { row, col, symbol: this.symbol };
+  }
+}
+
+// Delegates move selection to a MoveStrategy -- the algorithm itself is not hardcoded here.
+class AIPlayer extends Player {
+  constructor(id, symbol, moveStrategy) {
+    super(id, symbol);
+    this.moveStrategy = moveStrategy;
+  }
+  getMove(board) { return this.moveStrategy.decideMove(board, this.symbol); }
+}
+
+// ---------- TurnBasedGame (abstract, Template Method) ----------
+class TurnBasedGame {
+  constructor(players, winningStrategy) {
+    if (new.target === TurnBasedGame) throw new Error(&#x27;TurnBasedGame is abstract&#x27;);
+    this.board = null;
+    this.players = players;
+    this.winningStrategy = winningStrategy;
+    this._turnIndex = 0;
+    this._finished = false;
+  }
+
+  // Hook: board dimensions/shape -- subclasses plug in their own structural piece.
+  setupBoard() { throw new Error(&#x27;not implemented&#x27;); }
+  declareResult(_type, _player) { throw new Error(&#x27;not implemented&#x27;); }
+
+  // Template method: the fixed skeleton shared by any turn-based grid game.
+  play() {
+    this.setupBoard();
+    while (!this._finished) {
+      const player = this.players[this._turnIndex % this.players.length];
+      const move = player.getMove(this.board);
+      if (!this.board.isValidMove(move.row, move.col)) continue; // human retries; AI never produces one
+      this.board.placeMark(move.row, move.col, player.symbol);
+      this._turnIndex++;
+      if (this.winningStrategy.checkWinner(this.board, move)) {
+        this._finished = true;
+        this.declareResult(&#x27;WIN&#x27;, player);
+        return { type: &#x27;WIN&#x27;, message: `${player.id} wins` };
+      }
+      if (this.board.isFull()) {
+        this._finished = true;
+        this.declareResult(&#x27;DRAW&#x27;, null);
+        return { type: &#x27;DRAW&#x27;, message: &#x27;draw&#x27; };
+      }
+    }
+    return { type: &#x27;OK&#x27;, message: &#x27;game already finished&#x27; };
+  }
+}
+
+// Concrete N x N, K-in-a-row game (default Tic-Tac-Toe: 3x3, 3-in-a-row).
+class TicTacToeGame extends TurnBasedGame {
+  constructor(size, players, winningStrategy) {
+    super(players, winningStrategy);
+    this.size = size;
+  }
+
+  setupBoard() { this.board = new Board(this.size); }
+
+  declareResult(type, player) {
+    if (type === &#x27;WIN&#x27;) console.log(`Result: ${player.id} (${player.symbol}) wins!`);
+    else console.log(&#x27;Result: draw&#x27;);
+    this.board.print();
+  }
+}
+
+// ---------- GameController (facade) ----------
+class GameController {
+  constructor(game) { this.game = game; }
+
+  startGame() { return this.game.play(); }
+
+  makeMove(playerId, row, col) {
+    for (const p of this.game.players) {
+      if (p.id === playerId &amp;&amp; p instanceof HumanPlayer) {
+        p.supplyMove(row, col);
+        return { type: &#x27;OK&#x27;, message: &#x27;queued&#x27; };
+      }
+    }
+    return { type: &#x27;INVALID&#x27;, message: `no such human player: ${playerId}` };
+  }
+}
+
+// ---------- Demo ----------
+function main() {
+  const X = &#x27;X&#x27;;
+  const O = &#x27;O&#x27;;
+
+  const human = new HumanPlayer(&#x27;P1&#x27;, X);
+  const ai = new AIPlayer(&#x27;P2&#x27;, O, new FirstAvailableMoveStrategy());
+
+  // Pre-supply a scripted sequence of human moves for this non-interactive demo.
+  // Column 0 is targeted (rather than row 0) so it never collides with the AI&#x27;s
+  // deterministic &quot;first empty cell&quot; picks, which fill row 0 left-to-right first.
+  human.supplyMove(0, 0);
+  human.supplyMove(1, 0);
+  human.supplyMove(2, 0); // completes left column -&gt; human should win
+
+  const game = new TicTacToeGame(3, [human, ai], new LineScanWinningStrategy(3));
+  const controller = new GameController(game);
+
+  const result = controller.startGame();
+  console.log(`Final: ${result.type} -- ${result.message}`);
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  Board, WinningStrategy, LineScanWinningStrategy, MoveStrategy, FirstAvailableMoveStrategy,
+  Player, HumanPlayer, AIPlayer, TurnBasedGame, TicTacToeGame, GameController,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">/**
+ * Tic-Tac-Toe / Board Game Engine -- full class-diagram implementation.
+ *
+ * TurnBasedGame is a Template Method: play() defines the fixed skeleton (setup -&gt; loop
+ * of get move / validate / place / check win-or-draw / switch turn) while setupBoard()
+ * and the WinningStrategy are the pluggable hooks. WinningStrategy generically scans
+ * K-in-a-row through the last move in every direction, so board size/win-length are
+ * just parameters, never hardcoded coordinate lists.
+ */
+
+type Symbol = string;
+
+interface Move {
+  row: number;
+  col: number;
+  symbol: Symbol;
+}
+
+type MoveResultType = &#x27;OK&#x27; | &#x27;INVALID&#x27; | &#x27;WIN&#x27; | &#x27;DRAW&#x27;;
+interface MoveResult {
+  type: MoveResultType;
+  message: string;
+}
+
+// ---------- Board ----------
+// Owns the grid and cell occupancy. Does NOT decide whether a placement wins.
+class Board {
+  private grid: (Symbol | null)[][];
+
+  constructor(readonly size: number) {
+    this.grid = Array.from({ length: size }, () =&gt; Array&lt;Symbol | null&gt;(size).fill(null));
+  }
+
+  isValidMove(row: number, col: number): boolean {
+    return row &gt;= 0 &amp;&amp; row &lt; this.size &amp;&amp; col &gt;= 0 &amp;&amp; col &lt; this.size &amp;&amp; this.grid[row][col] === null;
+  }
+
+  placeMark(row: number, col: number, symbol: Symbol): void {
+    if (!this.isValidMove(row, col)) throw new Error(`Illegal move at ${row},${col}`);
+    this.grid[row][col] = symbol;
+  }
+
+  get(row: number, col: number): Symbol | null {
+    if (row &lt; 0 || row &gt;= this.size || col &lt; 0 || col &gt;= this.size) return null;
+    return this.grid[row][col];
+  }
+
+  isFull(): boolean {
+    return this.grid.every((r) =&gt; r.every((cell) =&gt; cell !== null));
+  }
+
+  print(): void {
+    for (const row of this.grid) {
+      console.log(row.map((c) =&gt; (c === null ? &#x27;.&#x27; : c)).join(&#x27; &#x27;));
+    }
+  }
+}
+
+// ---------- WinningStrategy (interface, Strategy) ----------
+interface WinningStrategy {
+  checkWinner(board: Board, lastMove: Move): boolean;
+}
+
+// Generic K-in-a-row check: scans every row/col/diagonal direction through the last move.
+class LineScanWinningStrategy implements WinningStrategy {
+  constructor(private readonly k: number) {}
+
+  checkWinner(board: Board, lastMove: Move): boolean {
+    const symbol = board.get(lastMove.row, lastMove.col);
+    if (symbol === null) return false;
+    const directions: [number, number][] = [[0, 1], [1, 0], [1, 1], [1, -1]]; // horizontal, vertical, diag, anti-diag
+    for (const [dRow, dCol] of directions) {
+      let count = 1;
+      count += this.countMatching(board, lastMove, dRow, dCol, symbol);
+      count += this.countMatching(board, lastMove, -dRow, -dCol, symbol);
+      if (count &gt;= this.k) return true;
+    }
+    return false;
+  }
+
+  private countMatching(board: Board, move: Move, dRow: number, dCol: number, symbol: Symbol): number {
+    let count = 0;
+    let r = move.row + dRow;
+    let c = move.col + dCol;
+    while (board.get(r, c) === symbol) {
+      count++;
+      r += dRow;
+      c += dCol;
+    }
+    return count;
+  }
+}
+
+// ---------- MoveStrategy (interface, Strategy) ----------
+interface MoveStrategy {
+  decideMove(board: Board, symbol: Symbol): Move;
+}
+
+// Picks the first available empty cell -- trivially valid, deliberately simple default AI.
+class FirstAvailableMoveStrategy implements MoveStrategy {
+  decideMove(board: Board, symbol: Symbol): Move {
+    for (let r = 0; r &lt; board.size; r++) {
+      for (let c = 0; c &lt; board.size; c++) {
+        if (board.isValidMove(r, c)) return { row: r, col: c, symbol };
+      }
+    }
+    throw new Error(&#x27;No available moves&#x27;);
+  }
+}
+
+// ---------- Player (abstract) ----------
+// Common identity for anything that produces a move. How the move is decided is delegated.
+abstract class Player {
+  constructor(readonly id: string, readonly symbol: Symbol) {}
+  abstract getMove(board: Board): Move;
+}
+
+// Returns externally-supplied input as the move.
+class HumanPlayer extends Player {
+  private pendingInputs: [number, number][] = [];
+
+  supplyMove(row: number, col: number): void {
+    this.pendingInputs.push([row, col]);
+  }
+
+  getMove(_board: Board): Move {
+    const next = this.pendingInputs.shift();
+    if (!next) throw new Error(`No input supplied for human player ${this.id}`);
+    const [row, col] = next;
+    return { row, col, symbol: this.symbol };
+  }
+}
+
+// Delegates move selection to a MoveStrategy -- the algorithm itself is not hardcoded here.
+class AIPlayer extends Player {
+  constructor(id: string, symbol: Symbol, private readonly moveStrategy: MoveStrategy) {
+    super(id, symbol);
+  }
+  getMove(board: Board): Move { return this.moveStrategy.decideMove(board, this.symbol); }
+}
+
+// ---------- TurnBasedGame (abstract, Template Method) ----------
+abstract class TurnBasedGame {
+  board!: Board;
+  private turnIndex = 0;
+  private finished = false;
+
+  constructor(readonly players: Player[], private readonly winningStrategy: WinningStrategy) {}
+
+  /** Hook: board dimensions/shape -- subclasses plug in their own structural piece. */
+  protected abstract setupBoard(): void;
+  protected abstract declareResult(type: &#x27;WIN&#x27; | &#x27;DRAW&#x27;, player: Player | null): void;
+
+  /** Template method: the fixed skeleton shared by any turn-based grid game. */
+  play(): MoveResult {
+    this.setupBoard();
+    while (!this.finished) {
+      const player = this.players[this.turnIndex % this.players.length];
+      const move = player.getMove(this.board);
+      if (!this.board.isValidMove(move.row, move.col)) continue; // human retries; AI never produces one
+      this.board.placeMark(move.row, move.col, player.symbol);
+      this.turnIndex++;
+      if (this.winningStrategy.checkWinner(this.board, move)) {
+        this.finished = true;
+        this.declareResult(&#x27;WIN&#x27;, player);
+        return { type: &#x27;WIN&#x27;, message: `${player.id} wins` };
+      }
+      if (this.board.isFull()) {
+        this.finished = true;
+        this.declareResult(&#x27;DRAW&#x27;, null);
+        return { type: &#x27;DRAW&#x27;, message: &#x27;draw&#x27; };
+      }
+    }
+    return { type: &#x27;OK&#x27;, message: &#x27;game already finished&#x27; };
+  }
+}
+
+// Concrete N x N, K-in-a-row game (default Tic-Tac-Toe: 3x3, 3-in-a-row).
+class TicTacToeGame extends TurnBasedGame {
+  constructor(private readonly size: number, players: Player[], winningStrategy: WinningStrategy) {
+    super(players, winningStrategy);
+  }
+
+  protected setupBoard(): void { this.board = new Board(this.size); }
+
+  protected declareResult(type: &#x27;WIN&#x27; | &#x27;DRAW&#x27;, player: Player | null): void {
+    if (type === &#x27;WIN&#x27; &amp;&amp; player) console.log(`Result: ${player.id} (${player.symbol}) wins!`);
+    else console.log(&#x27;Result: draw&#x27;);
+    this.board.print();
+  }
+}
+
+// ---------- GameController (facade) ----------
+class GameController {
+  constructor(private readonly game: TurnBasedGame) {}
+
+  startGame(): MoveResult { return this.game.play(); }
+
+  makeMove(playerId: string, row: number, col: number): MoveResult {
+    for (const p of this.game.players) {
+      if (p.id === playerId &amp;&amp; p instanceof HumanPlayer) {
+        p.supplyMove(row, col);
+        return { type: &#x27;OK&#x27;, message: &#x27;queued&#x27; };
+      }
+    }
+    return { type: &#x27;INVALID&#x27;, message: `no such human player: ${playerId}` };
+  }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const X: Symbol = &#x27;X&#x27;;
+  const O: Symbol = &#x27;O&#x27;;
+
+  const human = new HumanPlayer(&#x27;P1&#x27;, X);
+  const ai = new AIPlayer(&#x27;P2&#x27;, O, new FirstAvailableMoveStrategy());
+
+  // Pre-supply a scripted sequence of human moves for this non-interactive demo.
+  // Column 0 is targeted (rather than row 0) so it never collides with the AI&#x27;s
+  // deterministic &quot;first empty cell&quot; picks, which fill row 0 left-to-right first.
+  human.supplyMove(0, 0);
+  human.supplyMove(1, 0);
+  human.supplyMove(2, 0); // completes left column -&gt; human should win
+
+  const game = new TicTacToeGame(3, [human, ai], new LineScanWinningStrategy(3));
+  const controller = new GameController(game);
+
+  const result = controller.startGame();
+  console.log(`Final: ${result.type} -- ${result.message}`);
+}
+
+if (require.main === module) {
+  main();
+}
+
+export {
+  Board, WinningStrategy, LineScanWinningStrategy, MoveStrategy, FirstAvailableMoveStrategy,
+  Player, HumanPlayer, AIPlayer, TurnBasedGame, TicTacToeGame, GameController,
+};
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p11.html">&larr; 11. Elevator System</a><a class="prevnext-link next" href="p13.html">13. Chess Game &rarr;</a></div>
 </div>
 </main>
 

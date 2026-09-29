@@ -61,7 +61,8 @@
 <a href="#p20-y">Y. Scaling Boundary</a><a href="#p20-z">Z. Failure Scenarios</a><a href="#p20-aa">AA. Bad Designs</a>
 <a href="#p20-ab">AB. Trade-Offs</a><a href="#p20-ac">AC. Interviewer Evaluation</a><a href="#p20-ad">AD. Simulation</a>
 <a href="#p20-ae">AE. Source Comparison</a><a href="#p20-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p20">Jump to section:</label><select id="jump-p20" class="jump-select" data-jump-select><option value="p20-a">A. Realistic Interview Prompt</option><option value="p20-b">B. Difficulty</option><option value="p20-c">C. What This Problem Tests</option><option value="p20-d">D. Requirements</option><option value="p20-e">E. Clarifying Questions</option><option value="p20-f">F. Assumptions</option><option value="p20-g">G. Actors</option><option value="p20-h">H. Core Domain Entities</option><option value="p20-i">I. Class Relationships</option><option value="p20-j">J. Class Diagram</option><option value="p20-k">K. Responsibility Mapping</option><option value="p20-l">L. SOLID Analysis</option><option value="p20-m">M. Design Patterns</option><option value="p20-n">N. What Is Likely to Change?</option><option value="p20-o">O. Design Evolution</option><option value="p20-p">P. API / Interface Design</option><option value="p20-q">Q. Pseudocode — Critical Logic</option><option value="p20-r">R. End-to-End Use Case</option><option value="p20-s">S. Data Structures</option><option value="p20-t">T. Complexity Analysis</option><option value="p20-u">U. Testing Strategy</option><option value="p20-v">V. Interviewer Follow-Ups</option><option value="p20-w">W. Concurrency</option><option value="p20-x">X. Persistence</option><option value="p20-y">Y. Scaling Boundary</option><option value="p20-z">Z. Failure Scenarios</option><option value="p20-aa">AA. Common Bad Designs</option><option value="p20-ab">AB. Design Trade-Offs</option><option value="p20-ac">AC. Interviewer Evaluation</option><option value="p20-ad">AD. Interview Simulation</option><option value="p20-ae">AE. Online Solution Comparison</option><option value="p20-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p20-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p20">Jump to section:</label><select id="jump-p20" class="jump-select" data-jump-select><option value="p20-a">A. Realistic Interview Prompt</option><option value="p20-b">B. Difficulty</option><option value="p20-c">C. What This Problem Tests</option><option value="p20-d">D. Requirements</option><option value="p20-e">E. Clarifying Questions</option><option value="p20-f">F. Assumptions</option><option value="p20-g">G. Actors</option><option value="p20-h">H. Core Domain Entities</option><option value="p20-i">I. Class Relationships</option><option value="p20-j">J. Class Diagram</option><option value="p20-k">K. Responsibility Mapping</option><option value="p20-l">L. SOLID Analysis</option><option value="p20-m">M. Design Patterns</option><option value="p20-n">N. What Is Likely to Change?</option><option value="p20-o">O. Design Evolution</option><option value="p20-p">P. API / Interface Design</option><option value="p20-q">Q. Pseudocode — Critical Logic</option><option value="p20-r">R. End-to-End Use Case</option><option value="p20-s">S. Data Structures</option><option value="p20-t">T. Complexity Analysis</option><option value="p20-u">U. Testing Strategy</option><option value="p20-v">V. Interviewer Follow-Ups</option><option value="p20-w">W. Concurrency</option><option value="p20-x">X. Persistence</option><option value="p20-y">Y. Scaling Boundary</option><option value="p20-z">Z. Failure Scenarios</option><option value="p20-aa">AA. Common Bad Designs</option><option value="p20-ab">AB. Design Trade-Offs</option><option value="p20-ac">AC. Interviewer Evaluation</option><option value="p20-ad">AD. Interview Simulation</option><option value="p20-ae">AE. Online Solution Comparison</option><option value="p20-af">AF. Interview Cheat Sheet</option><option value="p20-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p20-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a chat application like WhatsApp. Users can message each other one-on-one or in groups, see delivery and read receipts, and reconnect after being offline without losing or duplicating messages."</div>
@@ -528,7 +529,839 @@ userB opens the chat → MessageStatus for userB's receipt transitions DELIVERED
 <tr><td><strong>Top follow-ups</strong></td><td>Typing/last-seen indicators, multi-device presence edge cases, broadcast-scale fan-out</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Direct peer references instead of Mediator; client-timestamp ordering; single delivered flag instead of per-recipient receipts; racy presence boolean</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design distributed transport infrastructure or encryption protocols unless asked</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p19.html">&larr; 19. E-commerce Shopping Cart &amp; Checkout</a><a class="prevnext-link next" href="p21.html">21. Stock Brokerage System &rarr;</a></div>
+</table>
+
+<h3 id="p20-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">// Problem 20: Chat Application (WhatsApp-style)
+// Patterns: Mediator + Observer (Conversation), State (MessageStatus per recipient), Facade (ChatService)
+import java.util.*;
+
+public class p20 {
+
+    // ---------- User ----------
+    static class User {
+        final String id;
+        final Set&lt;String&gt; connectedDevices = new HashSet&lt;&gt;();
+        User(String id) { this.id = id; }
+    }
+
+    // ---------- MessageStatus (per-recipient state machine) ----------
+    interface MessageStatus {
+        MessageStatus onDelivered();
+        MessageStatus onRead();
+        String name();
+    }
+
+    static class SentStatus implements MessageStatus {
+        @Override public MessageStatus onDelivered() { return new DeliveredStatus(); }
+        @Override public MessageStatus onRead() { throw new IllegalStateException(&quot;Must be delivered before read&quot;); }
+        @Override public String name() { return &quot;SENT&quot;; }
+    }
+    static class DeliveredStatus implements MessageStatus {
+        @Override public MessageStatus onDelivered() { return this; }
+        @Override public MessageStatus onRead() { return new ReadStatus(); }
+        @Override public String name() { return &quot;DELIVERED&quot;; }
+    }
+    static class ReadStatus implements MessageStatus {
+        @Override public MessageStatus onDelivered() { return this; }
+        @Override public MessageStatus onRead() { return this; }
+        @Override public String name() { return &quot;READ&quot;; }
+    }
+
+    // ---------- Message ----------
+    static class Message {
+        final User sender;
+        final String content;
+        final long sequenceNo;
+        final Map&lt;String, MessageStatus&gt; receipts = new HashMap&lt;&gt;(); // recipientId -&gt; status
+
+        Message(User sender, String content, long sequenceNo, List&lt;User&gt; recipients) {
+            this.sender = sender; this.content = content; this.sequenceNo = sequenceNo;
+            for (User r : recipients) receipts.put(r.id, new SentStatus());
+        }
+
+        void markDelivered(String userId) { receipts.computeIfPresent(userId, (k, s) -&gt; s.onDelivered()); }
+        void markRead(String userId) { receipts.computeIfPresent(userId, (k, s) -&gt; s.onRead()); }
+    }
+
+    // ---------- PresenceTracker ----------
+    static class PresenceTracker {
+        private final Map&lt;String, Set&lt;String&gt;&gt; connectedDeviceIds = new HashMap&lt;&gt;();
+
+        void deviceConnected(String userId, String deviceId) {
+            connectedDeviceIds.computeIfAbsent(userId, k -&gt; new HashSet&lt;&gt;()).add(deviceId);
+        }
+        void deviceDisconnected(String userId, String deviceId) {
+            Set&lt;String&gt; devices = connectedDeviceIds.get(userId);
+            if (devices != null) devices.remove(deviceId);
+        }
+        boolean isOnline(String userId) {
+            Set&lt;String&gt; devices = connectedDeviceIds.get(userId);
+            return devices != null &amp;&amp; !devices.isEmpty();
+        }
+    }
+
+    // Simple per-user append-only log of messages missed while offline.
+    // NOTE (interview-scale simplification): the cursor passed to reconnect() is treated as an
+    // index into this per-user queue (not the message&#x27;s own per-conversation sequenceNo), since
+    // a user&#x27;s offline queue spans multiple conversations whose sequence numbers aren&#x27;t
+    // comparable to each other. Same cursor -&gt; same slice, so replay is idempotent.
+    static class OfflineQueue {
+        private final List&lt;Message&gt; messages = new ArrayList&lt;&gt;();
+        void enqueue(Message m) { messages.add(m); }
+        List&lt;Message&gt; allAfter(long cursor) {
+            int from = Math.min((int) cursor, messages.size());
+            return new ArrayList&lt;&gt;(messages.subList(from, messages.size()));
+        }
+        void clearUpTo(long cursor) {
+            int upTo = Math.min((int) cursor, messages.size());
+            messages.subList(0, upTo).clear();
+        }
+    }
+
+    // ---------- Conversation (Mediator + Observer subject) ----------
+    static abstract class Conversation {
+        final String id;
+        final List&lt;User&gt; participants = new ArrayList&lt;&gt;();
+        final List&lt;Message&gt; messages = new ArrayList&lt;&gt;();
+        long nextSequence = 0;
+        private final PresenceTracker presenceTracker;
+        private final Map&lt;String, OfflineQueue&gt; offlineQueues; // shared reference, owned by ChatService
+
+        Conversation(String id, PresenceTracker presenceTracker, Map&lt;String, OfflineQueue&gt; offlineQueues) {
+            this.id = id; this.presenceTracker = presenceTracker; this.offlineQueues = offlineQueues;
+        }
+
+        void addParticipant(User user) {
+            if (!participants.contains(user)) participants.add(user);
+        }
+
+        Message send(User sender, String content) {
+            long seq = ++nextSequence; // server-assigned, monotonic per conversation
+            List&lt;User&gt; recipients = new ArrayList&lt;&gt;();
+            for (User p : participants) if (!p.id.equals(sender.id)) recipients.add(p);
+            Message message = new Message(sender, content, seq, recipients);
+            messages.add(message);
+
+            for (User participant : recipients) { // Observer fan-out
+                if (presenceTracker.isOnline(participant.id)) {
+                    message.markDelivered(participant.id);
+                } else {
+                    offlineQueues.computeIfAbsent(participant.id, k -&gt; new OfflineQueue()).enqueue(message);
+                }
+            }
+            return message;
+        }
+    }
+
+    static class DirectConversation extends Conversation {
+        DirectConversation(String id, User a, User b, PresenceTracker tracker, Map&lt;String, OfflineQueue&gt; offlineQueues) {
+            super(id, tracker, offlineQueues);
+            participants.add(a); participants.add(b);
+        }
+        @Override void addParticipant(User user) {
+            throw new UnsupportedOperationException(&quot;DirectConversation is fixed at 2 participants&quot;);
+        }
+    }
+
+    static class GroupConversation extends Conversation {
+        GroupConversation(String id, List&lt;User&gt; initialParticipants, PresenceTracker tracker, Map&lt;String, OfflineQueue&gt; offlineQueues) {
+            super(id, tracker, offlineQueues);
+            participants.addAll(initialParticipants);
+        }
+        void removeParticipant(User user) { participants.remove(user); }
+    }
+
+    // ---------- ChatService (Facade) ----------
+    static class ChatService {
+        private final PresenceTracker presenceTracker = new PresenceTracker();
+        private final Map&lt;String, OfflineQueue&gt; offlineQueues = new HashMap&lt;&gt;();
+        private int nextConversationId = 1;
+
+        PresenceTracker getPresenceTracker() { return presenceTracker; }
+
+        DirectConversation createDirectConversation(User a, User b) {
+            return new DirectConversation(&quot;C&quot; + (nextConversationId++), a, b, presenceTracker, offlineQueues);
+        }
+
+        GroupConversation createGroupConversation(List&lt;User&gt; participants) {
+            return new GroupConversation(&quot;C&quot; + (nextConversationId++), participants, presenceTracker, offlineQueues);
+        }
+
+        Message sendMessage(User sender, Conversation conversation, String content) {
+            return conversation.send(sender, content);
+        }
+
+        // Exactly-once replay: client passes back the cursor from its last successful reconnect.
+        List&lt;Message&gt; reconnect(User user, long lastSeenSequence) {
+            OfflineQueue queue = offlineQueues.computeIfAbsent(user.id, k -&gt; new OfflineQueue());
+            List&lt;Message&gt; missed = queue.allAfter(lastSeenSequence);
+            queue.clearUpTo(lastSeenSequence + missed.size());
+            for (Message m : missed) m.markDelivered(user.id);
+            return missed;
+        }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) {
+        ChatService chatService = new ChatService();
+        User alice = new User(&quot;alice&quot;);
+        User bob = new User(&quot;bob&quot;);
+        User carol = new User(&quot;carol&quot;);
+
+        chatService.getPresenceTracker().deviceConnected(&quot;alice&quot;, &quot;alice-phone&quot;);
+        chatService.getPresenceTracker().deviceConnected(&quot;bob&quot;, &quot;bob-laptop&quot;);
+        // carol is offline (no connected device)
+
+        GroupConversation group = chatService.createGroupConversation(Arrays.asList(alice, bob, carol));
+
+        Message m1 = chatService.sendMessage(alice, group, &quot;Hello everyone!&quot;);
+        System.out.println(&quot;Sent seq=&quot; + m1.sequenceNo + &quot; bob receipt=&quot; + m1.receipts.get(&quot;bob&quot;).name()
+                + &quot; carol receipt=&quot; + m1.receipts.get(&quot;carol&quot;).name());
+
+        Message m2 = chatService.sendMessage(bob, group, &quot;Hi Alice!&quot;);
+        System.out.println(&quot;Sent seq=&quot; + m2.sequenceNo);
+
+        // Carol reconnects and should receive both missed messages, exactly once, in order.
+        List&lt;Message&gt; missed = chatService.reconnect(carol, 0);
+        System.out.println(&quot;Carol missed &quot; + missed.size() + &quot; messages, first content=&#x27;&quot; + missed.get(0).content + &quot;&#x27;&quot;);
+
+        // Idempotent retry with an already-advanced cursor should now return nothing new.
+        List&lt;Message&gt; replay = chatService.reconnect(carol, missed.size());
+        System.out.println(&quot;Carol replay after ack: &quot; + replay.size() + &quot; messages (expect 0)&quot;);
+
+        m1.markRead(&quot;bob&quot;);
+        System.out.println(&quot;Bob&#x27;s receipt for m1 after reading: &quot; + m1.receipts.get(&quot;bob&quot;).name());
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Problem 20: Chat Application (WhatsApp-style)
+// Patterns: Mediator + Observer (Conversation), State (MessageStatus per recipient), Facade (ChatService)
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+#include &lt;map&gt;
+#include &lt;set&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+#include &lt;algorithm&gt;
+#include &lt;stdexcept&gt;
+
+using namespace std;
+
+// ---------- User ----------
+struct User {
+    string id;
+    set&lt;string&gt; connectedDevices;
+    User(string id_) : id(move(id_)) {}
+};
+
+// ---------- MessageStatus (per-recipient state machine) ----------
+class MessageStatus {
+public:
+    virtual ~MessageStatus() = default;
+    virtual shared_ptr&lt;MessageStatus&gt; onDelivered() = 0;
+    virtual shared_ptr&lt;MessageStatus&gt; onRead() = 0;
+    virtual string name() const = 0;
+};
+
+class SentStatus : public MessageStatus {
+public:
+    shared_ptr&lt;MessageStatus&gt; onDelivered() override;
+    shared_ptr&lt;MessageStatus&gt; onRead() override { throw runtime_error(&quot;Must be delivered before read&quot;); }
+    string name() const override { return &quot;SENT&quot;; }
+};
+class DeliveredStatus : public MessageStatus {
+public:
+    shared_ptr&lt;MessageStatus&gt; onDelivered() override { return make_shared&lt;DeliveredStatus&gt;(); }
+    shared_ptr&lt;MessageStatus&gt; onRead() override;
+    string name() const override { return &quot;DELIVERED&quot;; }
+};
+class ReadStatus : public MessageStatus {
+public:
+    shared_ptr&lt;MessageStatus&gt; onDelivered() override { return make_shared&lt;ReadStatus&gt;(); }
+    shared_ptr&lt;MessageStatus&gt; onRead() override { return make_shared&lt;ReadStatus&gt;(); }
+    string name() const override { return &quot;READ&quot;; }
+};
+shared_ptr&lt;MessageStatus&gt; SentStatus::onDelivered() { return make_shared&lt;DeliveredStatus&gt;(); }
+shared_ptr&lt;MessageStatus&gt; DeliveredStatus::onRead() { return make_shared&lt;ReadStatus&gt;(); }
+
+// ---------- Message ----------
+class Message {
+public:
+    shared_ptr&lt;User&gt; sender;
+    string content;
+    long long sequenceNo;
+    map&lt;string, shared_ptr&lt;MessageStatus&gt;&gt; receipts; // recipientId -&gt; status
+
+    Message(shared_ptr&lt;User&gt; sender_, string content_, long long seq, const vector&lt;shared_ptr&lt;User&gt;&gt;&amp; recipients)
+        : sender(sender_), content(move(content_)), sequenceNo(seq) {
+        for (auto&amp; r : recipients) receipts[r-&gt;id] = make_shared&lt;SentStatus&gt;();
+    }
+
+    void markDelivered(const string&amp; userId) {
+        auto it = receipts.find(userId);
+        if (it != receipts.end()) it-&gt;second = it-&gt;second-&gt;onDelivered();
+    }
+    void markRead(const string&amp; userId) {
+        auto it = receipts.find(userId);
+        if (it != receipts.end()) it-&gt;second = it-&gt;second-&gt;onRead();
+    }
+};
+
+// ---------- PresenceTracker ----------
+class PresenceTracker {
+    map&lt;string, set&lt;string&gt;&gt; connectedDeviceIds;
+public:
+    void deviceConnected(const string&amp; userId, const string&amp; deviceId) { connectedDeviceIds[userId].insert(deviceId); }
+    void deviceDisconnected(const string&amp; userId, const string&amp; deviceId) {
+        auto it = connectedDeviceIds.find(userId);
+        if (it != connectedDeviceIds.end()) it-&gt;second.erase(deviceId);
+    }
+    bool isOnline(const string&amp; userId) {
+        auto it = connectedDeviceIds.find(userId);
+        return it != connectedDeviceIds.end() &amp;&amp; !it-&gt;second.empty();
+    }
+};
+
+// Simple per-user append-only log of messages missed while offline.
+// NOTE (interview-scale simplification): the cursor passed to reconnect() is treated as an
+// index into this per-user queue (not the message&#x27;s own per-conversation sequenceNo), since
+// a user&#x27;s offline queue spans multiple conversations whose sequence numbers aren&#x27;t
+// comparable to each other. Same cursor -&gt; same slice, so replay is idempotent.
+class OfflineQueue {
+    vector&lt;shared_ptr&lt;Message&gt;&gt; messages;
+public:
+    void enqueue(shared_ptr&lt;Message&gt; m) { messages.push_back(m); }
+    vector&lt;shared_ptr&lt;Message&gt;&gt; allAfter(long long cursor) {
+        size_t from = min((size_t) max&lt;long long&gt;(cursor, 0), messages.size());
+        return vector&lt;shared_ptr&lt;Message&gt;&gt;(messages.begin() + from, messages.end());
+    }
+    void clearUpTo(long long cursor) {
+        size_t upTo = min((size_t) max&lt;long long&gt;(cursor, 0), messages.size());
+        messages.erase(messages.begin(), messages.begin() + upTo);
+    }
+};
+
+// ---------- Conversation (Mediator + Observer subject) ----------
+class Conversation {
+protected:
+    PresenceTracker* presenceTracker;
+    map&lt;string, shared_ptr&lt;OfflineQueue&gt;&gt;* offlineQueues; // shared reference, owned by ChatService
+public:
+    string id;
+    vector&lt;shared_ptr&lt;User&gt;&gt; participants;
+    vector&lt;shared_ptr&lt;Message&gt;&gt; messages;
+    long long nextSequence = 0;
+
+    Conversation(string id_, PresenceTracker* tracker, map&lt;string, shared_ptr&lt;OfflineQueue&gt;&gt;* queues)
+        : presenceTracker(tracker), offlineQueues(queues), id(move(id_)) {}
+    virtual ~Conversation() = default;
+
+    virtual void addParticipant(shared_ptr&lt;User&gt; user) {
+        if (find(participants.begin(), participants.end(), user) == participants.end()) participants.push_back(user);
+    }
+
+    shared_ptr&lt;Message&gt; send(shared_ptr&lt;User&gt; sender, const string&amp; content) {
+        long long seq = ++nextSequence; // server-assigned, monotonic per conversation
+        vector&lt;shared_ptr&lt;User&gt;&gt; recipients;
+        for (auto&amp; p : participants) if (p-&gt;id != sender-&gt;id) recipients.push_back(p);
+        auto message = make_shared&lt;Message&gt;(sender, content, seq, recipients);
+        messages.push_back(message);
+
+        for (auto&amp; participant : recipients) { // Observer fan-out
+            if (presenceTracker-&gt;isOnline(participant-&gt;id)) {
+                message-&gt;markDelivered(participant-&gt;id);
+            } else {
+                auto&amp; q = (*offlineQueues)[participant-&gt;id];
+                if (!q) q = make_shared&lt;OfflineQueue&gt;();
+                q-&gt;enqueue(message);
+            }
+        }
+        return message;
+    }
+};
+
+class DirectConversation : public Conversation {
+public:
+    DirectConversation(string id_, shared_ptr&lt;User&gt; a, shared_ptr&lt;User&gt; b, PresenceTracker* tracker,
+                        map&lt;string, shared_ptr&lt;OfflineQueue&gt;&gt;* queues)
+        : Conversation(move(id_), tracker, queues) {
+        participants.push_back(a); participants.push_back(b);
+    }
+    void addParticipant(shared_ptr&lt;User&gt; user) override {
+        throw runtime_error(&quot;DirectConversation is fixed at 2 participants&quot;);
+    }
+};
+
+class GroupConversation : public Conversation {
+public:
+    GroupConversation(string id_, vector&lt;shared_ptr&lt;User&gt;&gt; initial, PresenceTracker* tracker,
+                       map&lt;string, shared_ptr&lt;OfflineQueue&gt;&gt;* queues)
+        : Conversation(move(id_), tracker, queues) {
+        participants = move(initial);
+    }
+    void removeParticipant(shared_ptr&lt;User&gt; user) {
+        participants.erase(remove(participants.begin(), participants.end(), user), participants.end());
+    }
+};
+
+// ---------- ChatService (Facade) ----------
+class ChatService {
+    PresenceTracker presenceTracker;
+    map&lt;string, shared_ptr&lt;OfflineQueue&gt;&gt; offlineQueues;
+    int nextConversationId = 1;
+public:
+    PresenceTracker&amp; getPresenceTracker() { return presenceTracker; }
+
+    shared_ptr&lt;DirectConversation&gt; createDirectConversation(shared_ptr&lt;User&gt; a, shared_ptr&lt;User&gt; b) {
+        return make_shared&lt;DirectConversation&gt;(&quot;C&quot; + to_string(nextConversationId++), a, b, &amp;presenceTracker, &amp;offlineQueues);
+    }
+
+    shared_ptr&lt;GroupConversation&gt; createGroupConversation(vector&lt;shared_ptr&lt;User&gt;&gt; participants) {
+        return make_shared&lt;GroupConversation&gt;(&quot;C&quot; + to_string(nextConversationId++), move(participants), &amp;presenceTracker, &amp;offlineQueues);
+    }
+
+    shared_ptr&lt;Message&gt; sendMessage(shared_ptr&lt;User&gt; sender, shared_ptr&lt;Conversation&gt; conversation, const string&amp; content) {
+        return conversation-&gt;send(sender, content);
+    }
+
+    // Exactly-once replay: client passes back the cursor from its last successful reconnect.
+    vector&lt;shared_ptr&lt;Message&gt;&gt; reconnect(shared_ptr&lt;User&gt; user, long long lastSeenSequence) {
+        auto&amp; q = offlineQueues[user-&gt;id];
+        if (!q) q = make_shared&lt;OfflineQueue&gt;();
+        auto missed = q-&gt;allAfter(lastSeenSequence);
+        q-&gt;clearUpTo(lastSeenSequence + (long long) missed.size());
+        for (auto&amp; m : missed) m-&gt;markDelivered(user-&gt;id);
+        return missed;
+    }
+};
+
+// ---------- Demo ----------
+int main() {
+    ChatService chatService;
+    auto alice = make_shared&lt;User&gt;(&quot;alice&quot;);
+    auto bob = make_shared&lt;User&gt;(&quot;bob&quot;);
+    auto carol = make_shared&lt;User&gt;(&quot;carol&quot;);
+
+    chatService.getPresenceTracker().deviceConnected(&quot;alice&quot;, &quot;alice-phone&quot;);
+    chatService.getPresenceTracker().deviceConnected(&quot;bob&quot;, &quot;bob-laptop&quot;);
+    // carol is offline (no connected device)
+
+    auto group = chatService.createGroupConversation({alice, bob, carol});
+
+    auto m1 = chatService.sendMessage(alice, group, &quot;Hello everyone!&quot;);
+    cout &lt;&lt; &quot;Sent seq=&quot; &lt;&lt; m1-&gt;sequenceNo &lt;&lt; &quot; bob receipt=&quot; &lt;&lt; m1-&gt;receipts[&quot;bob&quot;]-&gt;name()
+         &lt;&lt; &quot; carol receipt=&quot; &lt;&lt; m1-&gt;receipts[&quot;carol&quot;]-&gt;name() &lt;&lt; endl;
+
+    auto m2 = chatService.sendMessage(bob, group, &quot;Hi Alice!&quot;);
+    cout &lt;&lt; &quot;Sent seq=&quot; &lt;&lt; m2-&gt;sequenceNo &lt;&lt; endl;
+
+    auto missed = chatService.reconnect(carol, 0);
+    cout &lt;&lt; &quot;Carol missed &quot; &lt;&lt; missed.size() &lt;&lt; &quot; messages, first content=&#x27;&quot; &lt;&lt; missed[0]-&gt;content &lt;&lt; &quot;&#x27;&quot; &lt;&lt; endl;
+
+    auto replay = chatService.reconnect(carol, (long long) missed.size());
+    cout &lt;&lt; &quot;Carol replay after ack: &quot; &lt;&lt; replay.size() &lt;&lt; &quot; messages (expect 0)&quot; &lt;&lt; endl;
+
+    m1-&gt;markRead(&quot;bob&quot;);
+    cout &lt;&lt; &quot;Bob&#x27;s receipt for m1 after reading: &quot; &lt;&lt; m1-&gt;receipts[&quot;bob&quot;]-&gt;name() &lt;&lt; endl;
+
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">// Problem 20: Chat Application (WhatsApp-style)
+// Patterns: Mediator + Observer (Conversation), State (MessageStatus per recipient), Facade (ChatService)
+
+// ---------- User ----------
+class User {
+  constructor(id) { this.id = id; this.connectedDevices = new Set(); }
+}
+
+// ---------- MessageStatus (per-recipient state machine) ----------
+class SentStatus {
+  onDelivered() { return new DeliveredStatus(); }
+  onRead() { throw new Error(&#x27;Must be delivered before read&#x27;); }
+  name() { return &#x27;SENT&#x27;; }
+}
+class DeliveredStatus {
+  onDelivered() { return this; }
+  onRead() { return new ReadStatus(); }
+  name() { return &#x27;DELIVERED&#x27;; }
+}
+class ReadStatus {
+  onDelivered() { return this; }
+  onRead() { return this; }
+  name() { return &#x27;READ&#x27;; }
+}
+
+// ---------- Message ----------
+class Message {
+  constructor(sender, content, sequenceNo, recipients) {
+    this.sender = sender; this.content = content; this.sequenceNo = sequenceNo;
+    this.receipts = new Map(); // recipientId -&gt; status
+    for (const r of recipients) this.receipts.set(r.id, new SentStatus());
+  }
+  markDelivered(userId) {
+    if (this.receipts.has(userId)) this.receipts.set(userId, this.receipts.get(userId).onDelivered());
+  }
+  markRead(userId) {
+    if (this.receipts.has(userId)) this.receipts.set(userId, this.receipts.get(userId).onRead());
+  }
+}
+
+// ---------- PresenceTracker ----------
+class PresenceTracker {
+  constructor() { this.connectedDeviceIds = new Map(); }
+  deviceConnected(userId, deviceId) {
+    if (!this.connectedDeviceIds.has(userId)) this.connectedDeviceIds.set(userId, new Set());
+    this.connectedDeviceIds.get(userId).add(deviceId);
+  }
+  deviceDisconnected(userId, deviceId) {
+    const devices = this.connectedDeviceIds.get(userId);
+    if (devices) devices.delete(deviceId);
+  }
+  isOnline(userId) {
+    const devices = this.connectedDeviceIds.get(userId);
+    return !!devices &amp;&amp; devices.size &gt; 0;
+  }
+}
+
+// Simple per-user append-only log of messages missed while offline.
+// NOTE (interview-scale simplification): the cursor passed to reconnect() is treated as an
+// index into this per-user queue (not the message&#x27;s own per-conversation sequenceNo), since
+// a user&#x27;s offline queue spans multiple conversations whose sequence numbers aren&#x27;t
+// comparable to each other. Same cursor -&gt; same slice, so replay is idempotent.
+class OfflineQueue {
+  constructor() { this.messages = []; }
+  enqueue(m) { this.messages.push(m); }
+  allAfter(cursor) {
+    const from = Math.min(cursor, this.messages.length);
+    return this.messages.slice(from);
+  }
+  clearUpTo(cursor) {
+    const upTo = Math.min(cursor, this.messages.length);
+    this.messages.splice(0, upTo);
+  }
+}
+
+// ---------- Conversation (Mediator + Observer subject) ----------
+class Conversation {
+  constructor(id, presenceTracker, offlineQueues) {
+    this.id = id;
+    this.participants = [];
+    this.messages = [];
+    this.nextSequence = 0;
+    this.presenceTracker = presenceTracker;
+    this.offlineQueues = offlineQueues; // shared Map reference, owned by ChatService
+  }
+
+  addParticipant(user) {
+    if (!this.participants.includes(user)) this.participants.push(user);
+  }
+
+  send(sender, content) {
+    const seq = ++this.nextSequence; // server-assigned, monotonic per conversation
+    const recipients = this.participants.filter(p =&gt; p.id !== sender.id);
+    const message = new Message(sender, content, seq, recipients);
+    this.messages.push(message);
+
+    for (const participant of recipients) { // Observer fan-out
+      if (this.presenceTracker.isOnline(participant.id)) {
+        message.markDelivered(participant.id);
+      } else {
+        if (!this.offlineQueues.has(participant.id)) this.offlineQueues.set(participant.id, new OfflineQueue());
+        this.offlineQueues.get(participant.id).enqueue(message);
+      }
+    }
+    return message;
+  }
+}
+
+class DirectConversation extends Conversation {
+  constructor(id, a, b, presenceTracker, offlineQueues) {
+    super(id, presenceTracker, offlineQueues);
+    this.participants.push(a, b);
+  }
+  addParticipant() { throw new Error(&#x27;DirectConversation is fixed at 2 participants&#x27;); }
+}
+
+class GroupConversation extends Conversation {
+  constructor(id, initialParticipants, presenceTracker, offlineQueues) {
+    super(id, presenceTracker, offlineQueues);
+    this.participants.push(...initialParticipants);
+  }
+  removeParticipant(user) { this.participants = this.participants.filter(p =&gt; p !== user); }
+}
+
+// ---------- ChatService (Facade) ----------
+class ChatService {
+  constructor() {
+    this.presenceTracker = new PresenceTracker();
+    this.offlineQueues = new Map();
+    this.nextConversationId = 1;
+  }
+
+  createDirectConversation(a, b) {
+    return new DirectConversation(`C${this.nextConversationId++}`, a, b, this.presenceTracker, this.offlineQueues);
+  }
+
+  createGroupConversation(participants) {
+    return new GroupConversation(`C${this.nextConversationId++}`, participants, this.presenceTracker, this.offlineQueues);
+  }
+
+  sendMessage(sender, conversation, content) {
+    return conversation.send(sender, content);
+  }
+
+  // Exactly-once replay: client passes back the cursor from its last successful reconnect.
+  reconnect(user, lastSeenSequence) {
+    if (!this.offlineQueues.has(user.id)) this.offlineQueues.set(user.id, new OfflineQueue());
+    const queue = this.offlineQueues.get(user.id);
+    const missed = queue.allAfter(lastSeenSequence);
+    queue.clearUpTo(lastSeenSequence + missed.length);
+    for (const m of missed) m.markDelivered(user.id);
+    return missed;
+  }
+}
+
+// ---------- Demo ----------
+function main() {
+  const chatService = new ChatService();
+  const alice = new User(&#x27;alice&#x27;);
+  const bob = new User(&#x27;bob&#x27;);
+  const carol = new User(&#x27;carol&#x27;);
+
+  chatService.presenceTracker.deviceConnected(&#x27;alice&#x27;, &#x27;alice-phone&#x27;);
+  chatService.presenceTracker.deviceConnected(&#x27;bob&#x27;, &#x27;bob-laptop&#x27;);
+  // carol is offline (no connected device)
+
+  const group = chatService.createGroupConversation([alice, bob, carol]);
+
+  const m1 = chatService.sendMessage(alice, group, &#x27;Hello everyone!&#x27;);
+  console.log(`Sent seq=${m1.sequenceNo} bob receipt=${m1.receipts.get(&#x27;bob&#x27;).name()} carol receipt=${m1.receipts.get(&#x27;carol&#x27;).name()}`);
+
+  const m2 = chatService.sendMessage(bob, group, &#x27;Hi Alice!&#x27;);
+  console.log(`Sent seq=${m2.sequenceNo}`);
+
+  const missed = chatService.reconnect(carol, 0);
+  console.log(`Carol missed ${missed.length} messages, first content=&#x27;${missed[0].content}&#x27;`);
+
+  const replay = chatService.reconnect(carol, missed.length);
+  console.log(`Carol replay after ack: ${replay.length} messages (expect 0)`);
+
+  m1.markRead(&#x27;bob&#x27;);
+  console.log(`Bob&#x27;s receipt for m1 after reading: ${m1.receipts.get(&#x27;bob&#x27;).name()}`);
+}
+
+if (require.main === module) main();
+
+module.exports = {
+  User, SentStatus, DeliveredStatus, ReadStatus, Message, PresenceTracker,
+  OfflineQueue, Conversation, DirectConversation, GroupConversation, ChatService,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Problem 20: Chat Application (WhatsApp-style)
+// Patterns: Mediator + Observer (Conversation), State (MessageStatus per recipient), Facade (ChatService)
+
+// ---------- User ----------
+class User {
+  connectedDevices: Set&lt;string&gt; = new Set();
+  constructor(public id: string) {}
+}
+
+// ---------- MessageStatus (per-recipient state machine) ----------
+interface MessageStatus {
+  onDelivered(): MessageStatus;
+  onRead(): MessageStatus;
+  name(): string;
+}
+
+class SentStatus implements MessageStatus {
+  onDelivered(): MessageStatus { return new DeliveredStatus(); }
+  onRead(): MessageStatus { throw new Error(&#x27;Must be delivered before read&#x27;); }
+  name(): string { return &#x27;SENT&#x27;; }
+}
+class DeliveredStatus implements MessageStatus {
+  onDelivered(): MessageStatus { return this; }
+  onRead(): MessageStatus { return new ReadStatus(); }
+  name(): string { return &#x27;DELIVERED&#x27;; }
+}
+class ReadStatus implements MessageStatus {
+  onDelivered(): MessageStatus { return this; }
+  onRead(): MessageStatus { return this; }
+  name(): string { return &#x27;READ&#x27;; }
+}
+
+// ---------- Message ----------
+class Message {
+  readonly receipts = new Map&lt;string, MessageStatus&gt;(); // recipientId -&gt; status
+
+  constructor(public sender: User, public content: string, public sequenceNo: number, recipients: User[]) {
+    for (const r of recipients) this.receipts.set(r.id, new SentStatus());
+  }
+
+  markDelivered(userId: string): void {
+    const status = this.receipts.get(userId);
+    if (status) this.receipts.set(userId, status.onDelivered());
+  }
+  markRead(userId: string): void {
+    const status = this.receipts.get(userId);
+    if (status) this.receipts.set(userId, status.onRead());
+  }
+}
+
+// ---------- PresenceTracker ----------
+class PresenceTracker {
+  private connectedDeviceIds = new Map&lt;string, Set&lt;string&gt;&gt;();
+
+  deviceConnected(userId: string, deviceId: string): void {
+    if (!this.connectedDeviceIds.has(userId)) this.connectedDeviceIds.set(userId, new Set());
+    this.connectedDeviceIds.get(userId)!.add(deviceId);
+  }
+  deviceDisconnected(userId: string, deviceId: string): void {
+    this.connectedDeviceIds.get(userId)?.delete(deviceId);
+  }
+  isOnline(userId: string): boolean {
+    const devices = this.connectedDeviceIds.get(userId);
+    return !!devices &amp;&amp; devices.size &gt; 0;
+  }
+}
+
+// Simple per-user append-only log of messages missed while offline.
+// NOTE (interview-scale simplification): the cursor passed to reconnect() is treated as an
+// index into this per-user queue (not the message&#x27;s own per-conversation sequenceNo), since
+// a user&#x27;s offline queue spans multiple conversations whose sequence numbers aren&#x27;t
+// comparable to each other. Same cursor -&gt; same slice, so replay is idempotent.
+class OfflineQueue {
+  private messages: Message[] = [];
+  enqueue(m: Message): void { this.messages.push(m); }
+  allAfter(cursor: number): Message[] {
+    const from = Math.min(cursor, this.messages.length);
+    return this.messages.slice(from);
+  }
+  clearUpTo(cursor: number): void {
+    const upTo = Math.min(cursor, this.messages.length);
+    this.messages.splice(0, upTo);
+  }
+}
+
+// ---------- Conversation (Mediator + Observer subject) ----------
+abstract class Conversation {
+  participants: User[] = [];
+  messages: Message[] = [];
+  nextSequence = 0;
+
+  constructor(
+    public readonly id: string,
+    protected presenceTracker: PresenceTracker,
+    protected offlineQueues: Map&lt;string, OfflineQueue&gt;, // shared reference, owned by ChatService
+  ) {}
+
+  addParticipant(user: User): void {
+    if (!this.participants.includes(user)) this.participants.push(user);
+  }
+
+  send(sender: User, content: string): Message {
+    const seq = ++this.nextSequence; // server-assigned, monotonic per conversation
+    const recipients = this.participants.filter(p =&gt; p.id !== sender.id);
+    const message = new Message(sender, content, seq, recipients);
+    this.messages.push(message);
+
+    for (const participant of recipients) { // Observer fan-out
+      if (this.presenceTracker.isOnline(participant.id)) {
+        message.markDelivered(participant.id);
+      } else {
+        if (!this.offlineQueues.has(participant.id)) this.offlineQueues.set(participant.id, new OfflineQueue());
+        this.offlineQueues.get(participant.id)!.enqueue(message);
+      }
+    }
+    return message;
+  }
+}
+
+class DirectConversation extends Conversation {
+  constructor(id: string, a: User, b: User, presenceTracker: PresenceTracker, offlineQueues: Map&lt;string, OfflineQueue&gt;) {
+    super(id, presenceTracker, offlineQueues);
+    this.participants.push(a, b);
+  }
+  override addParticipant(_user: User): void { throw new Error(&#x27;DirectConversation is fixed at 2 participants&#x27;); }
+}
+
+class GroupConversation extends Conversation {
+  constructor(id: string, initialParticipants: User[], presenceTracker: PresenceTracker, offlineQueues: Map&lt;string, OfflineQueue&gt;) {
+    super(id, presenceTracker, offlineQueues);
+    this.participants.push(...initialParticipants);
+  }
+  removeParticipant(user: User): void { this.participants = this.participants.filter(p =&gt; p !== user); }
+}
+
+// ---------- ChatService (Facade) ----------
+class ChatService {
+  readonly presenceTracker = new PresenceTracker();
+  private offlineQueues = new Map&lt;string, OfflineQueue&gt;();
+  private nextConversationId = 1;
+
+  createDirectConversation(a: User, b: User): DirectConversation {
+    return new DirectConversation(`C${this.nextConversationId++}`, a, b, this.presenceTracker, this.offlineQueues);
+  }
+
+  createGroupConversation(participants: User[]): GroupConversation {
+    return new GroupConversation(`C${this.nextConversationId++}`, participants, this.presenceTracker, this.offlineQueues);
+  }
+
+  sendMessage(sender: User, conversation: Conversation, content: string): Message {
+    return conversation.send(sender, content);
+  }
+
+  // Exactly-once replay: client passes back the cursor from its last successful reconnect.
+  reconnect(user: User, lastSeenSequence: number): Message[] {
+    if (!this.offlineQueues.has(user.id)) this.offlineQueues.set(user.id, new OfflineQueue());
+    const queue = this.offlineQueues.get(user.id)!;
+    const missed = queue.allAfter(lastSeenSequence);
+    queue.clearUpTo(lastSeenSequence + missed.length);
+    for (const m of missed) m.markDelivered(user.id);
+    return missed;
+  }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const chatService = new ChatService();
+  const alice = new User(&#x27;alice&#x27;);
+  const bob = new User(&#x27;bob&#x27;);
+  const carol = new User(&#x27;carol&#x27;);
+
+  chatService.presenceTracker.deviceConnected(&#x27;alice&#x27;, &#x27;alice-phone&#x27;);
+  chatService.presenceTracker.deviceConnected(&#x27;bob&#x27;, &#x27;bob-laptop&#x27;);
+  // carol is offline (no connected device)
+
+  const group = chatService.createGroupConversation([alice, bob, carol]);
+
+  const m1 = chatService.sendMessage(alice, group, &#x27;Hello everyone!&#x27;);
+  console.log(`Sent seq=${m1.sequenceNo} bob receipt=${m1.receipts.get(&#x27;bob&#x27;)!.name()} carol receipt=${m1.receipts.get(&#x27;carol&#x27;)!.name()}`);
+
+  const m2 = chatService.sendMessage(bob, group, &#x27;Hi Alice!&#x27;);
+  console.log(`Sent seq=${m2.sequenceNo}`);
+
+  const missed = chatService.reconnect(carol, 0);
+  console.log(`Carol missed ${missed.length} messages, first content=&#x27;${missed[0].content}&#x27;`);
+
+  const replay = chatService.reconnect(carol, missed.length);
+  console.log(`Carol replay after ack: ${replay.length} messages (expect 0)`);
+
+  m1.markRead(&#x27;bob&#x27;);
+  console.log(`Bob&#x27;s receipt for m1 after reading: ${m1.receipts.get(&#x27;bob&#x27;)!.name()}`);
+}
+
+main();
+
+export {
+  User, MessageStatus, SentStatus, DeliveredStatus, ReadStatus, Message, PresenceTracker,
+  OfflineQueue, Conversation, DirectConversation, GroupConversation, ChatService,
+};
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p19.html">&larr; 19. E-commerce Shopping Cart &amp; Checkout</a><a class="prevnext-link next" href="p21.html">21. Stock Brokerage System &rarr;</a></div>
 </div>
 </main>
 

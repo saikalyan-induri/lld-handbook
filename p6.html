@@ -61,7 +61,8 @@
 <a href="#p6-y">Y. Scaling Boundary</a><a href="#p6-z">Z. Failure Scenarios</a><a href="#p6-aa">AA. Bad Designs</a>
 <a href="#p6-ab">AB. Trade-Offs</a><a href="#p6-ac">AC. Interviewer Evaluation</a><a href="#p6-ad">AD. Simulation</a>
 <a href="#p6-ae">AE. Source Comparison</a><a href="#p6-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p6">Jump to section:</label><select id="jump-p6" class="jump-select" data-jump-select><option value="p6-a">A. Realistic Interview Prompt</option><option value="p6-b">B. Difficulty</option><option value="p6-c">C. What This Problem Tests</option><option value="p6-d">D. Requirements</option><option value="p6-e">E. Clarifying Questions</option><option value="p6-f">F. Assumptions</option><option value="p6-g">G. Actors</option><option value="p6-h">H. Core Domain Entities</option><option value="p6-i">I. Class Relationships</option><option value="p6-j">J. Class Diagram</option><option value="p6-k">K. Responsibility Mapping</option><option value="p6-l">L. SOLID Analysis</option><option value="p6-m">M. Design Patterns</option><option value="p6-n">N. What Is Likely to Change?</option><option value="p6-o">O. Design Evolution</option><option value="p6-p">P. API / Interface Design</option><option value="p6-q">Q. Pseudocode — Critical Logic</option><option value="p6-r">R. End-to-End Use Case</option><option value="p6-s">S. Data Structures</option><option value="p6-t">T. Complexity Analysis</option><option value="p6-u">U. Testing Strategy</option><option value="p6-v">V. Interviewer Follow-Ups</option><option value="p6-w">W. Concurrency</option><option value="p6-x">X. Persistence</option><option value="p6-y">Y. Scaling Boundary</option><option value="p6-z">Z. Failure Scenarios</option><option value="p6-aa">AA. Common Bad Designs</option><option value="p6-ab">AB. Design Trade-Offs</option><option value="p6-ac">AC. Interviewer Evaluation</option><option value="p6-ad">AD. Interview Simulation</option><option value="p6-ae">AE. Online Solution Comparison</option><option value="p6-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p6-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p6">Jump to section:</label><select id="jump-p6" class="jump-select" data-jump-select><option value="p6-a">A. Realistic Interview Prompt</option><option value="p6-b">B. Difficulty</option><option value="p6-c">C. What This Problem Tests</option><option value="p6-d">D. Requirements</option><option value="p6-e">E. Clarifying Questions</option><option value="p6-f">F. Assumptions</option><option value="p6-g">G. Actors</option><option value="p6-h">H. Core Domain Entities</option><option value="p6-i">I. Class Relationships</option><option value="p6-j">J. Class Diagram</option><option value="p6-k">K. Responsibility Mapping</option><option value="p6-l">L. SOLID Analysis</option><option value="p6-m">M. Design Patterns</option><option value="p6-n">N. What Is Likely to Change?</option><option value="p6-o">O. Design Evolution</option><option value="p6-p">P. API / Interface Design</option><option value="p6-q">Q. Pseudocode — Critical Logic</option><option value="p6-r">R. End-to-End Use Case</option><option value="p6-s">S. Data Structures</option><option value="p6-t">T. Complexity Analysis</option><option value="p6-u">U. Testing Strategy</option><option value="p6-v">V. Interviewer Follow-Ups</option><option value="p6-w">W. Concurrency</option><option value="p6-x">X. Persistence</option><option value="p6-y">Y. Scaling Boundary</option><option value="p6-z">Z. Failure Scenarios</option><option value="p6-aa">AA. Common Bad Designs</option><option value="p6-ab">AB. Design Trade-Offs</option><option value="p6-ac">AC. Interviewer Evaluation</option><option value="p6-ad">AD. Interview Simulation</option><option value="p6-ae">AE. Online Solution Comparison</option><option value="p6-af">AF. Interview Cheat Sheet</option><option value="p6-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p6-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a logging framework. It should support multiple severity levels, multiple output destinations (console, file, network), configurable formatting, and must not become a bottleneck for the application threads that call it."</div>
@@ -581,7 +582,837 @@ writes to stdout      queue.offer(record) → returns immediately to caller
 <tr><td><strong>Top follow-ups</strong></td><td>Hot-path latency, message loss under load, log rotation, Singleton justification, correlation-ID propagation</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Synchronous slow appenders on the hot path; unbounded queues; formatting logic duplicated per appender; global mutable statics instead of a real registry</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't build a lock-free ring buffer live — name it as the real-world high-throughput answer and move on</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p5.html">&larr; 5. Ride-Sharing Service (Uber/Lyft)</a><a class="prevnext-link next" href="p7.html">7. Notification System &rarr;</a></div>
+</table>
+
+<h3 id="p6-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">// Logging Framework — full LLD implementation with demo.
+// Single-file Java translation of the Mermaid class diagram in section J.
+//
+// Note on concurrency: this problem&#x27;s difficulty badge (&quot;Intermediate — Pattern Showcase&quot;) does not
+// call out concurrency, so no real locks/threads are used here. AsyncAppenderDecorator&#x27;s queue-drain
+// is exposed as an explicit flush() rather than a background java.lang.Thread, to keep the demo
+// single-threaded and deterministic while still faithfully modeling the enqueue/overflow/drain logic.
+import java.io.*;
+import java.util.*;
+
+public class p6 {
+
+    // ---------- LogLevel ----------
+    enum LogLevel { DEBUG, INFO, WARN, ERROR, FATAL } // ordinal() gives natural severity ordering
+
+    // ---------- LogRecord ----------
+    /** Immutable snapshot of one log event. Does not decide whether/where it gets written. */
+    static final class LogRecord {
+        final long timestamp;
+        final LogLevel level;
+        final String message;
+        final String loggerName;
+        final String threadName;
+        final Map&lt;String, Object&gt; context;
+        final String exceptionInfo; // nullable summary of an attached Throwable
+
+        LogRecord(LogLevel level, String message, String loggerName, Map&lt;String, Object&gt; context, String exceptionInfo) {
+            this.timestamp = System.currentTimeMillis();
+            this.level = level; this.message = message; this.loggerName = loggerName;
+            this.threadName = Thread.currentThread().getName();
+            this.context = context == null ? Collections.emptyMap() : context;
+            this.exceptionInfo = exceptionInfo;
+        }
+    }
+
+    // ---------- LogFormatter (Strategy: mutually exclusive rendering choices) ----------
+    interface LogFormatter { String format(LogRecord record); }
+
+    static final class PlainTextFormatter implements LogFormatter {
+        public String format(LogRecord r) {
+            StringBuilder sb = new StringBuilder();
+            sb.append(&#x27;[&#x27;).append(r.timestamp).append(&quot;] &quot;).append(r.level).append(&#x27; &#x27;)
+              .append(&#x27;[&#x27;).append(r.loggerName).append(&quot;] [&quot;).append(r.threadName).append(&quot;] &quot;)
+              .append(r.message);
+            if (!r.context.isEmpty()) sb.append(&#x27; &#x27;).append(r.context);
+            if (r.exceptionInfo != null) sb.append(&quot; EXCEPTION: &quot;).append(r.exceptionInfo);
+            return sb.toString();
+        }
+    }
+
+    static final class JsonFormatter implements LogFormatter {
+        public String format(LogRecord r) {
+            StringBuilder sb = new StringBuilder(&quot;{&quot;);
+            sb.append(&quot;\&quot;timestamp\&quot;:&quot;).append(r.timestamp).append(&#x27;,&#x27;);
+            sb.append(&quot;\&quot;level\&quot;:\&quot;&quot;).append(r.level).append(&quot;\&quot;,&quot;);
+            sb.append(&quot;\&quot;logger\&quot;:\&quot;&quot;).append(r.loggerName).append(&quot;\&quot;,&quot;);
+            sb.append(&quot;\&quot;thread\&quot;:\&quot;&quot;).append(r.threadName).append(&quot;\&quot;,&quot;);
+            sb.append(&quot;\&quot;message\&quot;:\&quot;&quot;).append(escape(r.message)).append(&quot;\&quot;,&quot;);
+            sb.append(&quot;\&quot;context\&quot;:{&quot;);
+            boolean first = true;
+            for (Map.Entry&lt;String, Object&gt; e : r.context.entrySet()) {
+                if (!first) sb.append(&#x27;,&#x27;);
+                sb.append(&#x27;&quot;&#x27;).append(e.getKey()).append(&quot;\&quot;:\&quot;&quot;).append(escape(String.valueOf(e.getValue()))).append(&#x27;&quot;&#x27;);
+                first = false;
+            }
+            sb.append(&#x27;}&#x27;);
+            if (r.exceptionInfo != null) sb.append(&quot;,\&quot;exception\&quot;:\&quot;&quot;).append(escape(r.exceptionInfo)).append(&#x27;&quot;&#x27;);
+            sb.append(&#x27;}&#x27;);
+            return sb.toString();
+        }
+        private String escape(String s) { return s.replace(&quot;\&quot;&quot;, &quot;\\\&quot;&quot;); }
+    }
+
+    // ---------- LogAppender (Strategy-like injected destinations) ----------
+    interface LogAppender {
+        void append(LogRecord record);
+        LogLevel getMinLevel();
+    }
+
+    static final class ConsoleAppender implements LogAppender {
+        private final LogLevel minLevel;
+        private final LogFormatter formatter; // dependency, not hardcoded
+        ConsoleAppender(LogLevel minLevel, LogFormatter formatter) { this.minLevel = minLevel; this.formatter = formatter; }
+        public void append(LogRecord record) { System.out.println(formatter.format(record)); }
+        public LogLevel getMinLevel() { return minLevel; }
+    }
+
+    static final class FileAppender implements LogAppender {
+        private final LogLevel minLevel;
+        private final LogFormatter formatter;
+        private final String path;
+        FileAppender(LogLevel minLevel, LogFormatter formatter, String path) {
+            this.minLevel = minLevel; this.formatter = formatter; this.path = path;
+        }
+        public void append(LogRecord record) {
+            try (BufferedWriter w = new BufferedWriter(new FileWriter(path, true))) {
+                w.write(formatter.format(record));
+                w.newLine();
+            } catch (IOException e) {
+                System.err.println(&quot;FileAppender write failed: &quot; + e.getMessage());
+            }
+        }
+        public LogLevel getMinLevel() { return minLevel; }
+    }
+
+    /**
+     * Decorator: wraps ANY appender to move its I/O off the calling thread. Applies to
+     * console/file/network alike — a cross-cutting wrapper, not a rival implementation of &quot;how to write&quot;.
+     */
+    static final class AsyncAppenderDecorator implements LogAppender {
+        private final LogAppender wrapped;
+        private final int capacity;
+        private final Deque&lt;LogRecord&gt; queue = new ArrayDeque&lt;&gt;();
+
+        AsyncAppenderDecorator(LogAppender wrapped, int capacity) { this.wrapped = wrapped; this.capacity = capacity; }
+
+        public void append(LogRecord record) {
+            if (queue.size() &gt;= capacity) {
+                queue.pollFirst(); // overflow policy: drop-oldest to keep the caller non-blocking
+            }
+            queue.offerLast(record); // non-blocking enqueue
+        }
+
+        /** Simulates the background worker thread draining the queue and doing the real (slow) I/O. */
+        void flush() {
+            LogRecord r;
+            while ((r = queue.pollFirst()) != null) {
+                wrapped.append(r); // the actual write logic is delegated to the wrapped appender
+            }
+        }
+
+        public LogLevel getMinLevel() { return wrapped.getMinLevel(); }
+    }
+
+    // ---------- Logger ----------
+    /** Per-name entry point: owns a level threshold + a list of appenders. */
+    static final class Logger {
+        private final String name;
+        private LogLevel level;
+        private final List&lt;LogAppender&gt; appenders = new ArrayList&lt;&gt;(); // composition
+
+        Logger(String name, LogLevel level) { this.name = name; this.level = level; }
+
+        void setLevel(LogLevel level) { this.level = level; }
+        void addAppender(LogAppender appender) { appenders.add(appender); }
+
+        void log(LogLevel level, String message, Map&lt;String, Object&gt; context, String exceptionInfo) {
+            if (level.ordinal() &lt; this.level.ordinal()) return; // cheap early exit, no formatting done
+            LogRecord record = new LogRecord(level, message, name, context, exceptionInfo);
+            for (LogAppender appender : appenders) {
+                if (level.ordinal() &gt;= appender.getMinLevel().ordinal()) { // per-appender re-check
+                    appender.append(record);
+                }
+            }
+        }
+
+        void debug(String msg) { log(LogLevel.DEBUG, msg, null, null); }
+        void info(String msg) { log(LogLevel.INFO, msg, null, null); }
+        void warn(String msg) { log(LogLevel.WARN, msg, null, null); }
+        void error(String msg, Throwable t) { log(LogLevel.ERROR, msg, null, describe(t)); }
+        void fatal(String msg, Throwable t) { log(LogLevel.FATAL, msg, null, describe(t)); }
+        private String describe(Throwable t) { return t == null ? null : t.getClass().getSimpleName() + &quot;: &quot; + t.getMessage(); }
+    }
+
+    // ---------- LoggerFactory (Singleton registry) ----------
+    static final class LoggerFactory {
+        private static final LoggerFactory INSTANCE = new LoggerFactory();
+        private final Map&lt;String, Logger&gt; registry = new HashMap&lt;&gt;();
+        private LogLevel globalDefaultLevel = LogLevel.INFO;
+        private LoggerFactory() {}
+
+        static Logger getLogger(String name) {
+            return INSTANCE.registry.computeIfAbsent(name, n -&gt; new Logger(n, INSTANCE.globalDefaultLevel));
+        }
+
+        static void setGlobalDefaultLevel(LogLevel level) { INSTANCE.globalDefaultLevel = level; }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) throws Exception {
+        String logFile = &quot;p6-demo.log&quot;;
+        new File(logFile).delete(); // start clean
+
+        Logger appLogger = LoggerFactory.getLogger(&quot;app.orders&quot;);
+        appLogger.setLevel(LogLevel.DEBUG);
+        appLogger.addAppender(new ConsoleAppender(LogLevel.INFO, new PlainTextFormatter())); // console: INFO+
+        FileAppender fileAppender = new FileAppender(LogLevel.DEBUG, new JsonFormatter(), logFile); // file: DEBUG+ as JSON
+        AsyncAppenderDecorator asyncFile = new AsyncAppenderDecorator(fileAppender, 100);
+        appLogger.addAppender(asyncFile);
+
+        appLogger.debug(&quot;Loading order pipeline&quot;); // filtered out of console (INFO min) but queued for file
+        appLogger.info(&quot;Order OR-1 received&quot;);
+        try {
+            throw new IllegalStateException(&quot;payment gateway timeout&quot;);
+        } catch (Exception e) {
+            appLogger.error(&quot;Order OR-1 failed&quot;, e);
+        }
+        appLogger.warn(&quot;Retrying order OR-1&quot;);
+        appLogger.fatal(&quot;Out of memory processing OR-1&quot;, new OutOfMemoryError(&quot;heap exhausted&quot;));
+
+        System.out.println(&quot;--- flushing async file appender ---&quot;);
+        asyncFile.flush(); // simulate the background worker draining the queue
+
+        System.out.println(&quot;--- file contents (&quot; + logFile + &quot;) ---&quot;);
+        try (BufferedReader r = new BufferedReader(new FileReader(logFile))) {
+            String line;
+            while ((line = r.readLine()) != null) System.out.println(line);
+        }
+        new File(logFile).delete(); // cleanup after demo
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Logging Framework — full LLD implementation with demo.
+// Single-file C++ translation of the Mermaid class diagram in section J.
+//
+// Note on concurrency: this problem&#x27;s difficulty badge (&quot;Intermediate — Pattern Showcase&quot;) does not
+// call out concurrency, so no real mutexes/threads are used here. AsyncAppenderDecorator&#x27;s queue-drain
+// is exposed as an explicit flush() rather than a background std::thread, to keep the demo
+// single-threaded and deterministic while still faithfully modeling the enqueue/overflow/drain logic.
+#include &lt;iostream&gt;
+#include &lt;fstream&gt;
+#include &lt;sstream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+#include &lt;deque&gt;
+#include &lt;map&gt;
+#include &lt;memory&gt;
+#include &lt;chrono&gt;
+#include &lt;stdexcept&gt;
+#include &lt;cstdio&gt;
+
+// ---------- LogLevel ----------
+enum class LogLevel { DEBUG = 0, INFO = 1, WARN = 2, ERROR = 3, FATAL = 4 };
+
+std::string levelName(LogLevel l) {
+    switch (l) {
+        case LogLevel::DEBUG: return &quot;DEBUG&quot;;
+        case LogLevel::INFO: return &quot;INFO&quot;;
+        case LogLevel::WARN: return &quot;WARN&quot;;
+        case LogLevel::ERROR: return &quot;ERROR&quot;;
+        case LogLevel::FATAL: return &quot;FATAL&quot;;
+    }
+    return &quot;?&quot;;
+}
+
+// ---------- LogRecord ----------
+// Immutable snapshot of one log event. Does not decide whether/where it gets written.
+struct LogRecord {
+    long long timestamp;
+    LogLevel level;
+    std::string message;
+    std::string loggerName;
+    std::string threadName;
+    std::map&lt;std::string, std::string&gt; context; // ordered by key for deterministic output
+    std::string exceptionInfo; // empty =&gt; none
+
+    LogRecord(LogLevel level, std::string message, std::string loggerName,
+              std::map&lt;std::string, std::string&gt; context, std::string exceptionInfo)
+        : level(level), message(std::move(message)), loggerName(std::move(loggerName)),
+          threadName(&quot;main&quot;), context(std::move(context)), exceptionInfo(std::move(exceptionInfo)) {
+        timestamp = std::chrono::duration_cast&lt;std::chrono::milliseconds&gt;(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+    }
+};
+
+// ---------- LogFormatter (Strategy: mutually exclusive rendering choices) ----------
+class LogFormatter {
+public:
+    virtual ~LogFormatter() = default;
+    virtual std::string format(const LogRecord&amp; record) = 0;
+};
+
+class PlainTextFormatter : public LogFormatter {
+public:
+    std::string format(const LogRecord&amp; r) override {
+        std::ostringstream os;
+        os &lt;&lt; &quot;[&quot; &lt;&lt; r.timestamp &lt;&lt; &quot;] &quot; &lt;&lt; levelName(r.level) &lt;&lt; &quot; [&quot; &lt;&lt; r.loggerName &lt;&lt; &quot;] [&quot;
+           &lt;&lt; r.threadName &lt;&lt; &quot;] &quot; &lt;&lt; r.message;
+        if (!r.context.empty()) {
+            os &lt;&lt; &quot; {&quot;;
+            bool first = true;
+            for (auto&amp; [k, v] : r.context) { if (!first) os &lt;&lt; &quot;, &quot;; os &lt;&lt; k &lt;&lt; &quot;=&quot; &lt;&lt; v; first = false; }
+            os &lt;&lt; &quot;}&quot;;
+        }
+        if (!r.exceptionInfo.empty()) os &lt;&lt; &quot; EXCEPTION: &quot; &lt;&lt; r.exceptionInfo;
+        return os.str();
+    }
+};
+
+class JsonFormatter : public LogFormatter {
+    static std::string escape(const std::string&amp; s) {
+        std::string out;
+        for (char c : s) { if (c == &#x27;&quot;&#x27;) out += &quot;\\\&quot;&quot;; else out += c; }
+        return out;
+    }
+public:
+    std::string format(const LogRecord&amp; r) override {
+        std::ostringstream os;
+        os &lt;&lt; &quot;{\&quot;timestamp\&quot;:&quot; &lt;&lt; r.timestamp &lt;&lt; &quot;,\&quot;level\&quot;:\&quot;&quot; &lt;&lt; levelName(r.level) &lt;&lt; &quot;\&quot;,&quot;
+           &lt;&lt; &quot;\&quot;logger\&quot;:\&quot;&quot; &lt;&lt; r.loggerName &lt;&lt; &quot;\&quot;,\&quot;thread\&quot;:\&quot;&quot; &lt;&lt; r.threadName &lt;&lt; &quot;\&quot;,&quot;
+           &lt;&lt; &quot;\&quot;message\&quot;:\&quot;&quot; &lt;&lt; escape(r.message) &lt;&lt; &quot;\&quot;,\&quot;context\&quot;:{&quot;;
+        bool first = true;
+        for (auto&amp; [k, v] : r.context) { if (!first) os &lt;&lt; &quot;,&quot;; os &lt;&lt; &quot;\&quot;&quot; &lt;&lt; k &lt;&lt; &quot;\&quot;:\&quot;&quot; &lt;&lt; escape(v) &lt;&lt; &quot;\&quot;&quot;; first = false; }
+        os &lt;&lt; &quot;}&quot;;
+        if (!r.exceptionInfo.empty()) os &lt;&lt; &quot;,\&quot;exception\&quot;:\&quot;&quot; &lt;&lt; escape(r.exceptionInfo) &lt;&lt; &quot;\&quot;&quot;;
+        os &lt;&lt; &quot;}&quot;;
+        return os.str();
+    }
+};
+
+// ---------- LogAppender (injected destinations) ----------
+class LogAppender {
+public:
+    virtual ~LogAppender() = default;
+    virtual void append(const LogRecord&amp; record) = 0;
+    virtual LogLevel getMinLevel() const = 0;
+};
+
+class ConsoleAppender : public LogAppender {
+    LogLevel minLevel;
+    std::shared_ptr&lt;LogFormatter&gt; formatter; // dependency, not hardcoded
+public:
+    ConsoleAppender(LogLevel minLevel, std::shared_ptr&lt;LogFormatter&gt; formatter)
+        : minLevel(minLevel), formatter(std::move(formatter)) {}
+    void append(const LogRecord&amp; record) override { std::cout &lt;&lt; formatter-&gt;format(record) &lt;&lt; &quot;\n&quot;; }
+    LogLevel getMinLevel() const override { return minLevel; }
+};
+
+class FileAppender : public LogAppender {
+    LogLevel minLevel;
+    std::shared_ptr&lt;LogFormatter&gt; formatter;
+    std::string path;
+public:
+    FileAppender(LogLevel minLevel, std::shared_ptr&lt;LogFormatter&gt; formatter, std::string path)
+        : minLevel(minLevel), formatter(std::move(formatter)), path(std::move(path)) {}
+    void append(const LogRecord&amp; record) override {
+        std::ofstream out(path, std::ios::app);
+        if (!out) { std::cerr &lt;&lt; &quot;FileAppender write failed\n&quot;; return; }
+        out &lt;&lt; formatter-&gt;format(record) &lt;&lt; &quot;\n&quot;;
+    }
+    LogLevel getMinLevel() const override { return minLevel; }
+};
+
+// Decorator: wraps ANY appender to move its I/O off the calling thread. Applies to
+// console/file/network alike — a cross-cutting wrapper, not a rival implementation of &quot;how to write&quot;.
+class AsyncAppenderDecorator : public LogAppender {
+    std::shared_ptr&lt;LogAppender&gt; wrapped;
+    size_t capacity;
+    std::deque&lt;LogRecord&gt; queue;
+public:
+    AsyncAppenderDecorator(std::shared_ptr&lt;LogAppender&gt; wrapped, size_t capacity)
+        : wrapped(std::move(wrapped)), capacity(capacity) {}
+
+    void append(const LogRecord&amp; record) override {
+        if (queue.size() &gt;= capacity) queue.pop_front(); // overflow policy: drop-oldest
+        queue.push_back(record); // non-blocking enqueue
+    }
+
+    // Simulates the background worker thread draining the queue and doing the real (slow) I/O.
+    void flush() {
+        while (!queue.empty()) {
+            wrapped-&gt;append(queue.front()); // the actual write logic is delegated to the wrapped appender
+            queue.pop_front();
+        }
+    }
+
+    LogLevel getMinLevel() const override { return wrapped-&gt;getMinLevel(); }
+};
+
+// ---------- Logger ----------
+// Per-name entry point: owns a level threshold + a list of appenders.
+class Logger {
+    std::string name;
+    LogLevel level;
+    std::vector&lt;std::shared_ptr&lt;LogAppender&gt;&gt; appenders; // composition
+
+    static std::string describe(const std::exception* e, const std::string&amp; typeName) {
+        if (!e) return &quot;&quot;;
+        return typeName + &quot;: &quot; + e-&gt;what();
+    }
+public:
+    Logger(std::string name, LogLevel level) : name(std::move(name)), level(level) {}
+
+    void setLevel(LogLevel l) { level = l; }
+    void addAppender(std::shared_ptr&lt;LogAppender&gt; appender) { appenders.push_back(std::move(appender)); }
+
+    void log(LogLevel lvl, const std::string&amp; message, const std::map&lt;std::string, std::string&gt;&amp; context,
+              const std::string&amp; exceptionInfo) {
+        if ((int)lvl &lt; (int)level) return; // cheap early exit, no formatting done
+        LogRecord record(lvl, message, name, context, exceptionInfo);
+        for (auto&amp; appender : appenders) {
+            if ((int)lvl &gt;= (int)appender-&gt;getMinLevel()) { // per-appender re-check
+                appender-&gt;append(record);
+            }
+        }
+    }
+
+    void debug(const std::string&amp; msg) { log(LogLevel::DEBUG, msg, {}, &quot;&quot;); }
+    void info(const std::string&amp; msg) { log(LogLevel::INFO, msg, {}, &quot;&quot;); }
+    void warn(const std::string&amp; msg) { log(LogLevel::WARN, msg, {}, &quot;&quot;); }
+    void error(const std::string&amp; msg, const std::exception&amp; e, const std::string&amp; typeName) {
+        log(LogLevel::ERROR, msg, {}, describe(&amp;e, typeName));
+    }
+    void fatal(const std::string&amp; msg, const std::exception&amp; e, const std::string&amp; typeName) {
+        log(LogLevel::FATAL, msg, {}, describe(&amp;e, typeName));
+    }
+};
+
+// ---------- LoggerFactory (Singleton registry) ----------
+class LoggerFactory {
+    std::map&lt;std::string, std::shared_ptr&lt;Logger&gt;&gt; registry;
+    LogLevel globalDefaultLevel = LogLevel::INFO;
+    LoggerFactory() = default;
+
+    static LoggerFactory&amp; instance() { static LoggerFactory f; return f; }
+public:
+    static std::shared_ptr&lt;Logger&gt; getLogger(const std::string&amp; name) {
+        auto&amp; f = instance();
+        auto it = f.registry.find(name);
+        if (it != f.registry.end()) return it-&gt;second;
+        auto logger = std::make_shared&lt;Logger&gt;(name, f.globalDefaultLevel);
+        f.registry[name] = logger;
+        return logger;
+    }
+    static void setGlobalDefaultLevel(LogLevel level) { instance().globalDefaultLevel = level; }
+};
+
+// ---------- Demo ----------
+int main() {
+    const std::string logFile = &quot;p6-demo.log&quot;;
+    std::remove(logFile.c_str()); // start clean
+
+    auto appLogger = LoggerFactory::getLogger(&quot;app.orders&quot;);
+    appLogger-&gt;setLevel(LogLevel::DEBUG);
+    appLogger-&gt;addAppender(std::make_shared&lt;ConsoleAppender&gt;(LogLevel::INFO, std::make_shared&lt;PlainTextFormatter&gt;()));
+    auto fileAppender = std::make_shared&lt;FileAppender&gt;(LogLevel::DEBUG, std::make_shared&lt;JsonFormatter&gt;(), logFile);
+    auto asyncFile = std::make_shared&lt;AsyncAppenderDecorator&gt;(fileAppender, 100);
+    appLogger-&gt;addAppender(asyncFile);
+
+    appLogger-&gt;debug(&quot;Loading order pipeline&quot;); // filtered out of console (INFO min) but queued for file
+    appLogger-&gt;info(&quot;Order OR-1 received&quot;);
+    try {
+        throw std::runtime_error(&quot;payment gateway timeout&quot;);
+    } catch (const std::exception&amp; e) {
+        appLogger-&gt;error(&quot;Order OR-1 failed&quot;, e, &quot;runtime_error&quot;);
+    }
+    appLogger-&gt;warn(&quot;Retrying order OR-1&quot;);
+    try {
+        throw std::bad_alloc();
+    } catch (const std::exception&amp; e) {
+        appLogger-&gt;fatal(&quot;Out of memory processing OR-1&quot;, e, &quot;bad_alloc&quot;);
+    }
+
+    std::cout &lt;&lt; &quot;--- flushing async file appender ---\n&quot;;
+    asyncFile-&gt;flush(); // simulate the background worker draining the queue
+
+    std::cout &lt;&lt; &quot;--- file contents (&quot; &lt;&lt; logFile &lt;&lt; &quot;) ---\n&quot;;
+    std::ifstream in(logFile);
+    std::string line;
+    while (std::getline(in, line)) std::cout &lt;&lt; line &lt;&lt; &quot;\n&quot;;
+    in.close();
+    std::remove(logFile.c_str()); // cleanup after demo
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">// Logging Framework — full LLD implementation with demo.
+// Single-file Node/JS translation of the Mermaid class diagram in section J.
+//
+// Note on concurrency: this problem&#x27;s difficulty badge (&quot;Intermediate — Pattern Showcase&quot;) does not
+// call out concurrency, so no real synchronization primitives are used here (Node is single-threaded
+// anyway). AsyncAppenderDecorator&#x27;s queue-drain is exposed as an explicit flush() rather than a
+// setImmediate/microtask loop, to keep the demo deterministic while faithfully modeling the
+// enqueue/overflow/drain logic described in the hot-path pseudocode.
+&#x27;use strict&#x27;;
+const fs = require(&#x27;fs&#x27;);
+
+// ---------- LogLevel ----------
+const LogLevel = Object.freeze({ DEBUG: 0, INFO: 1, WARN: 2, ERROR: 3, FATAL: 4 });
+const LogLevelName = Object.freeze({ 0: &#x27;DEBUG&#x27;, 1: &#x27;INFO&#x27;, 2: &#x27;WARN&#x27;, 3: &#x27;ERROR&#x27;, 4: &#x27;FATAL&#x27; });
+
+// ---------- LogRecord ----------
+// Immutable snapshot of one log event. Does not decide whether/where it gets written.
+class LogRecord {
+  constructor(level, message, loggerName, context, exceptionInfo) {
+    this.timestamp = Date.now();
+    this.level = level;
+    this.message = message;
+    this.loggerName = loggerName;
+    this.threadName = &#x27;main&#x27;; // JS has no real threads; kept for structural fidelity with the diagram
+    this.context = context || {};
+    this.exceptionInfo = exceptionInfo || null;
+  }
+}
+
+// ---------- LogFormatter (Strategy: mutually exclusive rendering choices) ----------
+class LogFormatter {
+  format(record) { throw new Error(&#x27;not implemented&#x27;); } // eslint-disable-line no-unused-vars
+}
+
+class PlainTextFormatter extends LogFormatter {
+  format(r) {
+    let s = `[${r.timestamp}] ${LogLevelName[r.level]} [${r.loggerName}] [${r.threadName}] ${r.message}`;
+    const keys = Object.keys(r.context);
+    if (keys.length &gt; 0) s += ` {${keys.map((k) =&gt; `${k}=${r.context[k]}`).join(&#x27;, &#x27;)}}`;
+    if (r.exceptionInfo) s += ` EXCEPTION: ${r.exceptionInfo}`;
+    return s;
+  }
+}
+
+class JsonFormatter extends LogFormatter {
+  format(r) {
+    const obj = {
+      timestamp: r.timestamp, level: LogLevelName[r.level], logger: r.loggerName,
+      thread: r.threadName, message: r.message, context: r.context,
+    };
+    if (r.exceptionInfo) obj.exception = r.exceptionInfo;
+    return JSON.stringify(obj);
+  }
+}
+
+// ---------- LogAppender (injected destinations) ----------
+class LogAppender {
+  append(record) { throw new Error(&#x27;not implemented&#x27;); } // eslint-disable-line no-unused-vars
+  getMinLevel() { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class ConsoleAppender extends LogAppender {
+  constructor(minLevel, formatter) { super(); this.minLevel = minLevel; this.formatter = formatter; }
+  append(record) { console.log(this.formatter.format(record)); }
+  getMinLevel() { return this.minLevel; }
+}
+
+class FileAppender extends LogAppender {
+  constructor(minLevel, formatter, path) { super(); this.minLevel = minLevel; this.formatter = formatter; this.path = path; }
+  append(record) {
+    try {
+      fs.appendFileSync(this.path, this.formatter.format(record) + &#x27;\n&#x27;);
+    } catch (e) {
+      console.error(&#x27;FileAppender write failed:&#x27;, e.message);
+    }
+  }
+  getMinLevel() { return this.minLevel; }
+}
+
+// Decorator: wraps ANY appender to move its I/O off the calling thread. Applies to
+// console/file/network alike — a cross-cutting wrapper, not a rival implementation of &quot;how to write&quot;.
+class AsyncAppenderDecorator extends LogAppender {
+  constructor(wrapped, capacity) { super(); this.wrapped = wrapped; this.capacity = capacity; this.queue = []; }
+
+  append(record) {
+    if (this.queue.length &gt;= this.capacity) this.queue.shift(); // overflow policy: drop-oldest
+    this.queue.push(record); // non-blocking enqueue
+  }
+
+  // Simulates the background worker thread draining the queue and doing the real (slow) I/O.
+  flush() {
+    while (this.queue.length &gt; 0) {
+      this.wrapped.append(this.queue.shift()); // the actual write logic is delegated to the wrapped appender
+    }
+  }
+
+  getMinLevel() { return this.wrapped.getMinLevel(); }
+}
+
+// ---------- Logger ----------
+// Per-name entry point: owns a level threshold + a list of appenders.
+class Logger {
+  constructor(name, level) {
+    this.name = name;
+    this.level = level;
+    this.appenders = []; // composition
+  }
+
+  setLevel(level) { this.level = level; }
+  addAppender(appender) { this.appenders.push(appender); }
+
+  log(level, message, context, exceptionInfo) {
+    if (level &lt; this.level) return; // cheap early exit, no formatting done
+    const record = new LogRecord(level, message, this.name, context, exceptionInfo);
+    for (const appender of this.appenders) {
+      if (level &gt;= appender.getMinLevel()) { // per-appender re-check
+        appender.append(record);
+      }
+    }
+  }
+
+  debug(msg) { this.log(LogLevel.DEBUG, msg, null, null); }
+  info(msg) { this.log(LogLevel.INFO, msg, null, null); }
+  warn(msg) { this.log(LogLevel.WARN, msg, null, null); }
+  error(msg, err) { this.log(LogLevel.ERROR, msg, null, this._describe(err)); }
+  fatal(msg, err) { this.log(LogLevel.FATAL, msg, null, this._describe(err)); }
+  _describe(err) { return err ? `${err.name}: ${err.message}` : null; }
+}
+
+// ---------- LoggerFactory (Singleton registry) ----------
+class LoggerFactory {
+  static _registry = new Map();
+  static _globalDefaultLevel = LogLevel.INFO;
+
+  static getLogger(name) {
+    if (!LoggerFactory._registry.has(name)) {
+      LoggerFactory._registry.set(name, new Logger(name, LoggerFactory._globalDefaultLevel));
+    }
+    return LoggerFactory._registry.get(name);
+  }
+
+  static setGlobalDefaultLevel(level) { LoggerFactory._globalDefaultLevel = level; }
+}
+
+// ---------- Demo ----------
+function main() {
+  const logFile = &#x27;p6-demo.log&#x27;;
+  if (fs.existsSync(logFile)) fs.unlinkSync(logFile); // start clean
+
+  const appLogger = LoggerFactory.getLogger(&#x27;app.orders&#x27;);
+  appLogger.setLevel(LogLevel.DEBUG);
+  appLogger.addAppender(new ConsoleAppender(LogLevel.INFO, new PlainTextFormatter())); // console: INFO+
+  const fileAppender = new FileAppender(LogLevel.DEBUG, new JsonFormatter(), logFile); // file: DEBUG+ as JSON
+  const asyncFile = new AsyncAppenderDecorator(fileAppender, 100);
+  appLogger.addAppender(asyncFile);
+
+  appLogger.debug(&#x27;Loading order pipeline&#x27;); // filtered out of console (INFO min) but queued for file
+  appLogger.info(&#x27;Order OR-1 received&#x27;);
+  try {
+    throw new Error(&#x27;payment gateway timeout&#x27;);
+  } catch (e) {
+    appLogger.error(&#x27;Order OR-1 failed&#x27;, e);
+  }
+  appLogger.warn(&#x27;Retrying order OR-1&#x27;);
+  appLogger.fatal(&#x27;Out of memory processing OR-1&#x27;, new RangeError(&#x27;heap exhausted&#x27;));
+
+  console.log(&#x27;--- flushing async file appender ---&#x27;);
+  asyncFile.flush(); // simulate the background worker draining the queue
+
+  console.log(`--- file contents (${logFile}) ---`);
+  console.log(fs.readFileSync(logFile, &#x27;utf8&#x27;).trimEnd());
+  fs.unlinkSync(logFile); // cleanup after demo
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  LogLevel, LogRecord, LogFormatter, PlainTextFormatter, JsonFormatter,
+  LogAppender, ConsoleAppender, FileAppender, AsyncAppenderDecorator, Logger, LoggerFactory,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Logging Framework — full LLD implementation with demo.
+// Single-file TypeScript translation of the Mermaid class diagram in section J.
+//
+// Note on concurrency: this problem&#x27;s difficulty badge (&quot;Intermediate — Pattern Showcase&quot;) does not
+// call out concurrency, so no real synchronization primitives are used here (Node is single-threaded
+// anyway). AsyncAppenderDecorator&#x27;s queue-drain is exposed as an explicit flush() rather than a
+// setImmediate/microtask loop, to keep the demo deterministic while faithfully modeling the
+// enqueue/overflow/drain logic described in the hot-path pseudocode.
+import * as fs from &#x27;fs&#x27;;
+
+// ---------- LogLevel ----------
+enum LogLevel { DEBUG = 0, INFO = 1, WARN = 2, ERROR = 3, FATAL = 4 }
+
+// ---------- LogRecord ----------
+// Immutable snapshot of one log event. Does not decide whether/where it gets written.
+class LogRecord {
+  readonly timestamp: number = Date.now();
+  readonly threadName: string = &#x27;main&#x27;; // TS has no real threads; kept for structural fidelity with the diagram
+  constructor(
+    public readonly level: LogLevel, public readonly message: string, public readonly loggerName: string,
+    public readonly context: Record&lt;string, string&gt;, public readonly exceptionInfo: string | null,
+  ) {}
+}
+
+// ---------- LogFormatter (Strategy: mutually exclusive rendering choices) ----------
+interface LogFormatter {
+  format(record: LogRecord): string;
+}
+
+class PlainTextFormatter implements LogFormatter {
+  format(r: LogRecord): string {
+    let s = `[${r.timestamp}] ${LogLevel[r.level]} [${r.loggerName}] [${r.threadName}] ${r.message}`;
+    const keys = Object.keys(r.context);
+    if (keys.length &gt; 0) s += ` {${keys.map((k) =&gt; `${k}=${r.context[k]}`).join(&#x27;, &#x27;)}}`;
+    if (r.exceptionInfo) s += ` EXCEPTION: ${r.exceptionInfo}`;
+    return s;
+  }
+}
+
+class JsonFormatter implements LogFormatter {
+  format(r: LogRecord): string {
+    const obj: Record&lt;string, unknown&gt; = {
+      timestamp: r.timestamp, level: LogLevel[r.level], logger: r.loggerName,
+      thread: r.threadName, message: r.message, context: r.context,
+    };
+    if (r.exceptionInfo) obj.exception = r.exceptionInfo;
+    return JSON.stringify(obj);
+  }
+}
+
+// ---------- LogAppender (injected destinations) ----------
+interface LogAppender {
+  append(record: LogRecord): void;
+  getMinLevel(): LogLevel;
+}
+
+class ConsoleAppender implements LogAppender {
+  constructor(private readonly minLevel: LogLevel, private readonly formatter: LogFormatter) {}
+  append(record: LogRecord): void { console.log(this.formatter.format(record)); }
+  getMinLevel(): LogLevel { return this.minLevel; }
+}
+
+class FileAppender implements LogAppender {
+  constructor(
+    private readonly minLevel: LogLevel, private readonly formatter: LogFormatter, private readonly path: string,
+  ) {}
+  append(record: LogRecord): void {
+    try {
+      fs.appendFileSync(this.path, this.formatter.format(record) + &#x27;\n&#x27;);
+    } catch (e) {
+      console.error(&#x27;FileAppender write failed:&#x27;, (e as Error).message);
+    }
+  }
+  getMinLevel(): LogLevel { return this.minLevel; }
+}
+
+// Decorator: wraps ANY appender to move its I/O off the calling thread. Applies to
+// console/file/network alike — a cross-cutting wrapper, not a rival implementation of &quot;how to write&quot;.
+class AsyncAppenderDecorator implements LogAppender {
+  private readonly queue: LogRecord[] = [];
+  constructor(private readonly wrapped: LogAppender, private readonly capacity: number) {}
+
+  append(record: LogRecord): void {
+    if (this.queue.length &gt;= this.capacity) this.queue.shift(); // overflow policy: drop-oldest
+    this.queue.push(record); // non-blocking enqueue
+  }
+
+  // Simulates the background worker thread draining the queue and doing the real (slow) I/O.
+  flush(): void {
+    while (this.queue.length &gt; 0) {
+      this.wrapped.append(this.queue.shift()!); // the actual write logic is delegated to the wrapped appender
+    }
+  }
+
+  getMinLevel(): LogLevel { return this.wrapped.getMinLevel(); }
+}
+
+// ---------- Logger ----------
+// Per-name entry point: owns a level threshold + a list of appenders.
+class Logger {
+  private readonly appenders: LogAppender[] = []; // composition
+
+  constructor(public readonly name: string, private level: LogLevel) {}
+
+  setLevel(level: LogLevel): void { this.level = level; }
+  addAppender(appender: LogAppender): void { this.appenders.push(appender); }
+
+  log(level: LogLevel, message: string, context: Record&lt;string, string&gt; | null, exceptionInfo: string | null): void {
+    if (level &lt; this.level) return; // cheap early exit, no formatting done
+    const record = new LogRecord(level, message, this.name, context ?? {}, exceptionInfo);
+    for (const appender of this.appenders) {
+      if (level &gt;= appender.getMinLevel()) { // per-appender re-check
+        appender.append(record);
+      }
+    }
+  }
+
+  debug(msg: string): void { this.log(LogLevel.DEBUG, msg, null, null); }
+  info(msg: string): void { this.log(LogLevel.INFO, msg, null, null); }
+  warn(msg: string): void { this.log(LogLevel.WARN, msg, null, null); }
+  error(msg: string, err: Error): void { this.log(LogLevel.ERROR, msg, null, this.describe(err)); }
+  fatal(msg: string, err: Error): void { this.log(LogLevel.FATAL, msg, null, this.describe(err)); }
+  private describe(err: Error | null): string | null { return err ? `${err.name}: ${err.message}` : null; }
+}
+
+// ---------- LoggerFactory (Singleton registry) ----------
+class LoggerFactory {
+  private static registry = new Map&lt;string, Logger&gt;();
+  private static globalDefaultLevel: LogLevel = LogLevel.INFO;
+
+  static getLogger(name: string): Logger {
+    if (!LoggerFactory.registry.has(name)) {
+      LoggerFactory.registry.set(name, new Logger(name, LoggerFactory.globalDefaultLevel));
+    }
+    return LoggerFactory.registry.get(name)!;
+  }
+
+  static setGlobalDefaultLevel(level: LogLevel): void { LoggerFactory.globalDefaultLevel = level; }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const logFile = &#x27;p6-demo.log&#x27;;
+  if (fs.existsSync(logFile)) fs.unlinkSync(logFile); // start clean
+
+  const appLogger = LoggerFactory.getLogger(&#x27;app.orders&#x27;);
+  appLogger.setLevel(LogLevel.DEBUG);
+  appLogger.addAppender(new ConsoleAppender(LogLevel.INFO, new PlainTextFormatter())); // console: INFO+
+  const fileAppender = new FileAppender(LogLevel.DEBUG, new JsonFormatter(), logFile); // file: DEBUG+ as JSON
+  const asyncFile = new AsyncAppenderDecorator(fileAppender, 100);
+  appLogger.addAppender(asyncFile);
+
+  appLogger.debug(&#x27;Loading order pipeline&#x27;); // filtered out of console (INFO min) but queued for file
+  appLogger.info(&#x27;Order OR-1 received&#x27;);
+  try {
+    throw new Error(&#x27;payment gateway timeout&#x27;);
+  } catch (e) {
+    appLogger.error(&#x27;Order OR-1 failed&#x27;, e as Error);
+  }
+  appLogger.warn(&#x27;Retrying order OR-1&#x27;);
+  appLogger.fatal(&#x27;Out of memory processing OR-1&#x27;, new RangeError(&#x27;heap exhausted&#x27;));
+
+  console.log(&#x27;--- flushing async file appender ---&#x27;);
+  asyncFile.flush(); // simulate the background worker draining the queue
+
+  console.log(`--- file contents (${logFile}) ---`);
+  console.log(fs.readFileSync(logFile, &#x27;utf8&#x27;).trimEnd());
+  fs.unlinkSync(logFile); // cleanup after demo
+}
+
+main();
+
+export {
+  LogLevel, LogRecord, LogFormatter, PlainTextFormatter, JsonFormatter,
+  LogAppender, ConsoleAppender, FileAppender, AsyncAppenderDecorator, Logger, LoggerFactory,
+};
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p5.html">&larr; 5. Ride-Sharing Service (Uber/Lyft)</a><a class="prevnext-link next" href="p7.html">7. Notification System &rarr;</a></div>
 </div>
 </main>
 

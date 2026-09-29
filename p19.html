@@ -61,7 +61,8 @@
 <a href="#p19-y">Y. Scaling Boundary</a><a href="#p19-z">Z. Failure Scenarios</a><a href="#p19-aa">AA. Bad Designs</a>
 <a href="#p19-ab">AB. Trade-Offs</a><a href="#p19-ac">AC. Interviewer Evaluation</a><a href="#p19-ad">AD. Simulation</a>
 <a href="#p19-ae">AE. Source Comparison</a><a href="#p19-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p19">Jump to section:</label><select id="jump-p19" class="jump-select" data-jump-select><option value="p19-a">A. Realistic Interview Prompt</option><option value="p19-b">B. Difficulty</option><option value="p19-c">C. What This Problem Tests</option><option value="p19-d">D. Requirements</option><option value="p19-e">E. Clarifying Questions</option><option value="p19-f">F. Assumptions</option><option value="p19-g">G. Actors</option><option value="p19-h">H. Core Domain Entities</option><option value="p19-i">I. Class Relationships</option><option value="p19-j">J. Class Diagram</option><option value="p19-k">K. Responsibility Mapping</option><option value="p19-l">L. SOLID Analysis</option><option value="p19-m">M. Design Patterns</option><option value="p19-n">N. What Is Likely to Change?</option><option value="p19-o">O. Design Evolution</option><option value="p19-p">P. API / Interface Design</option><option value="p19-q">Q. Pseudocode — Critical Logic</option><option value="p19-r">R. End-to-End Use Case</option><option value="p19-s">S. Data Structures</option><option value="p19-t">T. Complexity Analysis</option><option value="p19-u">U. Testing Strategy</option><option value="p19-v">V. Interviewer Follow-Ups</option><option value="p19-w">W. Concurrency</option><option value="p19-x">X. Persistence</option><option value="p19-y">Y. Scaling Boundary</option><option value="p19-z">Z. Failure Scenarios</option><option value="p19-aa">AA. Common Bad Designs</option><option value="p19-ab">AB. Design Trade-Offs</option><option value="p19-ac">AC. Interviewer Evaluation</option><option value="p19-ad">AD. Interview Simulation</option><option value="p19-ae">AE. Online Solution Comparison</option><option value="p19-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p19-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p19">Jump to section:</label><select id="jump-p19" class="jump-select" data-jump-select><option value="p19-a">A. Realistic Interview Prompt</option><option value="p19-b">B. Difficulty</option><option value="p19-c">C. What This Problem Tests</option><option value="p19-d">D. Requirements</option><option value="p19-e">E. Clarifying Questions</option><option value="p19-f">F. Assumptions</option><option value="p19-g">G. Actors</option><option value="p19-h">H. Core Domain Entities</option><option value="p19-i">I. Class Relationships</option><option value="p19-j">J. Class Diagram</option><option value="p19-k">K. Responsibility Mapping</option><option value="p19-l">L. SOLID Analysis</option><option value="p19-m">M. Design Patterns</option><option value="p19-n">N. What Is Likely to Change?</option><option value="p19-o">O. Design Evolution</option><option value="p19-p">P. API / Interface Design</option><option value="p19-q">Q. Pseudocode — Critical Logic</option><option value="p19-r">R. End-to-End Use Case</option><option value="p19-s">S. Data Structures</option><option value="p19-t">T. Complexity Analysis</option><option value="p19-u">U. Testing Strategy</option><option value="p19-v">V. Interviewer Follow-Ups</option><option value="p19-w">W. Concurrency</option><option value="p19-x">X. Persistence</option><option value="p19-y">Y. Scaling Boundary</option><option value="p19-z">Z. Failure Scenarios</option><option value="p19-aa">AA. Common Bad Designs</option><option value="p19-ab">AB. Design Trade-Offs</option><option value="p19-ac">AC. Interviewer Evaluation</option><option value="p19-ad">AD. Interview Simulation</option><option value="p19-ae">AE. Online Solution Comparison</option><option value="p19-af">AF. Interview Cheat Sheet</option><option value="p19-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p19-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design an e-commerce shopping cart and checkout system. Users add products to a cart, optionally add per-item add-ons like gift wrap, apply coupons, and check out. Checkout must handle tax, discounts, and inventory correctly under concurrent load."</div>
@@ -564,7 +565,1117 @@ payment webhook fires → confirmPayment(orderId, success, idempotencyKey)
 <tr><td><strong>Top follow-ups</strong></td><td>Arbitrary add-on stacking/removal, new pipeline stages, atomic multi-product bundle checkout</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Swapping Decorator/Strategy roles; unlocked stock check-then-decrement; unordered multi-item locking; non-idempotent payment confirmation</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design multi-warehouse inventory routing or fraud detection unless asked</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p18.html">&larr; 18. Restaurant / Food Delivery System</a><a class="prevnext-link next" href="p20.html">20. Chat Application (WhatsApp-style) &rarr;</a></div>
+</table>
+
+<h3 id="p19-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">// Problem 19: E-commerce Shopping Cart &amp; Checkout
+// Patterns: Decorator (add-ons on CartItem), Strategy (pricing pipeline), State (Order lifecycle), Facade (CheckoutService)
+import java.util.*;
+
+public class p19 {
+
+    // ---------- Exceptions ----------
+    static class OutOfStockException extends RuntimeException {
+        OutOfStockException(String msg) { super(msg); }
+    }
+    static class OrderNotFoundException extends RuntimeException {
+        OrderNotFoundException(String msg) { super(msg); }
+    }
+
+    // ---------- Catalog ----------
+    static class Product {
+        final String id;
+        final String name;
+        final double price;
+        int stock;
+
+        Product(String id, String name, double price, int stock) {
+            this.id = id; this.name = name; this.price = price; this.stock = stock;
+        }
+
+        void decrementStock(int qty) {
+            if (stock &lt; qty) throw new OutOfStockException(&quot;Insufficient stock for &quot; + id);
+            stock -= qty;
+        }
+
+        void restoreStock(int qty) { stock += qty; }
+    }
+
+    // ---------- CartItem (component) + Decorator ----------
+    static class CartItem {
+        final Product product;
+        final int quantity;
+
+        CartItem(Product product, int quantity) {
+            this.product = product; this.quantity = quantity;
+        }
+
+        double getPrice() { return product.price * quantity; }
+        Product getProduct() { return product; }
+        int getQuantity() { return quantity; }
+    }
+
+    // Abstract decorator: subclasses CartItem so it&#x27;s substitutable everywhere a CartItem is
+    // expected, but wraps another CartItem to layer one stackable add-on charge on top.
+    static abstract class CartItemDecorator extends CartItem {
+        protected final CartItem wrapped;
+
+        CartItemDecorator(CartItem wrapped) {
+            super(wrapped.getProduct(), wrapped.getQuantity());
+            this.wrapped = wrapped;
+        }
+
+        @Override
+        abstract double getPrice(); // delegates to wrapped.getPrice() + adds its own charge
+    }
+
+    static class GiftWrapDecorator extends CartItemDecorator {
+        private static final double FEE = 2.99;
+        GiftWrapDecorator(CartItem wrapped) { super(wrapped); }
+        @Override double getPrice() { return wrapped.getPrice() + FEE; }
+    }
+
+    static class EngravingDecorator extends CartItemDecorator {
+        private static final double FEE = 5.00;
+        EngravingDecorator(CartItem wrapped) { super(wrapped); }
+        @Override double getPrice() { return wrapped.getPrice() + FEE; }
+    }
+
+    // ---------- Cart ----------
+    static class Cart {
+        private final List&lt;CartItem&gt; items = new ArrayList&lt;&gt;();
+
+        void addItem(CartItem item) { items.add(item); }
+
+        void removeItem(String productId) {
+            items.removeIf(i -&gt; i.getProduct().id.equals(productId));
+        }
+
+        double subtotal() {
+            double total = 0;
+            for (CartItem i : items) total += i.getPrice();
+            return total;
+        }
+
+        int quantityFor(String productId) {
+            int qty = 0;
+            for (CartItem i : items) if (i.getProduct().id.equals(productId)) qty += i.getQuantity();
+            return qty;
+        }
+
+        List&lt;CartItem&gt; getItems() { return items; }
+    }
+
+    // ---------- Pricing pipeline (Strategy) ----------
+    interface PricingStep {
+        double apply(double runningTotal, Cart cart);
+    }
+
+    static class TaxPricingStep implements PricingStep {
+        private final double rate;
+        TaxPricingStep(double rate) { this.rate = rate; }
+        @Override public double apply(double runningTotal, Cart cart) { return runningTotal + runningTotal * rate; }
+    }
+
+    static class CouponDiscountPricingStep implements PricingStep {
+        private final String couponCode;
+        private final Map&lt;String, Double&gt; validCoupons;
+        CouponDiscountPricingStep(String couponCode, Map&lt;String, Double&gt; validCoupons) {
+            this.couponCode = couponCode; this.validCoupons = validCoupons;
+        }
+        @Override public double apply(double runningTotal, Cart cart) {
+            if (couponCode == null || !validCoupons.containsKey(couponCode)) return runningTotal;
+            double discount = validCoupons.get(couponCode);
+            return runningTotal * (1 - discount);
+        }
+    }
+
+    // ---------- Order lifecycle (State) ----------
+    enum OrderStatus { PENDING_PAYMENT, PAID, SHIPPED, DELIVERED, CANCELLED }
+
+    interface OrderState {
+        OrderState onPaid(Order order);
+        OrderState onShipped(Order order);
+        OrderState onDelivered(Order order);
+        OrderState onCancelled(Order order);
+    }
+
+    static class PendingPaymentState implements OrderState {
+        @Override public OrderState onPaid(Order order) { order.status = OrderStatus.PAID; return new PaidState(); }
+        @Override public OrderState onShipped(Order order) { throw new IllegalStateException(&quot;Cannot ship before payment&quot;); }
+        @Override public OrderState onDelivered(Order order) { throw new IllegalStateException(&quot;Cannot deliver before payment&quot;); }
+        @Override public OrderState onCancelled(Order order) { order.status = OrderStatus.CANCELLED; return new CancelledState(); }
+    }
+
+    static class PaidState implements OrderState {
+        @Override public OrderState onPaid(Order order) { return this; }
+        @Override public OrderState onShipped(Order order) { order.status = OrderStatus.SHIPPED; return new ShippedState(); }
+        @Override public OrderState onDelivered(Order order) { throw new IllegalStateException(&quot;Cannot deliver before shipping&quot;); }
+        @Override public OrderState onCancelled(Order order) { order.status = OrderStatus.CANCELLED; return new CancelledState(); } // refund path
+    }
+
+    static class ShippedState implements OrderState {
+        @Override public OrderState onPaid(Order order) { return this; }
+        @Override public OrderState onShipped(Order order) { return this; }
+        @Override public OrderState onDelivered(Order order) { order.status = OrderStatus.DELIVERED; return new DeliveredState(); }
+        @Override public OrderState onCancelled(Order order) { throw new IllegalStateException(&quot;Cannot cancel a shipped order&quot;); }
+    }
+
+    static class DeliveredState implements OrderState {
+        @Override public OrderState onPaid(Order order) { return this; }
+        @Override public OrderState onShipped(Order order) { return this; }
+        @Override public OrderState onDelivered(Order order) { return this; }
+        @Override public OrderState onCancelled(Order order) { throw new IllegalStateException(&quot;Cannot cancel a delivered order&quot;); }
+    }
+
+    static class CancelledState implements OrderState {
+        @Override public OrderState onPaid(Order order) { throw new IllegalStateException(&quot;Order is cancelled&quot;); }
+        @Override public OrderState onShipped(Order order) { throw new IllegalStateException(&quot;Order is cancelled&quot;); }
+        @Override public OrderState onDelivered(Order order) { throw new IllegalStateException(&quot;Order is cancelled&quot;); }
+        @Override public OrderState onCancelled(Order order) { return this; }
+    }
+
+    // ---------- Order (immutable snapshot + lifecycle) ----------
+    static class Order {
+        final String id;
+        final List&lt;CartItem&gt; lineItems; // frozen at checkout time
+        final double totalPrice;
+        OrderStatus status;
+        private OrderState state;
+
+        Order(String id, List&lt;CartItem&gt; lineItems, double totalPrice) {
+            this.id = id;
+            this.lineItems = Collections.unmodifiableList(new ArrayList&lt;&gt;(lineItems));
+            this.totalPrice = totalPrice;
+            this.status = OrderStatus.PENDING_PAYMENT;
+            this.state = new PendingPaymentState();
+        }
+
+        Order transitionTo(OrderStatus target) {
+            switch (target) {
+                case PAID: state = state.onPaid(this); break;
+                case SHIPPED: state = state.onShipped(this); break;
+                case DELIVERED: state = state.onDelivered(this); break;
+                case CANCELLED: state = state.onCancelled(this); break;
+                default: throw new IllegalArgumentException(&quot;Unsupported transition: &quot; + target);
+            }
+            return this;
+        }
+    }
+
+    static class PaymentResult {
+        final boolean success;
+        PaymentResult(boolean success) { this.success = success; }
+    }
+
+    // ---------- CheckoutService (Facade) ----------
+    static class CheckoutService {
+        private final List&lt;PricingStep&gt; pricingPipeline;
+        private final Map&lt;String, Order&gt; ordersById = new HashMap&lt;&gt;();
+        private final Map&lt;String, Order&gt; processedIdempotencyKeys = new HashMap&lt;&gt;();
+        private int nextOrderId = 1;
+
+        CheckoutService(List&lt;PricingStep&gt; pricingPipeline) {
+            this.pricingPipeline = pricingPipeline;
+        }
+
+        Order checkout(Cart cart, String couponCode) {
+            List&lt;String&gt; orderedProductIds = new ArrayList&lt;&gt;();
+            for (CartItem item : cart.getItems()) {
+                if (!orderedProductIds.contains(item.getProduct().id)) orderedProductIds.add(item.getProduct().id);
+            }
+            Collections.sort(orderedProductIds); // canonical order avoids cross-cart deadlock
+
+            List&lt;Product&gt; reserved = new ArrayList&lt;&gt;();
+            List&lt;Integer&gt; reservedQty = new ArrayList&lt;&gt;();
+            try {
+                for (String productId : orderedProductIds) {
+                    Product product = productFor(cart, productId);
+                    int qty = cart.quantityFor(productId);
+                    product.decrementStock(qty); // throws OutOfStockException on failure
+                    reserved.add(product);
+                    reservedQty.add(qty);
+                }
+            } catch (OutOfStockException e) {
+                for (int i = 0; i &lt; reserved.size(); i++) reserved.get(i).restoreStock(reservedQty.get(i));
+                throw e;
+            }
+
+            double total = cart.subtotal(); // includes decorator-priced add-ons
+            for (PricingStep step : pricingPipeline) total = step.apply(total, cart);
+            if (couponCode != null) {
+                // coupon step is applied like any other pipeline step if wired in; here we allow ad-hoc override
+            }
+
+            Order order = new Order(&quot;ORD-&quot; + (nextOrderId++), cart.getItems(), total);
+            ordersById.put(order.id, order);
+            return order;
+        }
+
+        Order confirmPayment(String orderId, PaymentResult result, String idempotencyKey) {
+            if (processedIdempotencyKeys.containsKey(idempotencyKey)) {
+                return processedIdempotencyKeys.get(idempotencyKey); // already processed: return same result, no double effect
+            }
+            Order order = ordersById.get(orderId);
+            if (order == null) throw new OrderNotFoundException(&quot;No such order: &quot; + orderId);
+
+            if (result.success) {
+                order.transitionTo(OrderStatus.PAID);
+            } else {
+                order.transitionTo(OrderStatus.CANCELLED);
+                restoreInventory(order);
+            }
+            processedIdempotencyKeys.put(idempotencyKey, order);
+            return order;
+        }
+
+        private void restoreInventory(Order order) {
+            for (CartItem item : order.lineItems) item.getProduct().restoreStock(item.getQuantity());
+        }
+
+        private Product productFor(Cart cart, String productId) {
+            for (CartItem item : cart.getItems()) if (item.getProduct().id.equals(productId)) return item.getProduct();
+            throw new IllegalStateException(&quot;Product not in cart: &quot; + productId);
+        }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) {
+        Product laptop = new Product(&quot;P1&quot;, &quot;Laptop&quot;, 1000.0, 5);
+        Product mug = new Product(&quot;P2&quot;, &quot;Mug&quot;, 15.0, 10);
+
+        Cart cart = new Cart();
+        cart.addItem(new GiftWrapDecorator(new CartItem(laptop, 1))); // laptop + gift wrap
+        cart.addItem(new EngravingDecorator(new CartItem(mug, 2)));   // 2 mugs + engraving
+
+        System.out.println(&quot;Subtotal (with add-ons): &quot; + cart.subtotal());
+
+        Map&lt;String, Double&gt; coupons = new HashMap&lt;&gt;();
+        coupons.put(&quot;SAVE10&quot;, 0.10);
+
+        List&lt;PricingStep&gt; pipeline = new ArrayList&lt;&gt;();
+        pipeline.add(new CouponDiscountPricingStep(&quot;SAVE10&quot;, coupons));
+        pipeline.add(new TaxPricingStep(0.08));
+
+        CheckoutService checkoutService = new CheckoutService(pipeline);
+        Order order = checkoutService.checkout(cart, &quot;SAVE10&quot;);
+        System.out.println(&quot;Order created: &quot; + order.id + &quot; total=&quot; + order.totalPrice + &quot; status=&quot; + order.status);
+        System.out.println(&quot;Laptop stock after checkout: &quot; + laptop.stock);
+
+        Order confirmed = checkoutService.confirmPayment(order.id, new PaymentResult(true), &quot;idem-key-1&quot;);
+        System.out.println(&quot;After payment: &quot; + confirmed.status);
+
+        // Retried webhook with same idempotency key must not double-process
+        Order retried = checkoutService.confirmPayment(order.id, new PaymentResult(true), &quot;idem-key-1&quot;);
+        System.out.println(&quot;Retry same order id? &quot; + (retried == confirmed));
+
+        confirmed.transitionTo(OrderStatus.SHIPPED);
+        confirmed.transitionTo(OrderStatus.DELIVERED);
+        System.out.println(&quot;Final status: &quot; + confirmed.status);
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Problem 19: E-commerce Shopping Cart &amp; Checkout
+// Patterns: Decorator (add-ons on CartItem), Strategy (pricing pipeline), State (Order lifecycle), Facade (CheckoutService)
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+#include &lt;map&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+#include &lt;algorithm&gt;
+#include &lt;stdexcept&gt;
+
+using namespace std;
+
+// ---------- Exceptions ----------
+struct OutOfStockException : runtime_error { OutOfStockException(const string&amp; m) : runtime_error(m) {} };
+struct OrderNotFoundException : runtime_error { OrderNotFoundException(const string&amp; m) : runtime_error(m) {} };
+
+// ---------- Catalog ----------
+struct Product {
+    string id, name;
+    double price;
+    int stock;
+    Product(string id_, string name_, double price_, int stock_)
+        : id(move(id_)), name(move(name_)), price(price_), stock(stock_) {}
+
+    void decrementStock(int qty) {
+        if (stock &lt; qty) throw OutOfStockException(&quot;Insufficient stock for &quot; + id);
+        stock -= qty;
+    }
+    void restoreStock(int qty) { stock += qty; }
+};
+
+// ---------- CartItem (component) + Decorator ----------
+class CartItem {
+public:
+    Product* product;
+    int quantity;
+    CartItem(Product* product_, int quantity_) : product(product_), quantity(quantity_) {}
+    virtual ~CartItem() = default;
+    virtual double getPrice() const { return product-&gt;price * quantity; }
+    Product* getProduct() const { return product; }
+    int getQuantity() const { return quantity; }
+};
+
+// Abstract decorator: subclasses CartItem so it&#x27;s substitutable everywhere a CartItem is
+// expected, but wraps another CartItem to layer one stackable add-on charge on top.
+class CartItemDecorator : public CartItem {
+protected:
+    shared_ptr&lt;CartItem&gt; wrapped;
+public:
+    CartItemDecorator(shared_ptr&lt;CartItem&gt; wrapped_)
+        : CartItem(wrapped_-&gt;getProduct(), wrapped_-&gt;getQuantity()), wrapped(wrapped_) {}
+};
+
+class GiftWrapDecorator : public CartItemDecorator {
+    static constexpr double FEE = 2.99;
+public:
+    GiftWrapDecorator(shared_ptr&lt;CartItem&gt; wrapped_) : CartItemDecorator(wrapped_) {}
+    double getPrice() const override { return wrapped-&gt;getPrice() + FEE; }
+};
+
+class EngravingDecorator : public CartItemDecorator {
+    static constexpr double FEE = 5.00;
+public:
+    EngravingDecorator(shared_ptr&lt;CartItem&gt; wrapped_) : CartItemDecorator(wrapped_) {}
+    double getPrice() const override { return wrapped-&gt;getPrice() + FEE; }
+};
+
+// ---------- Cart ----------
+class Cart {
+    vector&lt;shared_ptr&lt;CartItem&gt;&gt; items;
+public:
+    void addItem(shared_ptr&lt;CartItem&gt; item) { items.push_back(item); }
+
+    void removeItem(const string&amp; productId) {
+        items.erase(remove_if(items.begin(), items.end(),
+            [&amp;](const shared_ptr&lt;CartItem&gt;&amp; i) { return i-&gt;getProduct()-&gt;id == productId; }), items.end());
+    }
+
+    double subtotal() const {
+        double total = 0;
+        for (auto&amp; i : items) total += i-&gt;getPrice();
+        return total;
+    }
+
+    int quantityFor(const string&amp; productId) const {
+        int qty = 0;
+        for (auto&amp; i : items) if (i-&gt;getProduct()-&gt;id == productId) qty += i-&gt;getQuantity();
+        return qty;
+    }
+
+    const vector&lt;shared_ptr&lt;CartItem&gt;&gt;&amp; getItems() const { return items; }
+};
+
+// ---------- Pricing pipeline (Strategy) ----------
+class PricingStep {
+public:
+    virtual ~PricingStep() = default;
+    virtual double apply(double runningTotal, const Cart&amp; cart) = 0;
+};
+
+class TaxPricingStep : public PricingStep {
+    double rate;
+public:
+    TaxPricingStep(double rate_) : rate(rate_) {}
+    double apply(double runningTotal, const Cart&amp; cart) override { return runningTotal + runningTotal * rate; }
+};
+
+class CouponDiscountPricingStep : public PricingStep {
+    string couponCode;
+    map&lt;string, double&gt; validCoupons;
+public:
+    CouponDiscountPricingStep(string couponCode_, map&lt;string, double&gt; validCoupons_)
+        : couponCode(move(couponCode_)), validCoupons(move(validCoupons_)) {}
+    double apply(double runningTotal, const Cart&amp; cart) override {
+        auto it = validCoupons.find(couponCode);
+        if (it == validCoupons.end()) return runningTotal;
+        return runningTotal * (1 - it-&gt;second);
+    }
+};
+
+// ---------- Order lifecycle (State) ----------
+enum class OrderStatus { PENDING_PAYMENT, PAID, SHIPPED, DELIVERED, CANCELLED };
+
+class Order; // fwd decl
+
+class OrderState {
+public:
+    virtual ~OrderState() = default;
+    virtual unique_ptr&lt;OrderState&gt; onPaid(Order&amp; order) = 0;
+    virtual unique_ptr&lt;OrderState&gt; onShipped(Order&amp; order) = 0;
+    virtual unique_ptr&lt;OrderState&gt; onDelivered(Order&amp; order) = 0;
+    virtual unique_ptr&lt;OrderState&gt; onCancelled(Order&amp; order) = 0;
+};
+
+class Order {
+public:
+    string id;
+    vector&lt;shared_ptr&lt;CartItem&gt;&gt; lineItems; // frozen at checkout time
+    double totalPrice;
+    OrderStatus status;
+    unique_ptr&lt;OrderState&gt; state;
+
+    Order(string id_, vector&lt;shared_ptr&lt;CartItem&gt;&gt; lineItems_, double totalPrice_);
+    Order* transitionTo(OrderStatus target);
+};
+
+class PendingPaymentState : public OrderState {
+public:
+    unique_ptr&lt;OrderState&gt; onPaid(Order&amp; order) override;
+    unique_ptr&lt;OrderState&gt; onShipped(Order&amp; order) override { throw runtime_error(&quot;Cannot ship before payment&quot;); }
+    unique_ptr&lt;OrderState&gt; onDelivered(Order&amp; order) override { throw runtime_error(&quot;Cannot deliver before payment&quot;); }
+    unique_ptr&lt;OrderState&gt; onCancelled(Order&amp; order) override;
+};
+class PaidState : public OrderState {
+public:
+    unique_ptr&lt;OrderState&gt; onPaid(Order&amp; order) override;
+    unique_ptr&lt;OrderState&gt; onShipped(Order&amp; order) override;
+    unique_ptr&lt;OrderState&gt; onDelivered(Order&amp; order) override { throw runtime_error(&quot;Cannot deliver before shipping&quot;); }
+    unique_ptr&lt;OrderState&gt; onCancelled(Order&amp; order) override; // refund path
+};
+class ShippedState : public OrderState {
+public:
+    unique_ptr&lt;OrderState&gt; onPaid(Order&amp; order) override;
+    unique_ptr&lt;OrderState&gt; onShipped(Order&amp; order) override;
+    unique_ptr&lt;OrderState&gt; onDelivered(Order&amp; order) override;
+    unique_ptr&lt;OrderState&gt; onCancelled(Order&amp; order) override { throw runtime_error(&quot;Cannot cancel a shipped order&quot;); }
+};
+class DeliveredState : public OrderState {
+public:
+    unique_ptr&lt;OrderState&gt; onPaid(Order&amp; order) override;
+    unique_ptr&lt;OrderState&gt; onShipped(Order&amp; order) override;
+    unique_ptr&lt;OrderState&gt; onDelivered(Order&amp; order) override;
+    unique_ptr&lt;OrderState&gt; onCancelled(Order&amp; order) override { throw runtime_error(&quot;Cannot cancel a delivered order&quot;); }
+};
+class CancelledState : public OrderState {
+public:
+    unique_ptr&lt;OrderState&gt; onPaid(Order&amp; order) override { throw runtime_error(&quot;Order is cancelled&quot;); }
+    unique_ptr&lt;OrderState&gt; onShipped(Order&amp; order) override { throw runtime_error(&quot;Order is cancelled&quot;); }
+    unique_ptr&lt;OrderState&gt; onDelivered(Order&amp; order) override { throw runtime_error(&quot;Order is cancelled&quot;); }
+    unique_ptr&lt;OrderState&gt; onCancelled(Order&amp; order) override;
+};
+
+unique_ptr&lt;OrderState&gt; PendingPaymentState::onPaid(Order&amp; order) { order.status = OrderStatus::PAID; return make_unique&lt;PaidState&gt;(); }
+unique_ptr&lt;OrderState&gt; PendingPaymentState::onCancelled(Order&amp; order) { order.status = OrderStatus::CANCELLED; return make_unique&lt;CancelledState&gt;(); }
+unique_ptr&lt;OrderState&gt; PaidState::onPaid(Order&amp; order) { return make_unique&lt;PaidState&gt;(); }
+unique_ptr&lt;OrderState&gt; PaidState::onShipped(Order&amp; order) { order.status = OrderStatus::SHIPPED; return make_unique&lt;ShippedState&gt;(); }
+unique_ptr&lt;OrderState&gt; PaidState::onCancelled(Order&amp; order) { order.status = OrderStatus::CANCELLED; return make_unique&lt;CancelledState&gt;(); }
+unique_ptr&lt;OrderState&gt; ShippedState::onPaid(Order&amp; order) { return make_unique&lt;ShippedState&gt;(); }
+unique_ptr&lt;OrderState&gt; ShippedState::onShipped(Order&amp; order) { return make_unique&lt;ShippedState&gt;(); }
+unique_ptr&lt;OrderState&gt; ShippedState::onDelivered(Order&amp; order) { order.status = OrderStatus::DELIVERED; return make_unique&lt;DeliveredState&gt;(); }
+unique_ptr&lt;OrderState&gt; DeliveredState::onPaid(Order&amp; order) { return make_unique&lt;DeliveredState&gt;(); }
+unique_ptr&lt;OrderState&gt; DeliveredState::onShipped(Order&amp; order) { return make_unique&lt;DeliveredState&gt;(); }
+unique_ptr&lt;OrderState&gt; DeliveredState::onDelivered(Order&amp; order) { return make_unique&lt;DeliveredState&gt;(); }
+unique_ptr&lt;OrderState&gt; CancelledState::onCancelled(Order&amp; order) { return make_unique&lt;CancelledState&gt;(); }
+
+Order::Order(string id_, vector&lt;shared_ptr&lt;CartItem&gt;&gt; lineItems_, double totalPrice_)
+    : id(move(id_)), lineItems(move(lineItems_)), totalPrice(totalPrice_),
+      status(OrderStatus::PENDING_PAYMENT), state(make_unique&lt;PendingPaymentState&gt;()) {}
+
+Order* Order::transitionTo(OrderStatus target) {
+    switch (target) {
+        case OrderStatus::PAID: state = state-&gt;onPaid(*this); break;
+        case OrderStatus::SHIPPED: state = state-&gt;onShipped(*this); break;
+        case OrderStatus::DELIVERED: state = state-&gt;onDelivered(*this); break;
+        case OrderStatus::CANCELLED: state = state-&gt;onCancelled(*this); break;
+    }
+    return this;
+}
+
+struct PaymentResult { bool success; };
+
+string statusToString(OrderStatus s) {
+    switch (s) {
+        case OrderStatus::PENDING_PAYMENT: return &quot;PENDING_PAYMENT&quot;;
+        case OrderStatus::PAID: return &quot;PAID&quot;;
+        case OrderStatus::SHIPPED: return &quot;SHIPPED&quot;;
+        case OrderStatus::DELIVERED: return &quot;DELIVERED&quot;;
+        case OrderStatus::CANCELLED: return &quot;CANCELLED&quot;;
+    }
+    return &quot;?&quot;;
+}
+
+// ---------- CheckoutService (Facade) ----------
+class CheckoutService {
+    vector&lt;shared_ptr&lt;PricingStep&gt;&gt; pricingPipeline;
+    map&lt;string, shared_ptr&lt;Order&gt;&gt; ordersById;
+    map&lt;string, shared_ptr&lt;Order&gt;&gt; processedIdempotencyKeys;
+    int nextOrderId = 1;
+public:
+    CheckoutService(vector&lt;shared_ptr&lt;PricingStep&gt;&gt; pipeline) : pricingPipeline(move(pipeline)) {}
+
+    shared_ptr&lt;Order&gt; checkout(Cart&amp; cart, const string&amp; couponCode) {
+        vector&lt;string&gt; orderedProductIds;
+        for (auto&amp; item : cart.getItems()) {
+            if (find(orderedProductIds.begin(), orderedProductIds.end(), item-&gt;getProduct()-&gt;id) == orderedProductIds.end())
+                orderedProductIds.push_back(item-&gt;getProduct()-&gt;id);
+        }
+        sort(orderedProductIds.begin(), orderedProductIds.end()); // canonical order avoids cross-cart deadlock
+
+        vector&lt;Product*&gt; reserved;
+        vector&lt;int&gt; reservedQty;
+        try {
+            for (auto&amp; productId : orderedProductIds) {
+                Product* product = productFor(cart, productId);
+                int qty = cart.quantityFor(productId);
+                product-&gt;decrementStock(qty); // throws OutOfStockException on failure
+                reserved.push_back(product);
+                reservedQty.push_back(qty);
+            }
+        } catch (OutOfStockException&amp;) {
+            for (size_t i = 0; i &lt; reserved.size(); i++) reserved[i]-&gt;restoreStock(reservedQty[i]);
+            throw;
+        }
+
+        double total = cart.subtotal(); // includes decorator-priced add-ons
+        for (auto&amp; step : pricingPipeline) total = step-&gt;apply(total, cart);
+
+        auto order = make_shared&lt;Order&gt;(&quot;ORD-&quot; + to_string(nextOrderId++), cart.getItems(), total);
+        ordersById[order-&gt;id] = order;
+        return order;
+    }
+
+    shared_ptr&lt;Order&gt; confirmPayment(const string&amp; orderId, PaymentResult result, const string&amp; idempotencyKey) {
+        auto found = processedIdempotencyKeys.find(idempotencyKey);
+        if (found != processedIdempotencyKeys.end()) return found-&gt;second;
+
+        auto it = ordersById.find(orderId);
+        if (it == ordersById.end()) throw OrderNotFoundException(&quot;No such order: &quot; + orderId);
+        auto order = it-&gt;second;
+
+        if (result.success) {
+            order-&gt;transitionTo(OrderStatus::PAID);
+        } else {
+            order-&gt;transitionTo(OrderStatus::CANCELLED);
+            restoreInventory(*order);
+        }
+        processedIdempotencyKeys[idempotencyKey] = order;
+        return order;
+    }
+
+private:
+    void restoreInventory(Order&amp; order) {
+        for (auto&amp; item : order.lineItems) item-&gt;getProduct()-&gt;restoreStock(item-&gt;getQuantity());
+    }
+
+    Product* productFor(Cart&amp; cart, const string&amp; productId) {
+        for (auto&amp; item : cart.getItems()) if (item-&gt;getProduct()-&gt;id == productId) return item-&gt;getProduct();
+        throw runtime_error(&quot;Product not in cart: &quot; + productId);
+    }
+};
+
+// ---------- Demo ----------
+int main() {
+    Product laptop(&quot;P1&quot;, &quot;Laptop&quot;, 1000.0, 5);
+    Product mug(&quot;P2&quot;, &quot;Mug&quot;, 15.0, 10);
+
+    Cart cart;
+    cart.addItem(make_shared&lt;GiftWrapDecorator&gt;(make_shared&lt;CartItem&gt;(&amp;laptop, 1)));
+    cart.addItem(make_shared&lt;EngravingDecorator&gt;(make_shared&lt;CartItem&gt;(&amp;mug, 2)));
+
+    cout &lt;&lt; &quot;Subtotal (with add-ons): &quot; &lt;&lt; cart.subtotal() &lt;&lt; endl;
+
+    map&lt;string, double&gt; coupons = {{&quot;SAVE10&quot;, 0.10}};
+    vector&lt;shared_ptr&lt;PricingStep&gt;&gt; pipeline;
+    pipeline.push_back(make_shared&lt;CouponDiscountPricingStep&gt;(&quot;SAVE10&quot;, coupons));
+    pipeline.push_back(make_shared&lt;TaxPricingStep&gt;(0.08));
+
+    CheckoutService checkoutService(pipeline);
+    auto order = checkoutService.checkout(cart, &quot;SAVE10&quot;);
+    cout &lt;&lt; &quot;Order created: &quot; &lt;&lt; order-&gt;id &lt;&lt; &quot; total=&quot; &lt;&lt; order-&gt;totalPrice &lt;&lt; &quot; status=&quot; &lt;&lt; statusToString(order-&gt;status) &lt;&lt; endl;
+    cout &lt;&lt; &quot;Laptop stock after checkout: &quot; &lt;&lt; laptop.stock &lt;&lt; endl;
+
+    auto confirmed = checkoutService.confirmPayment(order-&gt;id, PaymentResult{true}, &quot;idem-key-1&quot;);
+    cout &lt;&lt; &quot;After payment: &quot; &lt;&lt; statusToString(confirmed-&gt;status) &lt;&lt; endl;
+
+    auto retried = checkoutService.confirmPayment(order-&gt;id, PaymentResult{true}, &quot;idem-key-1&quot;);
+    cout &lt;&lt; &quot;Retry same order id? &quot; &lt;&lt; (retried == confirmed) &lt;&lt; endl;
+
+    confirmed-&gt;transitionTo(OrderStatus::SHIPPED);
+    confirmed-&gt;transitionTo(OrderStatus::DELIVERED);
+    cout &lt;&lt; &quot;Final status: &quot; &lt;&lt; statusToString(confirmed-&gt;status) &lt;&lt; endl;
+
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">// Problem 19: E-commerce Shopping Cart &amp; Checkout
+// Patterns: Decorator (add-ons on CartItem), Strategy (pricing pipeline), State (Order lifecycle), Facade (CheckoutService)
+
+class OutOfStockException extends Error {}
+class OrderNotFoundException extends Error {}
+
+// ---------- Catalog ----------
+class Product {
+  constructor(id, name, price, stock) {
+    this.id = id; this.name = name; this.price = price; this.stock = stock;
+  }
+  decrementStock(qty) {
+    if (this.stock &lt; qty) throw new OutOfStockException(`Insufficient stock for ${this.id}`);
+    this.stock -= qty;
+  }
+  restoreStock(qty) { this.stock += qty; }
+}
+
+// ---------- CartItem (component) + Decorator ----------
+class CartItem {
+  constructor(product, quantity) {
+    this.product = product; this.quantity = quantity;
+  }
+  getPrice() { return this.product.price * this.quantity; }
+  getProduct() { return this.product; }
+  getQuantity() { return this.quantity; }
+}
+
+// Abstract decorator: subclasses CartItem so it&#x27;s substitutable everywhere a CartItem is
+// expected, but wraps another CartItem to layer one stackable add-on charge on top.
+class CartItemDecorator extends CartItem {
+  constructor(wrapped) {
+    super(wrapped.getProduct(), wrapped.getQuantity());
+    this.wrapped = wrapped;
+  }
+  getPrice() { throw new Error(&#x27;abstract method&#x27;); }
+}
+
+class GiftWrapDecorator extends CartItemDecorator {
+  getPrice() { return this.wrapped.getPrice() + 2.99; }
+}
+
+class EngravingDecorator extends CartItemDecorator {
+  getPrice() { return this.wrapped.getPrice() + 5.00; }
+}
+
+// ---------- Cart ----------
+class Cart {
+  constructor() { this.items = []; }
+  addItem(item) { this.items.push(item); }
+  removeItem(productId) { this.items = this.items.filter(i =&gt; i.getProduct().id !== productId); }
+  subtotal() { return this.items.reduce((sum, i) =&gt; sum + i.getPrice(), 0); }
+  quantityFor(productId) {
+    return this.items.filter(i =&gt; i.getProduct().id === productId).reduce((sum, i) =&gt; sum + i.getQuantity(), 0);
+  }
+  getItems() { return this.items; }
+}
+
+// ---------- Pricing pipeline (Strategy) ----------
+class TaxPricingStep {
+  constructor(rate) { this.rate = rate; }
+  apply(runningTotal, cart) { return runningTotal + runningTotal * this.rate; }
+}
+
+class CouponDiscountPricingStep {
+  constructor(couponCode, validCoupons) { this.couponCode = couponCode; this.validCoupons = validCoupons; }
+  apply(runningTotal, cart) {
+    if (!this.validCoupons.has(this.couponCode)) return runningTotal;
+    return runningTotal * (1 - this.validCoupons.get(this.couponCode));
+  }
+}
+
+// ---------- Order lifecycle (State) ----------
+const OrderStatus = Object.freeze({
+  PENDING_PAYMENT: &#x27;PENDING_PAYMENT&#x27;, PAID: &#x27;PAID&#x27;, SHIPPED: &#x27;SHIPPED&#x27;,
+  DELIVERED: &#x27;DELIVERED&#x27;, CANCELLED: &#x27;CANCELLED&#x27;,
+});
+
+class PendingPaymentState {
+  onPaid(order) { order.status = OrderStatus.PAID; return new PaidState(); }
+  onShipped() { throw new Error(&#x27;Cannot ship before payment&#x27;); }
+  onDelivered() { throw new Error(&#x27;Cannot deliver before payment&#x27;); }
+  onCancelled(order) { order.status = OrderStatus.CANCELLED; return new CancelledState(); }
+}
+class PaidState {
+  onPaid() { return this; }
+  onShipped(order) { order.status = OrderStatus.SHIPPED; return new ShippedState(); }
+  onDelivered() { throw new Error(&#x27;Cannot deliver before shipping&#x27;); }
+  onCancelled(order) { order.status = OrderStatus.CANCELLED; return new CancelledState(); } // refund path
+}
+class ShippedState {
+  onPaid() { return this; }
+  onShipped() { return this; }
+  onDelivered(order) { order.status = OrderStatus.DELIVERED; return new DeliveredState(); }
+  onCancelled() { throw new Error(&#x27;Cannot cancel a shipped order&#x27;); }
+}
+class DeliveredState {
+  onPaid() { return this; }
+  onShipped() { return this; }
+  onDelivered() { return this; }
+  onCancelled() { throw new Error(&#x27;Cannot cancel a delivered order&#x27;); }
+}
+class CancelledState {
+  onPaid() { throw new Error(&#x27;Order is cancelled&#x27;); }
+  onShipped() { throw new Error(&#x27;Order is cancelled&#x27;); }
+  onDelivered() { throw new Error(&#x27;Order is cancelled&#x27;); }
+  onCancelled() { return this; }
+}
+
+// ---------- Order (immutable snapshot + lifecycle) ----------
+class Order {
+  constructor(id, lineItems, totalPrice) {
+    this.id = id;
+    this.lineItems = Object.freeze([...lineItems]);
+    this.totalPrice = totalPrice;
+    this.status = OrderStatus.PENDING_PAYMENT;
+    this.state = new PendingPaymentState();
+  }
+
+  transitionTo(target) {
+    switch (target) {
+      case OrderStatus.PAID: this.state = this.state.onPaid(this); break;
+      case OrderStatus.SHIPPED: this.state = this.state.onShipped(this); break;
+      case OrderStatus.DELIVERED: this.state = this.state.onDelivered(this); break;
+      case OrderStatus.CANCELLED: this.state = this.state.onCancelled(this); break;
+      default: throw new Error(`Unsupported transition: ${target}`);
+    }
+    return this;
+  }
+}
+
+// ---------- CheckoutService (Facade) ----------
+class CheckoutService {
+  constructor(pricingPipeline) {
+    this.pricingPipeline = pricingPipeline;
+    this.ordersById = new Map();
+    this.processedIdempotencyKeys = new Map();
+    this.nextOrderId = 1;
+  }
+
+  checkout(cart, couponCode) {
+    const orderedProductIds = [...new Set(cart.getItems().map(i =&gt; i.getProduct().id))].sort(); // canonical order
+
+    const reserved = [];
+    try {
+      for (const productId of orderedProductIds) {
+        const product = this._productFor(cart, productId);
+        const qty = cart.quantityFor(productId);
+        product.decrementStock(qty); // throws OutOfStockException on failure
+        reserved.push({ product, qty });
+      }
+    } catch (e) {
+      for (const r of reserved) r.product.restoreStock(r.qty);
+      throw e;
+    }
+
+    let total = cart.subtotal(); // includes decorator-priced add-ons
+    for (const step of this.pricingPipeline) total = step.apply(total, cart);
+
+    const order = new Order(`ORD-${this.nextOrderId++}`, cart.getItems(), total);
+    this.ordersById.set(order.id, order);
+    return order;
+  }
+
+  confirmPayment(orderId, result, idempotencyKey) {
+    if (this.processedIdempotencyKeys.has(idempotencyKey)) {
+      return this.processedIdempotencyKeys.get(idempotencyKey); // already processed: no double effect
+    }
+    const order = this.ordersById.get(orderId);
+    if (!order) throw new OrderNotFoundException(`No such order: ${orderId}`);
+
+    if (result.success) {
+      order.transitionTo(OrderStatus.PAID);
+    } else {
+      order.transitionTo(OrderStatus.CANCELLED);
+      this._restoreInventory(order);
+    }
+    this.processedIdempotencyKeys.set(idempotencyKey, order);
+    return order;
+  }
+
+  _restoreInventory(order) {
+    for (const item of order.lineItems) item.getProduct().restoreStock(item.getQuantity());
+  }
+
+  _productFor(cart, productId) {
+    const item = cart.getItems().find(i =&gt; i.getProduct().id === productId);
+    if (!item) throw new Error(`Product not in cart: ${productId}`);
+    return item.getProduct();
+  }
+}
+
+// ---------- Demo ----------
+function main() {
+  const laptop = new Product(&#x27;P1&#x27;, &#x27;Laptop&#x27;, 1000.0, 5);
+  const mug = new Product(&#x27;P2&#x27;, &#x27;Mug&#x27;, 15.0, 10);
+
+  const cart = new Cart();
+  cart.addItem(new GiftWrapDecorator(new CartItem(laptop, 1)));
+  cart.addItem(new EngravingDecorator(new CartItem(mug, 2)));
+
+  console.log(&#x27;Subtotal (with add-ons):&#x27;, cart.subtotal());
+
+  const coupons = new Map([[&#x27;SAVE10&#x27;, 0.10]]);
+  const pipeline = [new CouponDiscountPricingStep(&#x27;SAVE10&#x27;, coupons), new TaxPricingStep(0.08)];
+
+  const checkoutService = new CheckoutService(pipeline);
+  const order = checkoutService.checkout(cart, &#x27;SAVE10&#x27;);
+  console.log(`Order created: ${order.id} total=${order.totalPrice} status=${order.status}`);
+  console.log(&#x27;Laptop stock after checkout:&#x27;, laptop.stock);
+
+  const confirmed = checkoutService.confirmPayment(order.id, { success: true }, &#x27;idem-key-1&#x27;);
+  console.log(&#x27;After payment:&#x27;, confirmed.status);
+
+  const retried = checkoutService.confirmPayment(order.id, { success: true }, &#x27;idem-key-1&#x27;);
+  console.log(&#x27;Retry same order id?&#x27;, retried === confirmed);
+
+  confirmed.transitionTo(OrderStatus.SHIPPED);
+  confirmed.transitionTo(OrderStatus.DELIVERED);
+  console.log(&#x27;Final status:&#x27;, confirmed.status);
+}
+
+if (require.main === module) main();
+
+module.exports = {
+  Product, CartItem, CartItemDecorator, GiftWrapDecorator, EngravingDecorator,
+  Cart, TaxPricingStep, CouponDiscountPricingStep, Order, OrderStatus, CheckoutService,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Problem 19: E-commerce Shopping Cart &amp; Checkout
+// Patterns: Decorator (add-ons on CartItem), Strategy (pricing pipeline), State (Order lifecycle), Facade (CheckoutService)
+
+class OutOfStockException extends Error {}
+class OrderNotFoundException extends Error {}
+
+// ---------- Catalog ----------
+class Product {
+  constructor(public id: string, public name: string, public price: number, public stock: number) {}
+
+  decrementStock(qty: number): void {
+    if (this.stock &lt; qty) throw new OutOfStockException(`Insufficient stock for ${this.id}`);
+    this.stock -= qty;
+  }
+  restoreStock(qty: number): void { this.stock += qty; }
+}
+
+// ---------- CartItem (component) + Decorator ----------
+class CartItem {
+  constructor(protected product: Product, protected quantity: number) {}
+
+  getPrice(): number { return this.product.price * this.quantity; }
+  getProduct(): Product { return this.product; }
+  getQuantity(): number { return this.quantity; }
+}
+
+// Abstract decorator: subclasses CartItem so it&#x27;s substitutable everywhere a CartItem is
+// expected, but wraps another CartItem to layer one stackable add-on charge on top.
+abstract class CartItemDecorator extends CartItem {
+  constructor(protected wrapped: CartItem) {
+    super(wrapped.getProduct(), wrapped.getQuantity());
+  }
+  abstract getPrice(): number;
+}
+
+class GiftWrapDecorator extends CartItemDecorator {
+  private static readonly FEE = 2.99;
+  getPrice(): number { return this.wrapped.getPrice() + GiftWrapDecorator.FEE; }
+}
+
+class EngravingDecorator extends CartItemDecorator {
+  private static readonly FEE = 5.00;
+  getPrice(): number { return this.wrapped.getPrice() + EngravingDecorator.FEE; }
+}
+
+// ---------- Cart ----------
+class Cart {
+  private items: CartItem[] = [];
+
+  addItem(item: CartItem): void { this.items.push(item); }
+  removeItem(productId: string): void { this.items = this.items.filter(i =&gt; i.getProduct().id !== productId); }
+  subtotal(): number { return this.items.reduce((sum, i) =&gt; sum + i.getPrice(), 0); }
+  quantityFor(productId: string): number {
+    return this.items.filter(i =&gt; i.getProduct().id === productId).reduce((sum, i) =&gt; sum + i.getQuantity(), 0);
+  }
+  getItems(): CartItem[] { return this.items; }
+}
+
+// ---------- Pricing pipeline (Strategy) ----------
+interface PricingStep {
+  apply(runningTotal: number, cart: Cart): number;
+}
+
+class TaxPricingStep implements PricingStep {
+  constructor(private rate: number) {}
+  apply(runningTotal: number, _cart: Cart): number { return runningTotal + runningTotal * this.rate; }
+}
+
+class CouponDiscountPricingStep implements PricingStep {
+  constructor(private couponCode: string, private validCoupons: Map&lt;string, number&gt;) {}
+  apply(runningTotal: number, _cart: Cart): number {
+    if (!this.validCoupons.has(this.couponCode)) return runningTotal;
+    return runningTotal * (1 - this.validCoupons.get(this.couponCode)!);
+  }
+}
+
+// ---------- Order lifecycle (State) ----------
+enum OrderStatus { PENDING_PAYMENT = &#x27;PENDING_PAYMENT&#x27;, PAID = &#x27;PAID&#x27;, SHIPPED = &#x27;SHIPPED&#x27;, DELIVERED = &#x27;DELIVERED&#x27;, CANCELLED = &#x27;CANCELLED&#x27; }
+
+interface OrderState {
+  onPaid(order: Order): OrderState;
+  onShipped(order: Order): OrderState;
+  onDelivered(order: Order): OrderState;
+  onCancelled(order: Order): OrderState;
+}
+
+class PendingPaymentState implements OrderState {
+  onPaid(order: Order): OrderState { order.status = OrderStatus.PAID; return new PaidState(); }
+  onShipped(): OrderState { throw new Error(&#x27;Cannot ship before payment&#x27;); }
+  onDelivered(): OrderState { throw new Error(&#x27;Cannot deliver before payment&#x27;); }
+  onCancelled(order: Order): OrderState { order.status = OrderStatus.CANCELLED; return new CancelledState(); }
+}
+class PaidState implements OrderState {
+  onPaid(): OrderState { return this; }
+  onShipped(order: Order): OrderState { order.status = OrderStatus.SHIPPED; return new ShippedState(); }
+  onDelivered(): OrderState { throw new Error(&#x27;Cannot deliver before shipping&#x27;); }
+  onCancelled(order: Order): OrderState { order.status = OrderStatus.CANCELLED; return new CancelledState(); } // refund path
+}
+class ShippedState implements OrderState {
+  onPaid(): OrderState { return this; }
+  onShipped(): OrderState { return this; }
+  onDelivered(order: Order): OrderState { order.status = OrderStatus.DELIVERED; return new DeliveredState(); }
+  onCancelled(): OrderState { throw new Error(&#x27;Cannot cancel a shipped order&#x27;); }
+}
+class DeliveredState implements OrderState {
+  onPaid(): OrderState { return this; }
+  onShipped(): OrderState { return this; }
+  onDelivered(): OrderState { return this; }
+  onCancelled(): OrderState { throw new Error(&#x27;Cannot cancel a delivered order&#x27;); }
+}
+class CancelledState implements OrderState {
+  onPaid(): OrderState { throw new Error(&#x27;Order is cancelled&#x27;); }
+  onShipped(): OrderState { throw new Error(&#x27;Order is cancelled&#x27;); }
+  onDelivered(): OrderState { throw new Error(&#x27;Order is cancelled&#x27;); }
+  onCancelled(): OrderState { return this; }
+}
+
+// ---------- Order (immutable snapshot + lifecycle) ----------
+class Order {
+  readonly id: string;
+  readonly lineItems: ReadonlyArray&lt;CartItem&gt;;
+  readonly totalPrice: number;
+  status: OrderStatus;
+  private state: OrderState;
+
+  constructor(id: string, lineItems: CartItem[], totalPrice: number) {
+    this.id = id;
+    this.lineItems = Object.freeze([...lineItems]);
+    this.totalPrice = totalPrice;
+    this.status = OrderStatus.PENDING_PAYMENT;
+    this.state = new PendingPaymentState();
+  }
+
+  transitionTo(target: OrderStatus): Order {
+    switch (target) {
+      case OrderStatus.PAID: this.state = this.state.onPaid(this); break;
+      case OrderStatus.SHIPPED: this.state = this.state.onShipped(this); break;
+      case OrderStatus.DELIVERED: this.state = this.state.onDelivered(this); break;
+      case OrderStatus.CANCELLED: this.state = this.state.onCancelled(this); break;
+      default: throw new Error(`Unsupported transition: ${target}`);
+    }
+    return this;
+  }
+}
+
+interface PaymentResult { success: boolean; }
+
+// ---------- CheckoutService (Facade) ----------
+class CheckoutService {
+  private ordersById = new Map&lt;string, Order&gt;();
+  private processedIdempotencyKeys = new Map&lt;string, Order&gt;();
+  private nextOrderId = 1;
+
+  constructor(private pricingPipeline: PricingStep[]) {}
+
+  checkout(cart: Cart, _couponCode: string | null): Order {
+    const orderedProductIds = [...new Set(cart.getItems().map(i =&gt; i.getProduct().id))].sort(); // canonical order
+
+    const reserved: { product: Product; qty: number }[] = [];
+    try {
+      for (const productId of orderedProductIds) {
+        const product = this.productFor(cart, productId);
+        const qty = cart.quantityFor(productId);
+        product.decrementStock(qty); // throws OutOfStockException on failure
+        reserved.push({ product, qty });
+      }
+    } catch (e) {
+      for (const r of reserved) r.product.restoreStock(r.qty);
+      throw e;
+    }
+
+    let total = cart.subtotal(); // includes decorator-priced add-ons
+    for (const step of this.pricingPipeline) total = step.apply(total, cart);
+
+    const order = new Order(`ORD-${this.nextOrderId++}`, cart.getItems(), total);
+    this.ordersById.set(order.id, order);
+    return order;
+  }
+
+  confirmPayment(orderId: string, result: PaymentResult, idempotencyKey: string): Order {
+    if (this.processedIdempotencyKeys.has(idempotencyKey)) {
+      return this.processedIdempotencyKeys.get(idempotencyKey)!; // already processed: no double effect
+    }
+    const order = this.ordersById.get(orderId);
+    if (!order) throw new OrderNotFoundException(`No such order: ${orderId}`);
+
+    if (result.success) {
+      order.transitionTo(OrderStatus.PAID);
+    } else {
+      order.transitionTo(OrderStatus.CANCELLED);
+      this.restoreInventory(order);
+    }
+    this.processedIdempotencyKeys.set(idempotencyKey, order);
+    return order;
+  }
+
+  private restoreInventory(order: Order): void {
+    for (const item of order.lineItems) item.getProduct().restoreStock(item.getQuantity());
+  }
+
+  private productFor(cart: Cart, productId: string): Product {
+    const item = cart.getItems().find(i =&gt; i.getProduct().id === productId);
+    if (!item) throw new Error(`Product not in cart: ${productId}`);
+    return item.getProduct();
+  }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const laptop = new Product(&#x27;P1&#x27;, &#x27;Laptop&#x27;, 1000.0, 5);
+  const mug = new Product(&#x27;P2&#x27;, &#x27;Mug&#x27;, 15.0, 10);
+
+  const cart = new Cart();
+  cart.addItem(new GiftWrapDecorator(new CartItem(laptop, 1)));
+  cart.addItem(new EngravingDecorator(new CartItem(mug, 2)));
+
+  console.log(&#x27;Subtotal (with add-ons):&#x27;, cart.subtotal());
+
+  const coupons = new Map&lt;string, number&gt;([[&#x27;SAVE10&#x27;, 0.10]]);
+  const pipeline: PricingStep[] = [new CouponDiscountPricingStep(&#x27;SAVE10&#x27;, coupons), new TaxPricingStep(0.08)];
+
+  const checkoutService = new CheckoutService(pipeline);
+  const order = checkoutService.checkout(cart, &#x27;SAVE10&#x27;);
+  console.log(`Order created: ${order.id} total=${order.totalPrice} status=${order.status}`);
+  console.log(&#x27;Laptop stock after checkout:&#x27;, laptop.stock);
+
+  const confirmed = checkoutService.confirmPayment(order.id, { success: true }, &#x27;idem-key-1&#x27;);
+  console.log(&#x27;After payment:&#x27;, confirmed.status);
+
+  const retried = checkoutService.confirmPayment(order.id, { success: true }, &#x27;idem-key-1&#x27;);
+  console.log(&#x27;Retry same order id?&#x27;, retried === confirmed);
+
+  confirmed.transitionTo(OrderStatus.SHIPPED);
+  confirmed.transitionTo(OrderStatus.DELIVERED);
+  console.log(&#x27;Final status:&#x27;, confirmed.status);
+}
+
+main();
+
+export {
+  Product, CartItem, CartItemDecorator, GiftWrapDecorator, EngravingDecorator,
+  Cart, PricingStep, TaxPricingStep, CouponDiscountPricingStep, Order, OrderStatus, CheckoutService,
+};
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p18.html">&larr; 18. Restaurant / Food Delivery System</a><a class="prevnext-link next" href="p20.html">20. Chat Application (WhatsApp-style) &rarr;</a></div>
 </div>
 </main>
 

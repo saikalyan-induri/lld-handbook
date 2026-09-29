@@ -61,7 +61,8 @@
 <a href="#p3-y">Y. Scaling Boundary</a><a href="#p3-z">Z. Failure Scenarios</a><a href="#p3-aa">AA. Bad Designs</a>
 <a href="#p3-ab">AB. Trade-Offs</a><a href="#p3-ac">AC. Interviewer Evaluation</a><a href="#p3-ad">AD. Simulation</a>
 <a href="#p3-ae">AE. Source Comparison</a><a href="#p3-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p3">Jump to section:</label><select id="jump-p3" class="jump-select" data-jump-select><option value="p3-a">A. Realistic Interview Prompt</option><option value="p3-b">B. Difficulty</option><option value="p3-c">C. What This Problem Tests</option><option value="p3-d">D. Requirements</option><option value="p3-e">E. Clarifying Questions</option><option value="p3-f">F. Assumptions</option><option value="p3-g">G. Actors</option><option value="p3-h">H. Core Domain Entities</option><option value="p3-i">I. Class Relationships</option><option value="p3-j">J. Class Diagram</option><option value="p3-k">K. Responsibility Mapping</option><option value="p3-l">L. SOLID Analysis</option><option value="p3-m">M. Design Patterns</option><option value="p3-n">N. What Is Likely to Change?</option><option value="p3-o">O. Design Evolution</option><option value="p3-p">P. API / Interface Design</option><option value="p3-q">Q. Pseudocode — Token Bucket</option><option value="p3-r">R. End-to-End Use Case</option><option value="p3-s">S. Data Structures</option><option value="p3-t">T. Complexity Analysis</option><option value="p3-u">U. Testing Strategy</option><option value="p3-v">V. Interviewer Follow-Ups</option><option value="p3-w">W. Concurrency</option><option value="p3-x">X. Persistence</option><option value="p3-y">Y. Scaling Boundary</option><option value="p3-z">Z. Failure Scenarios</option><option value="p3-aa">AA. Common Bad Designs</option><option value="p3-ab">AB. Design Trade-Offs</option><option value="p3-ac">AC. Interviewer Evaluation</option><option value="p3-ad">AD. Interview Simulation</option><option value="p3-ae">AE. Online Solution Comparison</option><option value="p3-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p3-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p3">Jump to section:</label><select id="jump-p3" class="jump-select" data-jump-select><option value="p3-a">A. Realistic Interview Prompt</option><option value="p3-b">B. Difficulty</option><option value="p3-c">C. What This Problem Tests</option><option value="p3-d">D. Requirements</option><option value="p3-e">E. Clarifying Questions</option><option value="p3-f">F. Assumptions</option><option value="p3-g">G. Actors</option><option value="p3-h">H. Core Domain Entities</option><option value="p3-i">I. Class Relationships</option><option value="p3-j">J. Class Diagram</option><option value="p3-k">K. Responsibility Mapping</option><option value="p3-l">L. SOLID Analysis</option><option value="p3-m">M. Design Patterns</option><option value="p3-n">N. What Is Likely to Change?</option><option value="p3-o">O. Design Evolution</option><option value="p3-p">P. API / Interface Design</option><option value="p3-q">Q. Pseudocode — Token Bucket</option><option value="p3-r">R. End-to-End Use Case</option><option value="p3-s">S. Data Structures</option><option value="p3-t">T. Complexity Analysis</option><option value="p3-u">U. Testing Strategy</option><option value="p3-v">V. Interviewer Follow-Ups</option><option value="p3-w">W. Concurrency</option><option value="p3-x">X. Persistence</option><option value="p3-y">Y. Scaling Boundary</option><option value="p3-z">Z. Failure Scenarios</option><option value="p3-aa">AA. Common Bad Designs</option><option value="p3-ab">AB. Design Trade-Offs</option><option value="p3-ac">AC. Interviewer Evaluation</option><option value="p3-ad">AD. Interview Simulation</option><option value="p3-ae">AE. Online Solution Comparison</option><option value="p3-af">AF. Interview Cheat Sheet</option><option value="p3-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p3-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a rate limiter that restricts how many requests a client can make to an API within a given time window. It should support multiple limiting algorithms and different limits for different clients or endpoints."</div>
@@ -522,7 +523,836 @@ Gateway forwards request (200) or rejects (429 + Retry-After header)
 <tr><td><strong>Top follow-ups</strong></td><td>Multi-server distribution, per-tier limits, memory bounding, Redis outage policy</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Hardcoded algorithm with no interface; global lock; trusting client clocks; premature distributed design</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't build the Redis/distributed version before the interviewer asks for scale</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p2.html">&larr; 2. LRU Cache</a><a class="prevnext-link next" href="p4.html">4. Splitwise (Expense Sharing) &rarr;</a></div>
+</table>
+
+<h3 id="p3-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">// Rate Limiter - full LLD implementation (single-file demo).
+// Difficulty badge is &quot;Intermediate -&gt; Advanced+Distributed&quot; - it does NOT explicitly say
+// &quot;Concurrency&quot;, so per convention this stays single-threaded/simple (no locks), even
+// though a production system would eventually need per-key locking or a distributed store.
+import java.util.*;
+
+public class p3 {
+
+    // ---------- RateLimitResult (pure data) ----------
+    static class RateLimitResult {
+        final boolean allowed;
+        final long remaining;
+        final long retryAfterMs; // 0 if allowed
+
+        RateLimitResult(boolean allowed, long remaining, long retryAfterMs) {
+            this.allowed = allowed;
+            this.remaining = remaining;
+            this.retryAfterMs = retryAfterMs;
+        }
+
+        static RateLimitResult allow(long remaining) { return new RateLimitResult(true, remaining, 0); }
+        static RateLimitResult deny(long retryAfterMs) { return new RateLimitResult(false, 0, retryAfterMs); }
+
+        public String toString() {
+            return &quot;RateLimitResult{allowed=&quot; + allowed + &quot;, remaining=&quot; + remaining + &quot;, retryAfterMs=&quot; + retryAfterMs + &quot;}&quot;;
+        }
+    }
+
+    // ---------- RateLimitConfig (pure data) ----------
+    enum AlgorithmType { TOKEN_BUCKET, SLIDING_WINDOW, FIXED_WINDOW }
+
+    static class RateLimitConfig {
+        final long capacity;      // max tokens / max requests per window
+        final long windowMs;      // window size in ms (or refill window for token bucket)
+        final AlgorithmType algorithmType;
+
+        RateLimitConfig(long capacity, long windowMs, AlgorithmType algorithmType) {
+            this.capacity = capacity;
+            this.windowMs = windowMs;
+            this.algorithmType = algorithmType;
+        }
+    }
+
+    // ---------- RateLimitAlgorithm (interface) ----------
+    interface RateLimitAlgorithm {
+        RateLimitResult allowRequest(String clientKey, long nowMs);
+    }
+
+    // Each algorithm owns its own per-client state map, since the state shape genuinely
+    // differs (a counter vs. a timestamp deque vs. two rolling counters) - forcing a shared
+    // generic &quot;Bucket&quot; class would either bloat it or leak abstraction.
+    static class TokenBucketLimiter implements RateLimitAlgorithm {
+        private static class Bucket {
+            double tokens;
+            long lastRefillTime;
+        }
+
+        private final long capacity;
+        private final double refillRatePerMs; // tokens added per millisecond
+        private final Map&lt;String, Bucket&gt; buckets = new HashMap&lt;&gt;();
+
+        TokenBucketLimiter(RateLimitConfig config) {
+            this.capacity = config.capacity;
+            this.refillRatePerMs = (double) config.capacity / config.windowMs;
+        }
+
+        public RateLimitResult allowRequest(String clientKey, long nowMs) {
+            Bucket bucket = buckets.computeIfAbsent(clientKey, k -&gt; {
+                Bucket b = new Bucket();
+                b.tokens = capacity;
+                b.lastRefillTime = nowMs;
+                return b;
+            });
+            long elapsed = nowMs - bucket.lastRefillTime;
+            bucket.tokens = Math.min(capacity, bucket.tokens + elapsed * refillRatePerMs);
+            bucket.lastRefillTime = nowMs;
+            if (bucket.tokens &gt;= 1) {
+                bucket.tokens -= 1;
+                return RateLimitResult.allow((long) Math.floor(bucket.tokens));
+            }
+            double deficit = 1 - bucket.tokens;
+            long retryAfterMs = (long) Math.ceil(deficit / refillRatePerMs);
+            return RateLimitResult.deny(retryAfterMs);
+        }
+    }
+
+    // Sliding window: keeps an exact deque of recent request timestamps per client and
+    // counts how many fall within the last windowMs - more accurate than fixed window at
+    // the cost of memory proportional to request rate.
+    static class SlidingWindowLimiter implements RateLimitAlgorithm {
+        private final long capacity;
+        private final long windowMs;
+        private final Map&lt;String, Deque&lt;Long&gt;&gt; history = new HashMap&lt;&gt;();
+
+        SlidingWindowLimiter(RateLimitConfig config) {
+            this.capacity = config.capacity;
+            this.windowMs = config.windowMs;
+        }
+
+        public RateLimitResult allowRequest(String clientKey, long nowMs) {
+            Deque&lt;Long&gt; timestamps = history.computeIfAbsent(clientKey, k -&gt; new ArrayDeque&lt;&gt;());
+            long windowStart = nowMs - windowMs;
+            while (!timestamps.isEmpty() &amp;&amp; timestamps.peekFirst() &lt;= windowStart) {
+                timestamps.pollFirst();
+            }
+            if (timestamps.size() &lt; capacity) {
+                timestamps.addLast(nowMs);
+                return RateLimitResult.allow(capacity - timestamps.size());
+            }
+            long retryAfterMs = timestamps.peekFirst() + windowMs - nowMs;
+            return RateLimitResult.deny(Math.max(0, retryAfterMs));
+        }
+    }
+
+    // Fixed window: counts requests in discrete, non-overlapping windows - cheap (one
+    // counter per client) but allows bursts at window boundaries.
+    static class FixedWindowLimiter implements RateLimitAlgorithm {
+        private static class WindowCounter {
+            long windowStart;
+            long count;
+        }
+
+        private final long capacity;
+        private final long windowMs;
+        private final Map&lt;String, WindowCounter&gt; counters = new HashMap&lt;&gt;();
+
+        FixedWindowLimiter(RateLimitConfig config) {
+            this.capacity = config.capacity;
+            this.windowMs = config.windowMs;
+        }
+
+        public RateLimitResult allowRequest(String clientKey, long nowMs) {
+            WindowCounter counter = counters.computeIfAbsent(clientKey, k -&gt; {
+                WindowCounter c = new WindowCounter();
+                c.windowStart = nowMs;
+                c.count = 0;
+                return c;
+            });
+            if (nowMs - counter.windowStart &gt;= windowMs) {
+                counter.windowStart = nowMs;
+                counter.count = 0;
+            }
+            if (counter.count &lt; capacity) {
+                counter.count++;
+                return RateLimitResult.allow(capacity - counter.count);
+            }
+            long retryAfterMs = counter.windowStart + windowMs - nowMs;
+            return RateLimitResult.deny(Math.max(0, retryAfterMs));
+        }
+    }
+
+    // ---------- RateLimiterFactory ----------
+    // Resolves &quot;which algorithm for which endpoint&quot; - kept out of both the facade and the
+    // algorithms themselves so that mapping logic has exactly one home.
+    static class RateLimiterFactory {
+        private final Map&lt;String, RateLimitConfig&gt; configsByEndpoint;
+        private final Map&lt;String, RateLimitAlgorithm&gt; instancesByEndpoint = new HashMap&lt;&gt;();
+
+        RateLimiterFactory(Map&lt;String, RateLimitConfig&gt; configsByEndpoint) {
+            this.configsByEndpoint = configsByEndpoint;
+        }
+
+        RateLimitAlgorithm getLimiter(String endpoint) {
+            return instancesByEndpoint.computeIfAbsent(endpoint, ep -&gt; {
+                RateLimitConfig config = configsByEndpoint.get(ep);
+                if (config == null) throw new IllegalArgumentException(&quot;No config for endpoint: &quot; + ep);
+                switch (config.algorithmType) {
+                    case TOKEN_BUCKET: return new TokenBucketLimiter(config);
+                    case SLIDING_WINDOW: return new SlidingWindowLimiter(config);
+                    case FIXED_WINDOW: return new FixedWindowLimiter(config);
+                    default: throw new IllegalStateException(&quot;Unknown algorithm type&quot;);
+                }
+            });
+        }
+    }
+
+    // ---------- RateLimiter (facade) ----------
+    static class RateLimiter {
+        private final RateLimiterFactory factory; // injected interface-like dependency
+
+        RateLimiter(RateLimiterFactory factory) {
+            this.factory = factory;
+        }
+
+        RateLimitResult check(String clientId, String endpoint, long nowMs) {
+            RateLimitAlgorithm algorithm = factory.getLimiter(endpoint);
+            String clientKey = endpoint + &quot;:&quot; + clientId; // scope quota per endpoint+client
+            return algorithm.allowRequest(clientKey, nowMs);
+        }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) {
+        Map&lt;String, RateLimitConfig&gt; configs = new HashMap&lt;&gt;();
+        configs.put(&quot;/api/login&quot;, new RateLimitConfig(3, 1000, AlgorithmType.TOKEN_BUCKET));
+        configs.put(&quot;/api/search&quot;, new RateLimitConfig(2, 1000, AlgorithmType.FIXED_WINDOW));
+
+        RateLimiterFactory factory = new RateLimiterFactory(configs);
+        RateLimiter limiter = new RateLimiter(factory);
+
+        long t = 0;
+        for (int i = 0; i &lt; 5; i++) {
+            RateLimitResult result = limiter.check(&quot;clientA&quot;, &quot;/api/login&quot;, t);
+            System.out.println(&quot;t=&quot; + t + &quot; login attempt &quot; + (i + 1) + &quot; -&gt; &quot; + result);
+            t += 100; // 100ms between requests, faster than refill can keep up
+        }
+
+        System.out.println();
+        long t2 = 0;
+        for (int i = 0; i &lt; 3; i++) {
+            RateLimitResult result = limiter.check(&quot;clientB&quot;, &quot;/api/search&quot;, t2);
+            System.out.println(&quot;t=&quot; + t2 + &quot; search attempt &quot; + (i + 1) + &quot; -&gt; &quot; + result);
+        }
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Rate Limiter - full LLD implementation (single-file demo).
+// Difficulty badge is &quot;Intermediate -&gt; Advanced+Distributed&quot; - it does NOT explicitly say
+// &quot;Concurrency&quot;, so per convention this stays single-threaded/simple (no mutexes), even
+// though a production system would eventually need per-key locking or a distributed store.
+#include &lt;iostream&gt;
+#include &lt;unordered_map&gt;
+#include &lt;deque&gt;
+#include &lt;string&gt;
+#include &lt;memory&gt;
+#include &lt;cmath&gt;
+#include &lt;stdexcept&gt;
+
+// ---------- RateLimitResult (pure data) ----------
+struct RateLimitResult {
+    bool allowed;
+    long long remaining;
+    long long retryAfterMs; // 0 if allowed
+
+    static RateLimitResult allow(long long remaining) { return {true, remaining, 0}; }
+    static RateLimitResult deny(long long retryAfterMs) { return {false, 0, retryAfterMs}; }
+};
+
+std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const RateLimitResult&amp; r) {
+    os &lt;&lt; &quot;RateLimitResult{allowed=&quot; &lt;&lt; (r.allowed ? &quot;true&quot; : &quot;false&quot;)
+       &lt;&lt; &quot;, remaining=&quot; &lt;&lt; r.remaining &lt;&lt; &quot;, retryAfterMs=&quot; &lt;&lt; r.retryAfterMs &lt;&lt; &quot;}&quot;;
+    return os;
+}
+
+// ---------- RateLimitConfig (pure data) ----------
+enum class AlgorithmType { TOKEN_BUCKET, SLIDING_WINDOW, FIXED_WINDOW };
+
+struct RateLimitConfig {
+    long long capacity;   // max tokens / max requests per window
+    long long windowMs;   // window size in ms (or refill window for token bucket)
+    AlgorithmType algorithmType;
+};
+
+// ---------- RateLimitAlgorithm (interface) ----------
+class RateLimitAlgorithm {
+public:
+    virtual ~RateLimitAlgorithm() = default;
+    virtual RateLimitResult allowRequest(const std::string&amp; clientKey, long long nowMs) = 0;
+};
+
+// Each algorithm owns its own per-client state map, since the state shape genuinely
+// differs (a counter vs. a timestamp deque vs. two rolling counters) - forcing a shared
+// generic &quot;Bucket&quot; class would either bloat it or leak abstraction.
+class TokenBucketLimiter : public RateLimitAlgorithm {
+public:
+    explicit TokenBucketLimiter(const RateLimitConfig&amp; config)
+        : capacity(config.capacity), refillRatePerMs(static_cast&lt;double&gt;(config.capacity) / config.windowMs) {}
+
+    RateLimitResult allowRequest(const std::string&amp; clientKey, long long nowMs) override {
+        Bucket&amp; bucket = buckets[clientKey];
+        if (!bucket.initialized) {
+            bucket.tokens = static_cast&lt;double&gt;(capacity);
+            bucket.lastRefillTime = nowMs;
+            bucket.initialized = true;
+        }
+        long long elapsed = nowMs - bucket.lastRefillTime;
+        bucket.tokens = std::min(static_cast&lt;double&gt;(capacity), bucket.tokens + elapsed * refillRatePerMs);
+        bucket.lastRefillTime = nowMs;
+        if (bucket.tokens &gt;= 1.0) {
+            bucket.tokens -= 1.0;
+            return RateLimitResult::allow(static_cast&lt;long long&gt;(std::floor(bucket.tokens)));
+        }
+        double deficit = 1.0 - bucket.tokens;
+        long long retryAfterMs = static_cast&lt;long long&gt;(std::ceil(deficit / refillRatePerMs));
+        return RateLimitResult::deny(retryAfterMs);
+    }
+
+private:
+    struct Bucket {
+        double tokens = 0;
+        long long lastRefillTime = 0;
+        bool initialized = false;
+    };
+    long long capacity;
+    double refillRatePerMs;
+    std::unordered_map&lt;std::string, Bucket&gt; buckets;
+};
+
+// Sliding window: keeps an exact deque of recent request timestamps per client and
+// counts how many fall within the last windowMs - more accurate than fixed window at
+// the cost of memory proportional to request rate.
+class SlidingWindowLimiter : public RateLimitAlgorithm {
+public:
+    explicit SlidingWindowLimiter(const RateLimitConfig&amp; config)
+        : capacity(config.capacity), windowMs(config.windowMs) {}
+
+    RateLimitResult allowRequest(const std::string&amp; clientKey, long long nowMs) override {
+        std::deque&lt;long long&gt;&amp; timestamps = history[clientKey];
+        long long windowStart = nowMs - windowMs;
+        while (!timestamps.empty() &amp;&amp; timestamps.front() &lt;= windowStart) {
+            timestamps.pop_front();
+        }
+        if (static_cast&lt;long long&gt;(timestamps.size()) &lt; capacity) {
+            timestamps.push_back(nowMs);
+            return RateLimitResult::allow(capacity - static_cast&lt;long long&gt;(timestamps.size()));
+        }
+        long long retryAfterMs = timestamps.front() + windowMs - nowMs;
+        return RateLimitResult::deny(std::max&lt;long long&gt;(0, retryAfterMs));
+    }
+
+private:
+    long long capacity;
+    long long windowMs;
+    std::unordered_map&lt;std::string, std::deque&lt;long long&gt;&gt; history;
+};
+
+// Fixed window: counts requests in discrete, non-overlapping windows - cheap (one
+// counter per client) but allows bursts at window boundaries.
+class FixedWindowLimiter : public RateLimitAlgorithm {
+public:
+    explicit FixedWindowLimiter(const RateLimitConfig&amp; config)
+        : capacity(config.capacity), windowMs(config.windowMs) {}
+
+    RateLimitResult allowRequest(const std::string&amp; clientKey, long long nowMs) override {
+        WindowCounter&amp; counter = counters[clientKey];
+        if (!counter.initialized) {
+            counter.windowStart = nowMs;
+            counter.count = 0;
+            counter.initialized = true;
+        }
+        if (nowMs - counter.windowStart &gt;= windowMs) {
+            counter.windowStart = nowMs;
+            counter.count = 0;
+        }
+        if (counter.count &lt; capacity) {
+            counter.count++;
+            return RateLimitResult::allow(capacity - counter.count);
+        }
+        long long retryAfterMs = counter.windowStart + windowMs - nowMs;
+        return RateLimitResult::deny(std::max&lt;long long&gt;(0, retryAfterMs));
+    }
+
+private:
+    struct WindowCounter {
+        long long windowStart = 0;
+        long long count = 0;
+        bool initialized = false;
+    };
+    long long capacity;
+    long long windowMs;
+    std::unordered_map&lt;std::string, WindowCounter&gt; counters;
+};
+
+// ---------- RateLimiterFactory ----------
+// Resolves &quot;which algorithm for which endpoint&quot; - kept out of both the facade and the
+// algorithms themselves so that mapping logic has exactly one home.
+class RateLimiterFactory {
+public:
+    explicit RateLimiterFactory(std::unordered_map&lt;std::string, RateLimitConfig&gt; configsByEndpoint)
+        : configsByEndpoint(std::move(configsByEndpoint)) {}
+
+    RateLimitAlgorithm* getLimiter(const std::string&amp; endpoint) {
+        auto it = instancesByEndpoint.find(endpoint);
+        if (it != instancesByEndpoint.end()) return it-&gt;second.get();
+
+        auto configIt = configsByEndpoint.find(endpoint);
+        if (configIt == configsByEndpoint.end()) throw std::invalid_argument(&quot;No config for endpoint: &quot; + endpoint);
+        const RateLimitConfig&amp; config = configIt-&gt;second;
+
+        std::unique_ptr&lt;RateLimitAlgorithm&gt; algorithm;
+        switch (config.algorithmType) {
+            case AlgorithmType::TOKEN_BUCKET: algorithm = std::make_unique&lt;TokenBucketLimiter&gt;(config); break;
+            case AlgorithmType::SLIDING_WINDOW: algorithm = std::make_unique&lt;SlidingWindowLimiter&gt;(config); break;
+            case AlgorithmType::FIXED_WINDOW: algorithm = std::make_unique&lt;FixedWindowLimiter&gt;(config); break;
+        }
+        RateLimitAlgorithm* raw = algorithm.get();
+        instancesByEndpoint[endpoint] = std::move(algorithm);
+        return raw;
+    }
+
+private:
+    std::unordered_map&lt;std::string, RateLimitConfig&gt; configsByEndpoint;
+    std::unordered_map&lt;std::string, std::unique_ptr&lt;RateLimitAlgorithm&gt;&gt; instancesByEndpoint;
+};
+
+// ---------- RateLimiter (facade) ----------
+class RateLimiter {
+public:
+    explicit RateLimiter(RateLimiterFactory* factory) : factory(factory) {}
+
+    RateLimitResult check(const std::string&amp; clientId, const std::string&amp; endpoint, long long nowMs) {
+        RateLimitAlgorithm* algorithm = factory-&gt;getLimiter(endpoint);
+        std::string clientKey = endpoint + &quot;:&quot; + clientId; // scope quota per endpoint+client
+        return algorithm-&gt;allowRequest(clientKey, nowMs);
+    }
+
+private:
+    RateLimiterFactory* factory; // injected dependency, not owned
+};
+
+// ---------- Demo ----------
+int main() {
+    std::unordered_map&lt;std::string, RateLimitConfig&gt; configs;
+    configs[&quot;/api/login&quot;] = {3, 1000, AlgorithmType::TOKEN_BUCKET};
+    configs[&quot;/api/search&quot;] = {2, 1000, AlgorithmType::FIXED_WINDOW};
+
+    RateLimiterFactory factory(configs);
+    RateLimiter limiter(&amp;factory);
+
+    long long t = 0;
+    for (int i = 0; i &lt; 5; i++) {
+        RateLimitResult result = limiter.check(&quot;clientA&quot;, &quot;/api/login&quot;, t);
+        std::cout &lt;&lt; &quot;t=&quot; &lt;&lt; t &lt;&lt; &quot; login attempt &quot; &lt;&lt; (i + 1) &lt;&lt; &quot; -&gt; &quot; &lt;&lt; result &lt;&lt; &quot;\n&quot;;
+        t += 100; // 100ms between requests, faster than refill can keep up
+    }
+
+    std::cout &lt;&lt; &quot;\n&quot;;
+    long long t2 = 0;
+    for (int i = 0; i &lt; 3; i++) {
+        RateLimitResult result = limiter.check(&quot;clientB&quot;, &quot;/api/search&quot;, t2);
+        std::cout &lt;&lt; &quot;t=&quot; &lt;&lt; t2 &lt;&lt; &quot; search attempt &quot; &lt;&lt; (i + 1) &lt;&lt; &quot; -&gt; &quot; &lt;&lt; result &lt;&lt; &quot;\n&quot;;
+    }
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">// Rate Limiter - full LLD implementation (single-file demo).
+// Difficulty badge is &quot;Intermediate -&gt; Advanced+Distributed&quot; - it does NOT explicitly say
+// &quot;Concurrency&quot;, so per convention this stays single-threaded/simple (no locks), even
+// though a production system would eventually need per-key locking or a distributed store.
+
+// ---------- RateLimitResult (pure data) ----------
+class RateLimitResult {
+  constructor(allowed, remaining, retryAfterMs) {
+    this.allowed = allowed;
+    this.remaining = remaining;
+    this.retryAfterMs = retryAfterMs; // 0 if allowed
+  }
+  static allow(remaining) { return new RateLimitResult(true, remaining, 0); }
+  static deny(retryAfterMs) { return new RateLimitResult(false, 0, retryAfterMs); }
+}
+
+// ---------- RateLimitConfig (pure data) ----------
+const AlgorithmType = { TOKEN_BUCKET: &quot;TOKEN_BUCKET&quot;, SLIDING_WINDOW: &quot;SLIDING_WINDOW&quot;, FIXED_WINDOW: &quot;FIXED_WINDOW&quot; };
+
+class RateLimitConfig {
+  constructor(capacity, windowMs, algorithmType) {
+    this.capacity = capacity;   // max tokens / max requests per window
+    this.windowMs = windowMs;   // window size in ms (or refill window for token bucket)
+    this.algorithmType = algorithmType;
+  }
+}
+
+// ---------- RateLimitAlgorithm (interface) ----------
+class RateLimitAlgorithm {
+  allowRequest(_clientKey, _nowMs) {
+    throw new Error(&quot;allowRequest() must be implemented&quot;);
+  }
+}
+
+// Each algorithm owns its own per-client state map, since the state shape genuinely
+// differs (a counter vs. a timestamp deque vs. two rolling counters) - forcing a shared
+// generic &quot;Bucket&quot; class would either bloat it or leak abstraction.
+class TokenBucketLimiter extends RateLimitAlgorithm {
+  constructor(config) {
+    super();
+    this.capacity = config.capacity;
+    this.refillRatePerMs = config.capacity / config.windowMs; // tokens added per ms
+    this.buckets = new Map(); // clientKey -&gt; { tokens, lastRefillTime }
+  }
+
+  allowRequest(clientKey, nowMs) {
+    let bucket = this.buckets.get(clientKey);
+    if (!bucket) {
+      bucket = { tokens: this.capacity, lastRefillTime: nowMs };
+      this.buckets.set(clientKey, bucket);
+    }
+    const elapsed = nowMs - bucket.lastRefillTime;
+    bucket.tokens = Math.min(this.capacity, bucket.tokens + elapsed * this.refillRatePerMs);
+    bucket.lastRefillTime = nowMs;
+    if (bucket.tokens &gt;= 1) {
+      bucket.tokens -= 1;
+      return RateLimitResult.allow(Math.floor(bucket.tokens));
+    }
+    const deficit = 1 - bucket.tokens;
+    const retryAfterMs = Math.ceil(deficit / this.refillRatePerMs);
+    return RateLimitResult.deny(retryAfterMs);
+  }
+}
+
+// Sliding window: keeps an exact queue of recent request timestamps per client and
+// counts how many fall within the last windowMs - more accurate than fixed window at
+// the cost of memory proportional to request rate.
+class SlidingWindowLimiter extends RateLimitAlgorithm {
+  constructor(config) {
+    super();
+    this.capacity = config.capacity;
+    this.windowMs = config.windowMs;
+    this.history = new Map(); // clientKey -&gt; array of timestamps (oldest first)
+  }
+
+  allowRequest(clientKey, nowMs) {
+    let timestamps = this.history.get(clientKey);
+    if (!timestamps) { timestamps = []; this.history.set(clientKey, timestamps); }
+    const windowStart = nowMs - this.windowMs;
+    while (timestamps.length &gt; 0 &amp;&amp; timestamps[0] &lt;= windowStart) {
+      timestamps.shift();
+    }
+    if (timestamps.length &lt; this.capacity) {
+      timestamps.push(nowMs);
+      return RateLimitResult.allow(this.capacity - timestamps.length);
+    }
+    const retryAfterMs = timestamps[0] + this.windowMs - nowMs;
+    return RateLimitResult.deny(Math.max(0, retryAfterMs));
+  }
+}
+
+// Fixed window: counts requests in discrete, non-overlapping windows - cheap (one
+// counter per client) but allows bursts at window boundaries.
+class FixedWindowLimiter extends RateLimitAlgorithm {
+  constructor(config) {
+    super();
+    this.capacity = config.capacity;
+    this.windowMs = config.windowMs;
+    this.counters = new Map(); // clientKey -&gt; { windowStart, count }
+  }
+
+  allowRequest(clientKey, nowMs) {
+    let counter = this.counters.get(clientKey);
+    if (!counter) {
+      counter = { windowStart: nowMs, count: 0 };
+      this.counters.set(clientKey, counter);
+    }
+    if (nowMs - counter.windowStart &gt;= this.windowMs) {
+      counter.windowStart = nowMs;
+      counter.count = 0;
+    }
+    if (counter.count &lt; this.capacity) {
+      counter.count += 1;
+      return RateLimitResult.allow(this.capacity - counter.count);
+    }
+    const retryAfterMs = counter.windowStart + this.windowMs - nowMs;
+    return RateLimitResult.deny(Math.max(0, retryAfterMs));
+  }
+}
+
+// ---------- RateLimiterFactory ----------
+// Resolves &quot;which algorithm for which endpoint&quot; - kept out of both the facade and the
+// algorithms themselves so that mapping logic has exactly one home.
+class RateLimiterFactory {
+  constructor(configsByEndpoint) {
+    this.configsByEndpoint = configsByEndpoint; // Map&lt;endpoint, RateLimitConfig&gt;
+    this.instancesByEndpoint = new Map();
+  }
+
+  getLimiter(endpoint) {
+    let instance = this.instancesByEndpoint.get(endpoint);
+    if (instance) return instance;
+
+    const config = this.configsByEndpoint.get(endpoint);
+    if (!config) throw new Error(`No config for endpoint: ${endpoint}`);
+
+    switch (config.algorithmType) {
+      case AlgorithmType.TOKEN_BUCKET: instance = new TokenBucketLimiter(config); break;
+      case AlgorithmType.SLIDING_WINDOW: instance = new SlidingWindowLimiter(config); break;
+      case AlgorithmType.FIXED_WINDOW: instance = new FixedWindowLimiter(config); break;
+      default: throw new Error(&quot;Unknown algorithm type&quot;);
+    }
+    this.instancesByEndpoint.set(endpoint, instance);
+    return instance;
+  }
+}
+
+// ---------- RateLimiter (facade) ----------
+class RateLimiter {
+  constructor(factory) {
+    this.factory = factory; // injected dependency
+  }
+
+  check(clientId, endpoint, nowMs) {
+    const algorithm = this.factory.getLimiter(endpoint);
+    const clientKey = `${endpoint}:${clientId}`; // scope quota per endpoint+client
+    return algorithm.allowRequest(clientKey, nowMs);
+  }
+}
+
+// ---------- Demo ----------
+function main() {
+  const configs = new Map([
+    [&quot;/api/login&quot;, new RateLimitConfig(3, 1000, AlgorithmType.TOKEN_BUCKET)],
+    [&quot;/api/search&quot;, new RateLimitConfig(2, 1000, AlgorithmType.FIXED_WINDOW)],
+  ]);
+
+  const factory = new RateLimiterFactory(configs);
+  const limiter = new RateLimiter(factory);
+
+  let t = 0;
+  for (let i = 0; i &lt; 5; i++) {
+    const result = limiter.check(&quot;clientA&quot;, &quot;/api/login&quot;, t);
+    console.log(`t=${t} login attempt ${i + 1} -&gt;`, result);
+    t += 100; // 100ms between requests, faster than refill can keep up
+  }
+
+  console.log();
+  let t2 = 0;
+  for (let i = 0; i &lt; 3; i++) {
+    const result = limiter.check(&quot;clientB&quot;, &quot;/api/search&quot;, t2);
+    console.log(`t=${t2} search attempt ${i + 1} -&gt;`, result);
+  }
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  RateLimitResult, RateLimitConfig, AlgorithmType, RateLimitAlgorithm,
+  TokenBucketLimiter, SlidingWindowLimiter, FixedWindowLimiter,
+  RateLimiterFactory, RateLimiter,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Rate Limiter - full LLD implementation (single-file demo).
+// Difficulty badge is &quot;Intermediate -&gt; Advanced+Distributed&quot; - it does NOT explicitly say
+// &quot;Concurrency&quot;, so per convention this stays single-threaded/simple (no locks), even
+// though a production system would eventually need per-key locking or a distributed store.
+
+// ---------- RateLimitResult (pure data) ----------
+class RateLimitResult {
+  private constructor(
+    public readonly allowed: boolean,
+    public readonly remaining: number,
+    public readonly retryAfterMs: number // 0 if allowed
+  ) {}
+  static allow(remaining: number): RateLimitResult { return new RateLimitResult(true, remaining, 0); }
+  static deny(retryAfterMs: number): RateLimitResult { return new RateLimitResult(false, 0, retryAfterMs); }
+}
+
+// ---------- RateLimitConfig (pure data) ----------
+enum AlgorithmType { TOKEN_BUCKET = &quot;TOKEN_BUCKET&quot;, SLIDING_WINDOW = &quot;SLIDING_WINDOW&quot;, FIXED_WINDOW = &quot;FIXED_WINDOW&quot; }
+
+class RateLimitConfig {
+  constructor(
+    public readonly capacity: number,   // max tokens / max requests per window
+    public readonly windowMs: number,   // window size in ms (or refill window for token bucket)
+    public readonly algorithmType: AlgorithmType
+  ) {}
+}
+
+// ---------- RateLimitAlgorithm (interface) ----------
+interface RateLimitAlgorithm {
+  allowRequest(clientKey: string, nowMs: number): RateLimitResult;
+}
+
+// Each algorithm owns its own per-client state map, since the state shape genuinely
+// differs (a counter vs. a timestamp deque vs. two rolling counters) - forcing a shared
+// generic &quot;Bucket&quot; class would either bloat it or leak abstraction.
+class TokenBucketLimiter implements RateLimitAlgorithm {
+  private readonly capacity: number;
+  private readonly refillRatePerMs: number; // tokens added per millisecond
+  private readonly buckets = new Map&lt;string, { tokens: number; lastRefillTime: number }&gt;();
+
+  constructor(config: RateLimitConfig) {
+    this.capacity = config.capacity;
+    this.refillRatePerMs = config.capacity / config.windowMs;
+  }
+
+  allowRequest(clientKey: string, nowMs: number): RateLimitResult {
+    let bucket = this.buckets.get(clientKey);
+    if (!bucket) {
+      bucket = { tokens: this.capacity, lastRefillTime: nowMs };
+      this.buckets.set(clientKey, bucket);
+    }
+    const elapsed = nowMs - bucket.lastRefillTime;
+    bucket.tokens = Math.min(this.capacity, bucket.tokens + elapsed * this.refillRatePerMs);
+    bucket.lastRefillTime = nowMs;
+    if (bucket.tokens &gt;= 1) {
+      bucket.tokens -= 1;
+      return RateLimitResult.allow(Math.floor(bucket.tokens));
+    }
+    const deficit = 1 - bucket.tokens;
+    const retryAfterMs = Math.ceil(deficit / this.refillRatePerMs);
+    return RateLimitResult.deny(retryAfterMs);
+  }
+}
+
+// Sliding window: keeps an exact queue of recent request timestamps per client and
+// counts how many fall within the last windowMs - more accurate than fixed window at
+// the cost of memory proportional to request rate.
+class SlidingWindowLimiter implements RateLimitAlgorithm {
+  private readonly capacity: number;
+  private readonly windowMs: number;
+  private readonly history = new Map&lt;string, number[]&gt;();
+
+  constructor(config: RateLimitConfig) {
+    this.capacity = config.capacity;
+    this.windowMs = config.windowMs;
+  }
+
+  allowRequest(clientKey: string, nowMs: number): RateLimitResult {
+    let timestamps = this.history.get(clientKey);
+    if (!timestamps) { timestamps = []; this.history.set(clientKey, timestamps); }
+    const windowStart = nowMs - this.windowMs;
+    while (timestamps.length &gt; 0 &amp;&amp; timestamps[0] &lt;= windowStart) {
+      timestamps.shift();
+    }
+    if (timestamps.length &lt; this.capacity) {
+      timestamps.push(nowMs);
+      return RateLimitResult.allow(this.capacity - timestamps.length);
+    }
+    const retryAfterMs = timestamps[0] + this.windowMs - nowMs;
+    return RateLimitResult.deny(Math.max(0, retryAfterMs));
+  }
+}
+
+// Fixed window: counts requests in discrete, non-overlapping windows - cheap (one
+// counter per client) but allows bursts at window boundaries.
+class FixedWindowLimiter implements RateLimitAlgorithm {
+  private readonly capacity: number;
+  private readonly windowMs: number;
+  private readonly counters = new Map&lt;string, { windowStart: number; count: number }&gt;();
+
+  constructor(config: RateLimitConfig) {
+    this.capacity = config.capacity;
+    this.windowMs = config.windowMs;
+  }
+
+  allowRequest(clientKey: string, nowMs: number): RateLimitResult {
+    let counter = this.counters.get(clientKey);
+    if (!counter) {
+      counter = { windowStart: nowMs, count: 0 };
+      this.counters.set(clientKey, counter);
+    }
+    if (nowMs - counter.windowStart &gt;= this.windowMs) {
+      counter.windowStart = nowMs;
+      counter.count = 0;
+    }
+    if (counter.count &lt; this.capacity) {
+      counter.count += 1;
+      return RateLimitResult.allow(this.capacity - counter.count);
+    }
+    const retryAfterMs = counter.windowStart + this.windowMs - nowMs;
+    return RateLimitResult.deny(Math.max(0, retryAfterMs));
+  }
+}
+
+// ---------- RateLimiterFactory ----------
+// Resolves &quot;which algorithm for which endpoint&quot; - kept out of both the facade and the
+// algorithms themselves so that mapping logic has exactly one home.
+class RateLimiterFactory {
+  private readonly instancesByEndpoint = new Map&lt;string, RateLimitAlgorithm&gt;();
+
+  constructor(private readonly configsByEndpoint: Map&lt;string, RateLimitConfig&gt;) {}
+
+  getLimiter(endpoint: string): RateLimitAlgorithm {
+    let instance = this.instancesByEndpoint.get(endpoint);
+    if (instance) return instance;
+
+    const config = this.configsByEndpoint.get(endpoint);
+    if (!config) throw new Error(`No config for endpoint: ${endpoint}`);
+
+    switch (config.algorithmType) {
+      case AlgorithmType.TOKEN_BUCKET: instance = new TokenBucketLimiter(config); break;
+      case AlgorithmType.SLIDING_WINDOW: instance = new SlidingWindowLimiter(config); break;
+      case AlgorithmType.FIXED_WINDOW: instance = new FixedWindowLimiter(config); break;
+      default: throw new Error(&quot;Unknown algorithm type&quot;);
+    }
+    this.instancesByEndpoint.set(endpoint, instance);
+    return instance;
+  }
+}
+
+// ---------- RateLimiter (facade) ----------
+class RateLimiter {
+  constructor(private readonly factory: RateLimiterFactory) {} // injected dependency
+
+  check(clientId: string, endpoint: string, nowMs: number): RateLimitResult {
+    const algorithm = this.factory.getLimiter(endpoint);
+    const clientKey = `${endpoint}:${clientId}`; // scope quota per endpoint+client
+    return algorithm.allowRequest(clientKey, nowMs);
+  }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const configs = new Map&lt;string, RateLimitConfig&gt;([
+    [&quot;/api/login&quot;, new RateLimitConfig(3, 1000, AlgorithmType.TOKEN_BUCKET)],
+    [&quot;/api/search&quot;, new RateLimitConfig(2, 1000, AlgorithmType.FIXED_WINDOW)],
+  ]);
+
+  const factory = new RateLimiterFactory(configs);
+  const limiter = new RateLimiter(factory);
+
+  let t = 0;
+  for (let i = 0; i &lt; 5; i++) {
+    const result = limiter.check(&quot;clientA&quot;, &quot;/api/login&quot;, t);
+    console.log(`t=${t} login attempt ${i + 1} -&gt;`, result);
+    t += 100; // 100ms between requests, faster than refill can keep up
+  }
+
+  console.log();
+  let t2 = 0;
+  for (let i = 0; i &lt; 3; i++) {
+    const result = limiter.check(&quot;clientB&quot;, &quot;/api/search&quot;, t2);
+    console.log(`t=${t2} search attempt ${i + 1} -&gt;`, result);
+  }
+}
+
+main();
+
+export {
+  RateLimitResult, RateLimitConfig, AlgorithmType, RateLimitAlgorithm,
+  TokenBucketLimiter, SlidingWindowLimiter, FixedWindowLimiter,
+  RateLimiterFactory, RateLimiter,
+};
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p2.html">&larr; 2. LRU Cache</a><a class="prevnext-link next" href="p4.html">4. Splitwise (Expense Sharing) &rarr;</a></div>
 </div>
 </main>
 

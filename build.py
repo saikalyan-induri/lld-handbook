@@ -202,11 +202,32 @@ def with_lang_tabs(main_html, sid):
     return main_html
 
 
+def with_full_impl_tabs(main_html, sid):
+    """Replace the "{sid}-ag" full-implementation placeholder div (inserted
+    right after the "AG. Full Implementation" heading/intro paragraph in the
+    source HTML) with Java/C++/JavaScript/TypeScript <pre> panels -- same
+    tab-switcher chrome as with_lang_tabs, but there's no "pseudo" original
+    block here since this section only exists in the four real languages."""
+    hid = f"{sid}-ag"
+    marker = f'<div class="full-impl-placeholder" data-sid="{sid}"></div>'
+    if hid not in CODE_TRANSLATIONS or marker not in main_html:
+        return main_html
+    trans = CODE_TRANSLATIONS[hid]
+    panels = []
+    for i, (lang_key, _) in enumerate(LANG_TABS):
+        escaped = html_lib.escape(trans[lang_key])
+        hidden = "" if i == 0 else " hidden"
+        panels.append(
+            f'<pre data-lang="{lang_key}"{hidden}><code class="language-{lang_key}">{escaped}</code></pre>')
+    replacement = '<div class="code-tabs">\n' + "\n".join(panels) + "\n</div>"
+    return main_html.replace(marker, replacement, 1)
+
+
 generated_files = set()
 
 for idx, p in enumerate(problems):
     title = f'{p["num"]}. {p["name"]}' if p["num"] else p["name"]
-    main_html = with_lang_tabs(with_jumpbar(p), p["sid"]) + prevnext(idx, seq)
+    main_html = with_full_impl_tabs(with_lang_tabs(with_jumpbar(p), p["sid"]), p["sid"]) + prevnext(idx, seq)
     page = render_page(title, main_html)
     fname = f'{p["sid"]}.html'
     (HERE / fname).write_text(page, encoding="utf-8")

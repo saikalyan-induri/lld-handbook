@@ -61,7 +61,8 @@
 <a href="#p8-y">Y. Scaling Boundary</a><a href="#p8-z">Z. Failure Scenarios</a><a href="#p8-aa">AA. Bad Designs</a>
 <a href="#p8-ab">AB. Trade-Offs</a><a href="#p8-ac">AC. Interviewer Evaluation</a><a href="#p8-ad">AD. Simulation</a>
 <a href="#p8-ae">AE. Source Comparison</a><a href="#p8-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p8">Jump to section:</label><select id="jump-p8" class="jump-select" data-jump-select><option value="p8-a">A. Realistic Interview Prompt</option><option value="p8-b">B. Difficulty</option><option value="p8-c">C. What This Problem Tests</option><option value="p8-d">D. Requirements</option><option value="p8-e">E. Clarifying Questions</option><option value="p8-f">F. Assumptions</option><option value="p8-g">G. Actors</option><option value="p8-h">H. Core Domain Entities</option><option value="p8-i">I. Class Relationships</option><option value="p8-j">J. Class Diagram</option><option value="p8-k">K. Responsibility Mapping</option><option value="p8-l">L. SOLID Analysis</option><option value="p8-m">M. Design Patterns</option><option value="p8-n">N. What Is Likely to Change?</option><option value="p8-o">O. Design Evolution</option><option value="p8-p">P. API / Interface Design</option><option value="p8-q">Q. Pseudocode — Critical Logic</option><option value="p8-r">R. End-to-End Use Case</option><option value="p8-s">S. Data Structures</option><option value="p8-t">T. Complexity Analysis</option><option value="p8-u">U. Testing Strategy</option><option value="p8-v">V. Interviewer Follow-Ups</option><option value="p8-w">W. Concurrency</option><option value="p8-x">X. Persistence</option><option value="p8-y">Y. Scaling Boundary</option><option value="p8-z">Z. Failure Scenarios</option><option value="p8-aa">AA. Common Bad Designs</option><option value="p8-ab">AB. Design Trade-Offs</option><option value="p8-ac">AC. Interviewer Evaluation</option><option value="p8-ad">AD. Interview Simulation</option><option value="p8-ae">AE. Online Solution Comparison</option><option value="p8-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p8-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p8">Jump to section:</label><select id="jump-p8" class="jump-select" data-jump-select><option value="p8-a">A. Realistic Interview Prompt</option><option value="p8-b">B. Difficulty</option><option value="p8-c">C. What This Problem Tests</option><option value="p8-d">D. Requirements</option><option value="p8-e">E. Clarifying Questions</option><option value="p8-f">F. Assumptions</option><option value="p8-g">G. Actors</option><option value="p8-h">H. Core Domain Entities</option><option value="p8-i">I. Class Relationships</option><option value="p8-j">J. Class Diagram</option><option value="p8-k">K. Responsibility Mapping</option><option value="p8-l">L. SOLID Analysis</option><option value="p8-m">M. Design Patterns</option><option value="p8-n">N. What Is Likely to Change?</option><option value="p8-o">O. Design Evolution</option><option value="p8-p">P. API / Interface Design</option><option value="p8-q">Q. Pseudocode — Critical Logic</option><option value="p8-r">R. End-to-End Use Case</option><option value="p8-s">S. Data Structures</option><option value="p8-t">T. Complexity Analysis</option><option value="p8-u">U. Testing Strategy</option><option value="p8-v">V. Interviewer Follow-Ups</option><option value="p8-w">W. Concurrency</option><option value="p8-x">X. Persistence</option><option value="p8-y">Y. Scaling Boundary</option><option value="p8-z">Z. Failure Scenarios</option><option value="p8-aa">AA. Common Bad Designs</option><option value="p8-ab">AB. Design Trade-Offs</option><option value="p8-ac">AC. Interviewer Evaluation</option><option value="p8-ad">AD. Interview Simulation</option><option value="p8-ae">AE. Online Solution Comparison</option><option value="p8-af">AF. Interview Cheat Sheet</option><option value="p8-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p8-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a coffee vending machine. It offers several beverages, each requiring specific quantities of ingredients (water, milk, coffee, sugar). A user selects a beverage, pays, and the machine dispenses it — or rejects the request if ingredients are insufficient."</div>
@@ -537,7 +538,948 @@ Dispenser.pour(recipe) → Latte dispensed → state: Dispensing -> Idle
 <tr><td><strong>Top follow-ups</strong></td><td>Multi-slot sharing, new payment method, low-inventory alerting, defending the data-driven Recipe over subclassing</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Status-flag instead of State; check-then-decrement race; beverage-subclass-per-drink over-engineering; charging before confirming ingredients</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't add distributed-systems concerns to a single physical device, and don't add Template Method where there's no actual behavioral variation</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p7.html">&larr; 7. Notification System</a><a class="prevnext-link next" href="p9.html">9. File System &rarr;</a></div>
+</table>
+
+<h3 id="p8-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">// Coffee Vending Machine -- full LLD implementation with demo.
+// Single-file Java translation of the Mermaid class diagram in section J.
+import java.util.*;
+
+public class p8 {
+
+    // ---------- Ingredient ----------
+    /** One stocked ingredient; owns its own quantity so reserve/release/refill stay in one place. */
+    static final class Ingredient {
+        final String name;
+        int quantity;
+        final int capacity;
+
+        Ingredient(String name, int quantity, int capacity) {
+            this.name = name; this.quantity = quantity; this.capacity = capacity;
+        }
+
+        /** Atomic check-and-decrement: never lets quantity go negative. */
+        boolean reserve(int qty) {
+            if (quantity &lt; qty) return false;
+            quantity -= qty;
+            return true;
+        }
+        void release(int qty) { quantity = Math.min(capacity, quantity + qty); }
+        void refill(int qty) { quantity = Math.min(capacity, quantity + qty); }
+        public String toString() { return name + &quot;(&quot; + quantity + &quot;/&quot; + capacity + &quot;)&quot;; }
+    }
+
+    // ---------- Recipe ----------
+    /** Pure data: what a beverage needs and how much it costs. No computation. */
+    static final class Recipe {
+        final Map&lt;Ingredient, Integer&gt; requirements;
+        final int priceCents;
+        Recipe(Map&lt;Ingredient, Integer&gt; requirements, int priceCents) {
+            this.requirements = requirements; this.priceCents = priceCents;
+        }
+    }
+
+    // ---------- Beverage ----------
+    /** A sellable item. Composes its Recipe -- the recipe has no meaning outside the beverage. */
+    static final class Beverage {
+        final String name;
+        final Recipe recipe;
+        Beverage(String name, Recipe recipe) { this.name = name; this.recipe = recipe; }
+        public String toString() { return name; }
+    }
+
+    // ---------- PaymentStrategy (Strategy interface) ----------
+    interface PaymentStrategy {
+        void charge(int amountCents);
+        void refund(int amountCents);
+    }
+
+    static final class CashPayment implements PaymentStrategy {
+        int inserted = 0;
+        public void charge(int amountCents) {
+            if (inserted &lt; amountCents) throw new IllegalStateException(&quot;Insufficient cash inserted&quot;);
+            inserted -= amountCents;
+            System.out.println(&quot;  [CASH] charged &quot; + amountCents + &quot;c, change=&quot; + inserted + &quot;c&quot;);
+        }
+        public void refund(int amountCents) {
+            inserted += amountCents;
+            System.out.println(&quot;  [CASH] refunded &quot; + amountCents + &quot;c&quot;);
+        }
+        void insert(int cents) { inserted += cents; }
+    }
+
+    static final class CardPayment implements PaymentStrategy {
+        public void charge(int amountCents) { System.out.println(&quot;  [CARD] charged &quot; + amountCents + &quot;c&quot;); }
+        public void refund(int amountCents) { System.out.println(&quot;  [CARD] refunded &quot; + amountCents + &quot;c&quot;); }
+    }
+
+    // ---------- CoffeeMachineState (State interface) ----------
+    interface CoffeeMachineState {
+        void selectBeverage(CoffeeMachine ctx, Beverage b);
+        void insertPayment(CoffeeMachine ctx, PaymentStrategy method, int amountCents);
+        void dispense(CoffeeMachine ctx);
+        void cancel(CoffeeMachine ctx);
+    }
+
+    static final class IdleState implements CoffeeMachineState {
+        public void selectBeverage(CoffeeMachine ctx, Beverage b) {
+            ctx.selectedBeverage = b;
+            ctx.setState(ctx.selectingState);
+            System.out.println(&quot;  Selected &quot; + b + &quot; -- please pay &quot; + b.recipe.priceCents + &quot;c&quot;);
+        }
+        public void insertPayment(CoffeeMachine ctx, PaymentStrategy method, int amountCents) {
+            System.out.println(&quot;  Reject: select a beverage first&quot;);
+        }
+        public void dispense(CoffeeMachine ctx) { System.out.println(&quot;  Reject: nothing selected&quot;); }
+        public void cancel(CoffeeMachine ctx) { System.out.println(&quot;  Nothing to cancel&quot;); }
+    }
+
+    static final class SelectingState implements CoffeeMachineState {
+        public void selectBeverage(CoffeeMachine ctx, Beverage b) { System.out.println(&quot;  Reject: already selecting&quot;); }
+        public void insertPayment(CoffeeMachine ctx, PaymentStrategy method, int amountCents) {
+            int price = ctx.selectedBeverage.recipe.priceCents;
+            if (amountCents &lt; price) { System.out.println(&quot;  Reject: insufficient payment&quot;); return; }
+            ctx.paymentMethod = method;
+            method.charge(price);
+            ctx.setState(ctx.dispensingState);
+            System.out.println(&quot;  Payment accepted -&gt; dispensing&quot;);
+        }
+        public void dispense(CoffeeMachine ctx) { System.out.println(&quot;  Reject: pay first&quot;); }
+        public void cancel(CoffeeMachine ctx) {
+            ctx.selectedBeverage = null;
+            ctx.setState(ctx.idleState);
+            System.out.println(&quot;  Selection cancelled&quot;);
+        }
+    }
+
+    static final class DispensingState implements CoffeeMachineState {
+        public void selectBeverage(CoffeeMachine ctx, Beverage b) { System.out.println(&quot;  Reject: already dispensing&quot;); }
+        public void insertPayment(CoffeeMachine ctx, PaymentStrategy method, int amountCents) { System.out.println(&quot;  Reject: already paid&quot;); }
+        public void dispense(CoffeeMachine ctx) { ctx.dispenseNow(); }
+        public void cancel(CoffeeMachine ctx) {
+            ctx.paymentMethod.refund(ctx.selectedBeverage.recipe.priceCents);
+            ctx.selectedBeverage = null;
+            ctx.setState(ctx.idleState);
+            System.out.println(&quot;  Cancelled after payment; refunded&quot;);
+        }
+    }
+
+    static final class OutOfStockState implements CoffeeMachineState {
+        public void selectBeverage(CoffeeMachine ctx, Beverage b) { System.out.println(&quot;  Reject: machine out of stock&quot;); }
+        public void insertPayment(CoffeeMachine ctx, PaymentStrategy method, int amountCents) { System.out.println(&quot;  Reject: machine out of stock&quot;); }
+        public void dispense(CoffeeMachine ctx) { System.out.println(&quot;  Reject: machine out of stock&quot;); }
+        public void cancel(CoffeeMachine ctx) {
+            ctx.selectedBeverage = null;
+            ctx.setState(ctx.idleState);
+            System.out.println(&quot;  Reset from out-of-stock -&gt; idle&quot;);
+        }
+    }
+
+    // ---------- CoffeeMachine (context/facade) ----------
+    static final class CoffeeMachine {
+        CoffeeMachineState currentState;
+        final IdleState idleState = new IdleState();
+        final SelectingState selectingState = new SelectingState();
+        final DispensingState dispensingState = new DispensingState();
+        final OutOfStockState outOfStockState = new OutOfStockState();
+
+        final Map&lt;String, Ingredient&gt; ingredients = new HashMap&lt;&gt;();
+        final Map&lt;String, Beverage&gt; beverages = new HashMap&lt;&gt;();
+        Beverage selectedBeverage;
+        PaymentStrategy paymentMethod;
+
+        CoffeeMachine() { currentState = idleState; }
+
+        void setState(CoffeeMachineState state) { currentState = state; }
+
+        void addIngredient(Ingredient ing) { ingredients.put(ing.name, ing); }
+        void addBeverage(Beverage b) { beverages.put(b.name, b); }
+
+        void select(Beverage b) { currentState.selectBeverage(this, b); }
+        void pay(PaymentStrategy method, int amountCents) { currentState.insertPayment(this, method, amountCents); }
+        void dispense() { currentState.dispense(this); }
+        void cancel() { currentState.cancel(this); }
+        void refill(Ingredient ing, int qty) { ing.refill(qty); } // technician action, legal in any state
+
+        /**
+         * Reserve every required ingredient atomically-in-sequence; on the first shortfall, roll back
+         * whatever was already reserved, refund, and flip to OutOfStockState. Never dispenses a half-made drink.
+         */
+        void dispenseNow() {
+            Recipe recipe = selectedBeverage.recipe;
+            List&lt;Map.Entry&lt;Ingredient, Integer&gt;&gt; reserved = new ArrayList&lt;&gt;();
+            for (Map.Entry&lt;Ingredient, Integer&gt; e : recipe.requirements.entrySet()) {
+                Ingredient ingredient = e.getKey();
+                int qty = e.getValue();
+                if (!ingredient.reserve(qty)) {
+                    for (Map.Entry&lt;Ingredient, Integer&gt; r : reserved) r.getKey().release(r.getValue()); // roll back
+                    paymentMethod.refund(recipe.priceCents);
+                    setState(outOfStockState);
+                    System.out.println(&quot;  Out of stock: missing &quot; + ingredient.name + &quot; -- refunded and rolled back&quot;);
+                    return;
+                }
+                reserved.add(e);
+            }
+            // all ingredients reserved successfully -- safe to physically dispense
+            System.out.println(&quot;  Pouring &quot; + selectedBeverage + &quot;...&quot;);
+            selectedBeverage = null;
+            setState(idleState);
+        }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) {
+        CoffeeMachine machine = new CoffeeMachine();
+
+        Ingredient water = new Ingredient(&quot;water&quot;, 500, 1000);
+        Ingredient milk = new Ingredient(&quot;milk&quot;, 500, 1000);
+        Ingredient coffee = new Ingredient(&quot;coffee&quot;, 100, 500);
+        Ingredient sugar = new Ingredient(&quot;sugar&quot;, 200, 500);
+        machine.addIngredient(water);
+        machine.addIngredient(milk);
+        machine.addIngredient(coffee);
+        machine.addIngredient(sugar);
+
+        Beverage latte = new Beverage(&quot;Latte&quot;,
+                new Recipe(Map.of(water, 100, milk, 150, coffee, 30), 250));
+        Beverage espresso = new Beverage(&quot;Espresso&quot;,
+                new Recipe(Map.of(water, 50, coffee, 40), 150));
+        machine.addBeverage(latte);
+        machine.addBeverage(espresso);
+
+        System.out.println(&quot;-- Happy path: buy a Latte with cash --&quot;);
+        machine.select(latte);
+        CashPayment cash = new CashPayment();
+        cash.insert(300);
+        machine.pay(cash, 300);
+        machine.dispense();
+
+        System.out.println(&quot;\n-- Buy several Espressos with card until coffee runs out --&quot;);
+        for (int i = 0; i &lt; 12; i++) {
+            machine.select(espresso);
+            if (machine.currentState == machine.selectingState) {
+                CardPayment card = new CardPayment();
+                machine.pay(card, 150);
+            }
+            machine.dispense();
+            if (machine.currentState == machine.outOfStockState) {
+                System.out.println(&quot;  Machine reports out of stock after &quot; + (i + 1) + &quot; attempts&quot;);
+                break;
+            }
+        }
+
+        System.out.println(&quot;\n-- Technician refills coffee, machine recovers --&quot;);
+        machine.refill(coffee, 200);
+        machine.cancel(); // reset from OutOfStock -&gt; Idle
+        machine.select(espresso);
+        CardPayment card2 = new CardPayment();
+        machine.pay(card2, 150);
+        machine.dispense();
+
+        System.out.println(&quot;\n-- Cancel after paying (refund) --&quot;);
+        machine.select(latte);
+        CashPayment cash2 = new CashPayment();
+        cash2.insert(250);
+        machine.pay(cash2, 250);
+        machine.cancel();
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Coffee Vending Machine -- full class-diagram implementation, single-threaded.
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+#include &lt;map&gt;
+#include &lt;memory&gt;
+#include &lt;stdexcept&gt;
+#include &lt;algorithm&gt;
+
+// ---------- Ingredient ----------
+// One stocked ingredient; owns its own quantity so reserve/release/refill stay in one place.
+class Ingredient {
+public:
+    std::string name;
+    int quantity;
+    int capacity;
+
+    Ingredient(std::string name_, int quantity_, int capacity_)
+        : name(std::move(name_)), quantity(quantity_), capacity(capacity_) {}
+
+    // Atomic check-and-decrement: never lets quantity go negative.
+    bool reserve(int qty) {
+        if (quantity &lt; qty) return false;
+        quantity -= qty;
+        return true;
+    }
+    void release(int qty) { quantity = std::min(capacity, quantity + qty); }
+    void refill(int qty) { quantity = std::min(capacity, quantity + qty); }
+};
+
+// ---------- Recipe ----------
+// Pure data: what a beverage needs and how much it costs. No computation.
+struct Recipe {
+    std::vector&lt;std::pair&lt;std::shared_ptr&lt;Ingredient&gt;, int&gt;&gt; requirements;
+    int priceCents;
+};
+
+// ---------- Beverage ----------
+// A sellable item. Composes its Recipe -- the recipe has no meaning outside the beverage.
+struct Beverage {
+    std::string name;
+    Recipe recipe;
+};
+
+// ---------- PaymentStrategy (Strategy interface) ----------
+struct PaymentStrategy {
+    virtual ~PaymentStrategy() = default;
+    virtual void charge(int amountCents) = 0;
+    virtual void refund(int amountCents) = 0;
+};
+
+struct CashPayment : PaymentStrategy {
+    int inserted = 0;
+    void insert(int cents) { inserted += cents; }
+    void charge(int amountCents) override {
+        if (inserted &lt; amountCents) throw std::runtime_error(&quot;Insufficient cash inserted&quot;);
+        inserted -= amountCents;
+        std::cout &lt;&lt; &quot;  [CASH] charged &quot; &lt;&lt; amountCents &lt;&lt; &quot;c, change=&quot; &lt;&lt; inserted &lt;&lt; &quot;c\n&quot;;
+    }
+    void refund(int amountCents) override {
+        inserted += amountCents;
+        std::cout &lt;&lt; &quot;  [CASH] refunded &quot; &lt;&lt; amountCents &lt;&lt; &quot;c\n&quot;;
+    }
+};
+
+struct CardPayment : PaymentStrategy {
+    void charge(int amountCents) override { std::cout &lt;&lt; &quot;  [CARD] charged &quot; &lt;&lt; amountCents &lt;&lt; &quot;c\n&quot;; }
+    void refund(int amountCents) override { std::cout &lt;&lt; &quot;  [CARD] refunded &quot; &lt;&lt; amountCents &lt;&lt; &quot;c\n&quot;; }
+};
+
+class CoffeeMachine; // fwd decl
+
+// ---------- CoffeeMachineState (State interface) ----------
+struct CoffeeMachineState {
+    virtual ~CoffeeMachineState() = default;
+    virtual void selectBeverage(CoffeeMachine&amp; ctx, std::shared_ptr&lt;Beverage&gt; b) = 0;
+    virtual void insertPayment(CoffeeMachine&amp; ctx, std::shared_ptr&lt;PaymentStrategy&gt; method, int amountCents) = 0;
+    virtual void dispense(CoffeeMachine&amp; ctx) = 0;
+    virtual void cancel(CoffeeMachine&amp; ctx) = 0;
+};
+
+// ---------- CoffeeMachine (context/facade) ----------
+class CoffeeMachine {
+public:
+    std::shared_ptr&lt;CoffeeMachineState&gt; currentState;
+    std::shared_ptr&lt;CoffeeMachineState&gt; idleState, selectingState, dispensingState, outOfStockState;
+
+    std::map&lt;std::string, std::shared_ptr&lt;Ingredient&gt;&gt; ingredients;
+    std::map&lt;std::string, std::shared_ptr&lt;Beverage&gt;&gt; beverages;
+    std::shared_ptr&lt;Beverage&gt; selectedBeverage;
+    std::shared_ptr&lt;PaymentStrategy&gt; paymentMethod;
+
+    void setState(std::shared_ptr&lt;CoffeeMachineState&gt; state) { currentState = std::move(state); }
+    void addIngredient(std::shared_ptr&lt;Ingredient&gt; ing) { ingredients[ing-&gt;name] = ing; }
+    void addBeverage(std::shared_ptr&lt;Beverage&gt; b) { beverages[b-&gt;name] = b; }
+
+    void select(std::shared_ptr&lt;Beverage&gt; b) { currentState-&gt;selectBeverage(*this, std::move(b)); }
+    void pay(std::shared_ptr&lt;PaymentStrategy&gt; method, int amountCents) { currentState-&gt;insertPayment(*this, std::move(method), amountCents); }
+    void dispense() { currentState-&gt;dispense(*this); }
+    void cancel() { currentState-&gt;cancel(*this); }
+    void refill(std::shared_ptr&lt;Ingredient&gt; ing, int qty) { ing-&gt;refill(qty); } // technician action, legal in any state
+
+    // Reserve every required ingredient in sequence; on the first shortfall, roll back whatever
+    // was already reserved, refund, and flip to OutOfStockState. Never dispenses a half-made drink.
+    void dispenseNow() {
+        Recipe&amp; recipe = selectedBeverage-&gt;recipe;
+        std::vector&lt;std::pair&lt;std::shared_ptr&lt;Ingredient&gt;, int&gt;&gt; reserved;
+        for (auto&amp; req : recipe.requirements) {
+            if (!req.first-&gt;reserve(req.second)) {
+                for (auto&amp; r : reserved) r.first-&gt;release(r.second); // roll back
+                paymentMethod-&gt;refund(recipe.priceCents);
+                setState(outOfStockState);
+                std::cout &lt;&lt; &quot;  Out of stock: missing &quot; &lt;&lt; req.first-&gt;name &lt;&lt; &quot; -- refunded and rolled back\n&quot;;
+                return;
+            }
+            reserved.push_back(req);
+        }
+        std::cout &lt;&lt; &quot;  Pouring &quot; &lt;&lt; selectedBeverage-&gt;name &lt;&lt; &quot;...\n&quot;;
+        selectedBeverage = nullptr;
+        setState(idleState);
+    }
+};
+
+struct IdleState : CoffeeMachineState {
+    void selectBeverage(CoffeeMachine&amp; ctx, std::shared_ptr&lt;Beverage&gt; b) override {
+        ctx.selectedBeverage = b;
+        ctx.setState(ctx.selectingState);
+        std::cout &lt;&lt; &quot;  Selected &quot; &lt;&lt; b-&gt;name &lt;&lt; &quot; -- please pay &quot; &lt;&lt; b-&gt;recipe.priceCents &lt;&lt; &quot;c\n&quot;;
+    }
+    void insertPayment(CoffeeMachine&amp;, std::shared_ptr&lt;PaymentStrategy&gt;, int) override {
+        std::cout &lt;&lt; &quot;  Reject: select a beverage first\n&quot;;
+    }
+    void dispense(CoffeeMachine&amp;) override { std::cout &lt;&lt; &quot;  Reject: nothing selected\n&quot;; }
+    void cancel(CoffeeMachine&amp;) override { std::cout &lt;&lt; &quot;  Nothing to cancel\n&quot;; }
+};
+
+struct SelectingState : CoffeeMachineState {
+    void selectBeverage(CoffeeMachine&amp;, std::shared_ptr&lt;Beverage&gt;) override { std::cout &lt;&lt; &quot;  Reject: already selecting\n&quot;; }
+    void insertPayment(CoffeeMachine&amp; ctx, std::shared_ptr&lt;PaymentStrategy&gt; method, int amountCents) override {
+        int price = ctx.selectedBeverage-&gt;recipe.priceCents;
+        if (amountCents &lt; price) { std::cout &lt;&lt; &quot;  Reject: insufficient payment\n&quot;; return; }
+        ctx.paymentMethod = method;
+        method-&gt;charge(price);
+        ctx.setState(ctx.dispensingState);
+        std::cout &lt;&lt; &quot;  Payment accepted -&gt; dispensing\n&quot;;
+    }
+    void dispense(CoffeeMachine&amp;) override { std::cout &lt;&lt; &quot;  Reject: pay first\n&quot;; }
+    void cancel(CoffeeMachine&amp; ctx) override {
+        ctx.selectedBeverage = nullptr;
+        ctx.setState(ctx.idleState);
+        std::cout &lt;&lt; &quot;  Selection cancelled\n&quot;;
+    }
+};
+
+struct DispensingState : CoffeeMachineState {
+    void selectBeverage(CoffeeMachine&amp;, std::shared_ptr&lt;Beverage&gt;) override { std::cout &lt;&lt; &quot;  Reject: already dispensing\n&quot;; }
+    void insertPayment(CoffeeMachine&amp;, std::shared_ptr&lt;PaymentStrategy&gt;, int) override { std::cout &lt;&lt; &quot;  Reject: already paid\n&quot;; }
+    void dispense(CoffeeMachine&amp; ctx) override { ctx.dispenseNow(); }
+    void cancel(CoffeeMachine&amp; ctx) override {
+        ctx.paymentMethod-&gt;refund(ctx.selectedBeverage-&gt;recipe.priceCents);
+        ctx.selectedBeverage = nullptr;
+        ctx.setState(ctx.idleState);
+        std::cout &lt;&lt; &quot;  Cancelled after payment; refunded\n&quot;;
+    }
+};
+
+struct OutOfStockState : CoffeeMachineState {
+    void selectBeverage(CoffeeMachine&amp;, std::shared_ptr&lt;Beverage&gt;) override { std::cout &lt;&lt; &quot;  Reject: machine out of stock\n&quot;; }
+    void insertPayment(CoffeeMachine&amp;, std::shared_ptr&lt;PaymentStrategy&gt;, int) override { std::cout &lt;&lt; &quot;  Reject: machine out of stock\n&quot;; }
+    void dispense(CoffeeMachine&amp;) override { std::cout &lt;&lt; &quot;  Reject: machine out of stock\n&quot;; }
+    void cancel(CoffeeMachine&amp; ctx) override {
+        ctx.selectedBeverage = nullptr;
+        ctx.setState(ctx.idleState);
+        std::cout &lt;&lt; &quot;  Reset from out-of-stock -&gt; idle\n&quot;;
+    }
+};
+
+int main() {
+    CoffeeMachine machine;
+    machine.idleState = std::make_shared&lt;IdleState&gt;();
+    machine.selectingState = std::make_shared&lt;SelectingState&gt;();
+    machine.dispensingState = std::make_shared&lt;DispensingState&gt;();
+    machine.outOfStockState = std::make_shared&lt;OutOfStockState&gt;();
+    machine.currentState = machine.idleState;
+
+    auto water = std::make_shared&lt;Ingredient&gt;(&quot;water&quot;, 500, 1000);
+    auto milk = std::make_shared&lt;Ingredient&gt;(&quot;milk&quot;, 500, 1000);
+    auto coffee = std::make_shared&lt;Ingredient&gt;(&quot;coffee&quot;, 100, 500);
+    auto sugar = std::make_shared&lt;Ingredient&gt;(&quot;sugar&quot;, 200, 500);
+    machine.addIngredient(water);
+    machine.addIngredient(milk);
+    machine.addIngredient(coffee);
+    machine.addIngredient(sugar);
+
+    auto latte = std::make_shared&lt;Beverage&gt;();
+    latte-&gt;name = &quot;Latte&quot;;
+    latte-&gt;recipe = Recipe{ {{water, 100}, {milk, 150}, {coffee, 30}}, 250 };
+    auto espresso = std::make_shared&lt;Beverage&gt;();
+    espresso-&gt;name = &quot;Espresso&quot;;
+    espresso-&gt;recipe = Recipe{ {{water, 50}, {coffee, 40}}, 150 };
+    machine.addBeverage(latte);
+    machine.addBeverage(espresso);
+
+    std::cout &lt;&lt; &quot;-- Happy path: buy a Latte with cash --\n&quot;;
+    machine.select(latte);
+    auto cash = std::make_shared&lt;CashPayment&gt;();
+    cash-&gt;insert(300);
+    machine.pay(cash, 300);
+    machine.dispense();
+
+    std::cout &lt;&lt; &quot;\n-- Buy several Espressos with card until coffee runs out --\n&quot;;
+    for (int i = 0; i &lt; 12; i++) {
+        machine.select(espresso);
+        if (machine.currentState == machine.selectingState) {
+            auto card = std::make_shared&lt;CardPayment&gt;();
+            machine.pay(card, 150);
+        }
+        machine.dispense();
+        if (machine.currentState == machine.outOfStockState) {
+            std::cout &lt;&lt; &quot;  Machine reports out of stock after &quot; &lt;&lt; (i + 1) &lt;&lt; &quot; attempts\n&quot;;
+            break;
+        }
+    }
+
+    std::cout &lt;&lt; &quot;\n-- Technician refills coffee, machine recovers --\n&quot;;
+    machine.refill(coffee, 200);
+    machine.cancel(); // reset from OutOfStock -&gt; Idle
+    machine.select(espresso);
+    auto card2 = std::make_shared&lt;CardPayment&gt;();
+    machine.pay(card2, 150);
+    machine.dispense();
+
+    std::cout &lt;&lt; &quot;\n-- Cancel after paying (refund) --\n&quot;;
+    machine.select(latte);
+    auto cash2 = std::make_shared&lt;CashPayment&gt;();
+    cash2-&gt;insert(250);
+    machine.pay(cash2, 250);
+    machine.cancel();
+
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">// Coffee Vending Machine -- full class-diagram implementation, single-threaded.
+// Node-style, plain classes, CommonJS.
+
+// ---------- Ingredient ----------
+// One stocked ingredient; owns its own quantity so reserve/release/refill stay in one place.
+class Ingredient {
+  constructor(name, quantity, capacity) {
+    this.name = name;
+    this.quantity = quantity;
+    this.capacity = capacity;
+  }
+  // Atomic check-and-decrement: never lets quantity go negative.
+  reserve(qty) {
+    if (this.quantity &lt; qty) return false;
+    this.quantity -= qty;
+    return true;
+  }
+  release(qty) { this.quantity = Math.min(this.capacity, this.quantity + qty); }
+  refill(qty) { this.quantity = Math.min(this.capacity, this.quantity + qty); }
+  toString() { return `${this.name}(${this.quantity}/${this.capacity})`; }
+}
+
+// ---------- Recipe ----------
+// Pure data: what a beverage needs and how much it costs. No computation.
+class Recipe {
+  constructor(requirements, priceCents) {
+    this.requirements = requirements; // Map&lt;Ingredient, qty&gt;
+    this.priceCents = priceCents;
+  }
+}
+
+// ---------- Beverage ----------
+// A sellable item. Composes its Recipe -- the recipe has no meaning outside the beverage.
+class Beverage {
+  constructor(name, recipe) { this.name = name; this.recipe = recipe; }
+  toString() { return this.name; }
+}
+
+// ---------- PaymentStrategy (Strategy interface) ----------
+class PaymentStrategy {
+  charge(_amountCents) { throw new Error(&#x27;charge() not implemented&#x27;); }
+  refund(_amountCents) { throw new Error(&#x27;refund() not implemented&#x27;); }
+}
+
+class CashPayment extends PaymentStrategy {
+  constructor() { super(); this.inserted = 0; }
+  insert(cents) { this.inserted += cents; }
+  charge(amountCents) {
+    if (this.inserted &lt; amountCents) throw new Error(&#x27;Insufficient cash inserted&#x27;);
+    this.inserted -= amountCents;
+    console.log(`  [CASH] charged ${amountCents}c, change=${this.inserted}c`);
+  }
+  refund(amountCents) {
+    this.inserted += amountCents;
+    console.log(`  [CASH] refunded ${amountCents}c`);
+  }
+}
+
+class CardPayment extends PaymentStrategy {
+  charge(amountCents) { console.log(`  [CARD] charged ${amountCents}c`); }
+  refund(amountCents) { console.log(`  [CARD] refunded ${amountCents}c`); }
+}
+
+// ---------- CoffeeMachineState (State interface) ----------
+class CoffeeMachineState {
+  selectBeverage(_ctx, _b) { throw new Error(&#x27;not implemented&#x27;); }
+  insertPayment(_ctx, _method, _amountCents) { throw new Error(&#x27;not implemented&#x27;); }
+  dispense(_ctx) { throw new Error(&#x27;not implemented&#x27;); }
+  cancel(_ctx) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class IdleState extends CoffeeMachineState {
+  selectBeverage(ctx, b) {
+    ctx.selectedBeverage = b;
+    ctx.setState(ctx.selectingState);
+    console.log(`  Selected ${b} -- please pay ${b.recipe.priceCents}c`);
+  }
+  insertPayment() { console.log(&#x27;  Reject: select a beverage first&#x27;); }
+  dispense() { console.log(&#x27;  Reject: nothing selected&#x27;); }
+  cancel() { console.log(&#x27;  Nothing to cancel&#x27;); }
+}
+
+class SelectingState extends CoffeeMachineState {
+  selectBeverage() { console.log(&#x27;  Reject: already selecting&#x27;); }
+  insertPayment(ctx, method, amountCents) {
+    const price = ctx.selectedBeverage.recipe.priceCents;
+    if (amountCents &lt; price) { console.log(&#x27;  Reject: insufficient payment&#x27;); return; }
+    ctx.paymentMethod = method;
+    method.charge(price);
+    ctx.setState(ctx.dispensingState);
+    console.log(&#x27;  Payment accepted -&gt; dispensing&#x27;);
+  }
+  dispense() { console.log(&#x27;  Reject: pay first&#x27;); }
+  cancel(ctx) {
+    ctx.selectedBeverage = null;
+    ctx.setState(ctx.idleState);
+    console.log(&#x27;  Selection cancelled&#x27;);
+  }
+}
+
+class DispensingState extends CoffeeMachineState {
+  selectBeverage() { console.log(&#x27;  Reject: already dispensing&#x27;); }
+  insertPayment() { console.log(&#x27;  Reject: already paid&#x27;); }
+  dispense(ctx) { ctx.dispenseNow(); }
+  cancel(ctx) {
+    ctx.paymentMethod.refund(ctx.selectedBeverage.recipe.priceCents);
+    ctx.selectedBeverage = null;
+    ctx.setState(ctx.idleState);
+    console.log(&#x27;  Cancelled after payment; refunded&#x27;);
+  }
+}
+
+class OutOfStockState extends CoffeeMachineState {
+  selectBeverage() { console.log(&#x27;  Reject: machine out of stock&#x27;); }
+  insertPayment() { console.log(&#x27;  Reject: machine out of stock&#x27;); }
+  dispense() { console.log(&#x27;  Reject: machine out of stock&#x27;); }
+  cancel(ctx) {
+    ctx.selectedBeverage = null;
+    ctx.setState(ctx.idleState);
+    console.log(&#x27;  Reset from out-of-stock -&gt; idle&#x27;);
+  }
+}
+
+// ---------- CoffeeMachine (context/facade) ----------
+class CoffeeMachine {
+  constructor() {
+    this.idleState = new IdleState();
+    this.selectingState = new SelectingState();
+    this.dispensingState = new DispensingState();
+    this.outOfStockState = new OutOfStockState();
+    this.currentState = this.idleState;
+
+    this.ingredients = new Map();
+    this.beverages = new Map();
+    this.selectedBeverage = null;
+    this.paymentMethod = null;
+  }
+
+  setState(state) { this.currentState = state; }
+  addIngredient(ing) { this.ingredients.set(ing.name, ing); }
+  addBeverage(b) { this.beverages.set(b.name, b); }
+
+  select(b) { this.currentState.selectBeverage(this, b); }
+  pay(method, amountCents) { this.currentState.insertPayment(this, method, amountCents); }
+  dispense() { this.currentState.dispense(this); }
+  cancel() { this.currentState.cancel(this); }
+  refill(ing, qty) { ing.refill(qty); } // technician action, legal in any state
+
+  // Reserve every required ingredient in sequence; on the first shortfall, roll back whatever
+  // was already reserved, refund, and flip to OutOfStockState. Never dispenses a half-made drink.
+  dispenseNow() {
+    const recipe = this.selectedBeverage.recipe;
+    const reserved = [];
+    for (const [ingredient, qty] of recipe.requirements) {
+      if (!ingredient.reserve(qty)) {
+        for (const [ing, q] of reserved) ing.release(q); // roll back
+        this.paymentMethod.refund(recipe.priceCents);
+        this.setState(this.outOfStockState);
+        console.log(`  Out of stock: missing ${ingredient.name} -- refunded and rolled back`);
+        return;
+      }
+      reserved.push([ingredient, qty]);
+    }
+    console.log(`  Pouring ${this.selectedBeverage}...`);
+    this.selectedBeverage = null;
+    this.setState(this.idleState);
+  }
+}
+
+// ---------- Demo ----------
+function main() {
+  const machine = new CoffeeMachine();
+
+  const water = new Ingredient(&#x27;water&#x27;, 500, 1000);
+  const milk = new Ingredient(&#x27;milk&#x27;, 500, 1000);
+  const coffee = new Ingredient(&#x27;coffee&#x27;, 100, 500);
+  const sugar = new Ingredient(&#x27;sugar&#x27;, 200, 500);
+  machine.addIngredient(water);
+  machine.addIngredient(milk);
+  machine.addIngredient(coffee);
+  machine.addIngredient(sugar);
+
+  const latte = new Beverage(&#x27;Latte&#x27;, new Recipe(new Map([[water, 100], [milk, 150], [coffee, 30]]), 250));
+  const espresso = new Beverage(&#x27;Espresso&#x27;, new Recipe(new Map([[water, 50], [coffee, 40]]), 150));
+  machine.addBeverage(latte);
+  machine.addBeverage(espresso);
+
+  console.log(&#x27;-- Happy path: buy a Latte with cash --&#x27;);
+  machine.select(latte);
+  const cash = new CashPayment();
+  cash.insert(300);
+  machine.pay(cash, 300);
+  machine.dispense();
+
+  console.log(&#x27;\n-- Buy several Espressos with card until coffee runs out --&#x27;);
+  for (let i = 0; i &lt; 12; i++) {
+    machine.select(espresso);
+    if (machine.currentState === machine.selectingState) {
+      const card = new CardPayment();
+      machine.pay(card, 150);
+    }
+    machine.dispense();
+    if (machine.currentState === machine.outOfStockState) {
+      console.log(`  Machine reports out of stock after ${i + 1} attempts`);
+      break;
+    }
+  }
+
+  console.log(&#x27;\n-- Technician refills coffee, machine recovers --&#x27;);
+  machine.refill(coffee, 200);
+  machine.cancel(); // reset from OutOfStock -&gt; Idle
+  machine.select(espresso);
+  const card2 = new CardPayment();
+  machine.pay(card2, 150);
+  machine.dispense();
+
+  console.log(&#x27;\n-- Cancel after paying (refund) --&#x27;);
+  machine.select(latte);
+  const cash2 = new CashPayment();
+  cash2.insert(250);
+  machine.pay(cash2, 250);
+  machine.cancel();
+}
+
+if (require.main === module) main();
+
+module.exports = {
+  Ingredient, Recipe, Beverage, PaymentStrategy, CashPayment, CardPayment,
+  CoffeeMachineState, IdleState, SelectingState, DispensingState, OutOfStockState, CoffeeMachine,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Coffee Vending Machine -- full class-diagram implementation, single-threaded.
+
+// ---------- Ingredient ----------
+// One stocked ingredient; owns its own quantity so reserve/release/refill stay in one place.
+class Ingredient {
+  quantity: number;
+  constructor(public readonly name: string, quantity: number, public readonly capacity: number) {
+    this.quantity = quantity;
+  }
+  // Atomic check-and-decrement: never lets quantity go negative.
+  reserve(qty: number): boolean {
+    if (this.quantity &lt; qty) return false;
+    this.quantity -= qty;
+    return true;
+  }
+  release(qty: number): void { this.quantity = Math.min(this.capacity, this.quantity + qty); }
+  refill(qty: number): void { this.quantity = Math.min(this.capacity, this.quantity + qty); }
+  toString(): string { return `${this.name}(${this.quantity}/${this.capacity})`; }
+}
+
+// ---------- Recipe ----------
+// Pure data: what a beverage needs and how much it costs. No computation.
+class Recipe {
+  constructor(public readonly requirements: Map&lt;Ingredient, number&gt;, public readonly priceCents: number) {}
+}
+
+// ---------- Beverage ----------
+// A sellable item. Composes its Recipe -- the recipe has no meaning outside the beverage.
+class Beverage {
+  constructor(public readonly name: string, public readonly recipe: Recipe) {}
+  toString(): string { return this.name; }
+}
+
+// ---------- PaymentStrategy (Strategy interface) ----------
+interface PaymentStrategy {
+  charge(amountCents: number): void;
+  refund(amountCents: number): void;
+}
+
+class CashPayment implements PaymentStrategy {
+  inserted = 0;
+  insert(cents: number): void { this.inserted += cents; }
+  charge(amountCents: number): void {
+    if (this.inserted &lt; amountCents) throw new Error(&#x27;Insufficient cash inserted&#x27;);
+    this.inserted -= amountCents;
+    console.log(`  [CASH] charged ${amountCents}c, change=${this.inserted}c`);
+  }
+  refund(amountCents: number): void {
+    this.inserted += amountCents;
+    console.log(`  [CASH] refunded ${amountCents}c`);
+  }
+}
+
+class CardPayment implements PaymentStrategy {
+  charge(amountCents: number): void { console.log(`  [CARD] charged ${amountCents}c`); }
+  refund(amountCents: number): void { console.log(`  [CARD] refunded ${amountCents}c`); }
+}
+
+// ---------- CoffeeMachineState (State interface) ----------
+interface CoffeeMachineState {
+  selectBeverage(ctx: CoffeeMachine, b: Beverage): void;
+  insertPayment(ctx: CoffeeMachine, method: PaymentStrategy, amountCents: number): void;
+  dispense(ctx: CoffeeMachine): void;
+  cancel(ctx: CoffeeMachine): void;
+}
+
+class IdleState implements CoffeeMachineState {
+  selectBeverage(ctx: CoffeeMachine, b: Beverage): void {
+    ctx.selectedBeverage = b;
+    ctx.setState(ctx.selectingState);
+    console.log(`  Selected ${b} -- please pay ${b.recipe.priceCents}c`);
+  }
+  insertPayment(): void { console.log(&#x27;  Reject: select a beverage first&#x27;); }
+  dispense(): void { console.log(&#x27;  Reject: nothing selected&#x27;); }
+  cancel(): void { console.log(&#x27;  Nothing to cancel&#x27;); }
+}
+
+class SelectingState implements CoffeeMachineState {
+  selectBeverage(): void { console.log(&#x27;  Reject: already selecting&#x27;); }
+  insertPayment(ctx: CoffeeMachine, method: PaymentStrategy, amountCents: number): void {
+    const price = ctx.selectedBeverage!.recipe.priceCents;
+    if (amountCents &lt; price) { console.log(&#x27;  Reject: insufficient payment&#x27;); return; }
+    ctx.paymentMethod = method;
+    method.charge(price);
+    ctx.setState(ctx.dispensingState);
+    console.log(&#x27;  Payment accepted -&gt; dispensing&#x27;);
+  }
+  dispense(): void { console.log(&#x27;  Reject: pay first&#x27;); }
+  cancel(ctx: CoffeeMachine): void {
+    ctx.selectedBeverage = null;
+    ctx.setState(ctx.idleState);
+    console.log(&#x27;  Selection cancelled&#x27;);
+  }
+}
+
+class DispensingState implements CoffeeMachineState {
+  selectBeverage(): void { console.log(&#x27;  Reject: already dispensing&#x27;); }
+  insertPayment(): void { console.log(&#x27;  Reject: already paid&#x27;); }
+  dispense(ctx: CoffeeMachine): void { ctx.dispenseNow(); }
+  cancel(ctx: CoffeeMachine): void {
+    ctx.paymentMethod!.refund(ctx.selectedBeverage!.recipe.priceCents);
+    ctx.selectedBeverage = null;
+    ctx.setState(ctx.idleState);
+    console.log(&#x27;  Cancelled after payment; refunded&#x27;);
+  }
+}
+
+class OutOfStockState implements CoffeeMachineState {
+  selectBeverage(): void { console.log(&#x27;  Reject: machine out of stock&#x27;); }
+  insertPayment(): void { console.log(&#x27;  Reject: machine out of stock&#x27;); }
+  dispense(): void { console.log(&#x27;  Reject: machine out of stock&#x27;); }
+  cancel(ctx: CoffeeMachine): void {
+    ctx.selectedBeverage = null;
+    ctx.setState(ctx.idleState);
+    console.log(&#x27;  Reset from out-of-stock -&gt; idle&#x27;);
+  }
+}
+
+// ---------- CoffeeMachine (context/facade) ----------
+class CoffeeMachine {
+  readonly idleState: CoffeeMachineState = new IdleState();
+  readonly selectingState: CoffeeMachineState = new SelectingState();
+  readonly dispensingState: CoffeeMachineState = new DispensingState();
+  readonly outOfStockState: CoffeeMachineState = new OutOfStockState();
+  currentState: CoffeeMachineState = this.idleState;
+
+  readonly ingredients = new Map&lt;string, Ingredient&gt;();
+  readonly beverages = new Map&lt;string, Beverage&gt;();
+  selectedBeverage: Beverage | null = null;
+  paymentMethod: PaymentStrategy | null = null;
+
+  setState(state: CoffeeMachineState): void { this.currentState = state; }
+  addIngredient(ing: Ingredient): void { this.ingredients.set(ing.name, ing); }
+  addBeverage(b: Beverage): void { this.beverages.set(b.name, b); }
+
+  select(b: Beverage): void { this.currentState.selectBeverage(this, b); }
+  pay(method: PaymentStrategy, amountCents: number): void { this.currentState.insertPayment(this, method, amountCents); }
+  dispense(): void { this.currentState.dispense(this); }
+  cancel(): void { this.currentState.cancel(this); }
+  refill(ing: Ingredient, qty: number): void { ing.refill(qty); } // technician action, legal in any state
+
+  // Reserve every required ingredient in sequence; on the first shortfall, roll back whatever
+  // was already reserved, refund, and flip to OutOfStockState. Never dispenses a half-made drink.
+  dispenseNow(): void {
+    const recipe = this.selectedBeverage!.recipe;
+    const reserved: [Ingredient, number][] = [];
+    for (const [ingredient, qty] of recipe.requirements) {
+      if (!ingredient.reserve(qty)) {
+        for (const [ing, q] of reserved) ing.release(q); // roll back
+        this.paymentMethod!.refund(recipe.priceCents);
+        this.setState(this.outOfStockState);
+        console.log(`  Out of stock: missing ${ingredient.name} -- refunded and rolled back`);
+        return;
+      }
+      reserved.push([ingredient, qty]);
+    }
+    console.log(`  Pouring ${this.selectedBeverage}...`);
+    this.selectedBeverage = null;
+    this.setState(this.idleState);
+  }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const machine = new CoffeeMachine();
+
+  const water = new Ingredient(&#x27;water&#x27;, 500, 1000);
+  const milk = new Ingredient(&#x27;milk&#x27;, 500, 1000);
+  const coffee = new Ingredient(&#x27;coffee&#x27;, 100, 500);
+  const sugar = new Ingredient(&#x27;sugar&#x27;, 200, 500);
+  machine.addIngredient(water);
+  machine.addIngredient(milk);
+  machine.addIngredient(coffee);
+  machine.addIngredient(sugar);
+
+  const latte = new Beverage(&#x27;Latte&#x27;, new Recipe(new Map([[water, 100], [milk, 150], [coffee, 30]]), 250));
+  const espresso = new Beverage(&#x27;Espresso&#x27;, new Recipe(new Map([[water, 50], [coffee, 40]]), 150));
+  machine.addBeverage(latte);
+  machine.addBeverage(espresso);
+
+  console.log(&#x27;-- Happy path: buy a Latte with cash --&#x27;);
+  machine.select(latte);
+  const cash = new CashPayment();
+  cash.insert(300);
+  machine.pay(cash, 300);
+  machine.dispense();
+
+  console.log(&#x27;\n-- Buy several Espressos with card until coffee runs out --&#x27;);
+  for (let i = 0; i &lt; 12; i++) {
+    machine.select(espresso);
+    if (machine.currentState === machine.selectingState) {
+      const card = new CardPayment();
+      machine.pay(card, 150);
+    }
+    machine.dispense();
+    if (machine.currentState === machine.outOfStockState) {
+      console.log(`  Machine reports out of stock after ${i + 1} attempts`);
+      break;
+    }
+  }
+
+  console.log(&#x27;\n-- Technician refills coffee, machine recovers --&#x27;);
+  machine.refill(coffee, 200);
+  machine.cancel(); // reset from OutOfStock -&gt; Idle
+  machine.select(espresso);
+  const card2 = new CardPayment();
+  machine.pay(card2, 150);
+  machine.dispense();
+
+  console.log(&#x27;\n-- Cancel after paying (refund) --&#x27;);
+  machine.select(latte);
+  const cash2 = new CashPayment();
+  cash2.insert(250);
+  machine.pay(cash2, 250);
+  machine.cancel();
+}
+
+main();
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p7.html">&larr; 7. Notification System</a><a class="prevnext-link next" href="p9.html">9. File System &rarr;</a></div>
 </div>
 </main>
 

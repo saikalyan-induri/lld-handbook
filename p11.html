@@ -61,7 +61,8 @@
 <a href="#p11-y">Y. Scaling Boundary</a><a href="#p11-z">Z. Failure Scenarios</a><a href="#p11-aa">AA. Bad Designs</a>
 <a href="#p11-ab">AB. Trade-Offs</a><a href="#p11-ac">AC. Interviewer Evaluation</a><a href="#p11-ad">AD. Simulation</a>
 <a href="#p11-ae">AE. Source Comparison</a><a href="#p11-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p11">Jump to section:</label><select id="jump-p11" class="jump-select" data-jump-select><option value="p11-a">A. Realistic Interview Prompt</option><option value="p11-b">B. Difficulty</option><option value="p11-c">C. What This Problem Tests</option><option value="p11-d">D. Requirements</option><option value="p11-e">E. Clarifying Questions</option><option value="p11-f">F. Assumptions</option><option value="p11-g">G. Actors</option><option value="p11-h">H. Core Domain Entities</option><option value="p11-i">I. Class Relationships</option><option value="p11-j">J. Class Diagram</option><option value="p11-k">K. Responsibility Mapping</option><option value="p11-l">L. SOLID Analysis</option><option value="p11-m">M. Design Patterns</option><option value="p11-n">N. What Is Likely to Change?</option><option value="p11-o">O. Design Evolution</option><option value="p11-p">P. API / Interface Design</option><option value="p11-q">Q. Pseudocode — Critical Logic</option><option value="p11-r">R. End-to-End Use Case</option><option value="p11-s">S. Data Structures</option><option value="p11-t">T. Complexity Analysis</option><option value="p11-u">U. Testing Strategy</option><option value="p11-v">V. Interviewer Follow-Ups</option><option value="p11-w">W. Concurrency</option><option value="p11-x">X. Persistence</option><option value="p11-y">Y. Scaling Boundary</option><option value="p11-z">Z. Failure Scenarios</option><option value="p11-aa">AA. Common Bad Designs</option><option value="p11-ab">AB. Design Trade-Offs</option><option value="p11-ac">AC. Interviewer Evaluation</option><option value="p11-ad">AD. Interview Simulation</option><option value="p11-ae">AE. Online Solution Comparison</option><option value="p11-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p11-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p11">Jump to section:</label><select id="jump-p11" class="jump-select" data-jump-select><option value="p11-a">A. Realistic Interview Prompt</option><option value="p11-b">B. Difficulty</option><option value="p11-c">C. What This Problem Tests</option><option value="p11-d">D. Requirements</option><option value="p11-e">E. Clarifying Questions</option><option value="p11-f">F. Assumptions</option><option value="p11-g">G. Actors</option><option value="p11-h">H. Core Domain Entities</option><option value="p11-i">I. Class Relationships</option><option value="p11-j">J. Class Diagram</option><option value="p11-k">K. Responsibility Mapping</option><option value="p11-l">L. SOLID Analysis</option><option value="p11-m">M. Design Patterns</option><option value="p11-n">N. What Is Likely to Change?</option><option value="p11-o">O. Design Evolution</option><option value="p11-p">P. API / Interface Design</option><option value="p11-q">Q. Pseudocode — Critical Logic</option><option value="p11-r">R. End-to-End Use Case</option><option value="p11-s">S. Data Structures</option><option value="p11-t">T. Complexity Analysis</option><option value="p11-u">U. Testing Strategy</option><option value="p11-v">V. Interviewer Follow-Ups</option><option value="p11-w">W. Concurrency</option><option value="p11-x">X. Persistence</option><option value="p11-y">Y. Scaling Boundary</option><option value="p11-z">Z. Failure Scenarios</option><option value="p11-aa">AA. Common Bad Designs</option><option value="p11-ab">AB. Design Trade-Offs</option><option value="p11-ac">AC. Interviewer Evaluation</option><option value="p11-ad">AD. Interview Simulation</option><option value="p11-ae">AE. Online Solution Comparison</option><option value="p11-af">AF. Interview Cheat Sheet</option><option value="p11-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p11-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design the control system for a bank of elevators in a building. Support external hall calls (up/down buttons on each floor) and internal car calls (floor buttons inside each cabin), and decide which elevator services which request."</div>
@@ -572,7 +573,1218 @@ selectFloor("B", 7) → addStop(7) → doors close → MovingState → arrives 7
 <tr><td><strong>Top follow-ups</strong></td><td>Zoning strategy, mid-transit fault recovery, multi-building LLD/HLD boundary</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Elevator class deciding fleet-wide assignment itself; FIFO instead of SCAN-ordered stops; non-atomic select-then-assign; Singleton Dispatcher</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design multi-building fleet management or ML-based predictive dispatch unless asked</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p10.html">&larr; 10. Pub-Sub / Message Queue</a><a class="prevnext-link next" href="p12.html">12. Tic-Tac-Toe / Board Game Engine &rarr;</a></div>
+</table>
+
+<h3 id="p11-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.*;
+
+/**
+ * Elevator System — full class-diagram implementation.
+ *
+ * Elevator delegates behavior to its current ElevatorState (State pattern) so illegal
+ * transitions (e.g. opening doors while moving) are structurally unrepresentable.
+ * Dispatcher uses a swappable DispatchStrategy to select a candidate elevator, then
+ * atomically claims the hall call under a per-elevator lock (closing the check-then-act
+ * gap between &quot;selected&quot; and &quot;claimed&quot;).
+ */
+public class p11 {
+
+    enum Direction { UP, DOWN, IDLE }
+    enum DoorState { OPEN, CLOSED }
+
+    // ---------- Value objects ----------
+    static final class HallCall {
+        final int floor;
+        final Direction direction;
+        HallCall(int floor, Direction direction) { this.floor = floor; this.direction = direction; }
+    }
+
+    static final class CarCall {
+        final int destinationFloor;
+        CarCall(int destinationFloor) { this.destinationFloor = destinationFloor; }
+    }
+
+    // ---------- ElevatorState (interface, State pattern) ----------
+    interface ElevatorState {
+        void handleArrival(Elevator e);
+        boolean canOpenDoor();
+        String name();
+    }
+
+    static final class IdleState implements ElevatorState {
+        @Override public void handleArrival(Elevator e) { /* nothing pending; stays idle */ }
+        @Override public boolean canOpenDoor() { return true; }
+        @Override public String name() { return &quot;IDLE&quot;; }
+    }
+
+    static final class MovingState implements ElevatorState {
+        @Override public void handleArrival(Elevator e) {
+            // The cabin reports arrival at a floor it must serve -&gt; transition to DoorsOpenState.
+            e.setState(new DoorsOpenState());
+            e.openDoor();
+        }
+        @Override public boolean canOpenDoor() { return false; } // cannot open while moving
+        @Override public String name() { return &quot;MOVING&quot;; }
+    }
+
+    static final class DoorsOpenState implements ElevatorState {
+        @Override public void handleArrival(Elevator e) { /* already stopped */ }
+        @Override public boolean canOpenDoor() { return true; }
+        @Override public String name() { return &quot;DOORS_OPEN&quot;; }
+    }
+
+    static final class OutOfServiceState implements ElevatorState {
+        @Override public void handleArrival(Elevator e) { /* no-op: not serving calls */ }
+        @Override public boolean canOpenDoor() { return false; }
+        @Override public String name() { return &quot;OUT_OF_SERVICE&quot;; }
+    }
+
+    // ---------- Elevator ----------
+    /** Owns one cabin&#x27;s physical state and its own pending-stop queue. */
+    static final class Elevator {
+        final String id;
+        final int capacity;
+        volatile int currentFloor = 0;
+        volatile Direction direction = Direction.IDLE;
+        volatile DoorState doorState = DoorState.CLOSED;
+        private ElevatorState state = new IdleState();
+        private final TreeSet&lt;Integer&gt; upStops = new TreeSet&lt;&gt;();
+        private final TreeSet&lt;Integer&gt; downStops = new TreeSet&lt;&gt;();
+        final ReentrantLock lock = new ReentrantLock();
+
+        Elevator(String id, int capacity) { this.id = id; this.capacity = capacity; }
+
+        void setState(ElevatorState state) { this.state = state; }
+        ElevatorState getState() { return state; }
+
+        boolean isInService() { return !(state instanceof OutOfServiceState); }
+        boolean isFull() { return false; } // capacity tracking simplified for this demo
+
+        /** Add a stop request; SCAN-style: keep the elevator moving in its current direction if possible. */
+        void addStop(int floor) {
+            if (floor &gt; currentFloor) upStops.add(floor);
+            else if (floor &lt; currentFloor) downStops.add(floor);
+            else { /* already there: open doors immediately */ }
+            if (direction == Direction.IDLE &amp;&amp; (!upStops.isEmpty() || !downStops.isEmpty())) {
+                direction = !upStops.isEmpty() ? Direction.UP : Direction.DOWN;
+                setState(new MovingState());
+            }
+        }
+
+        /** Advance the cabin by one floor toward its next pending stop (SCAN algorithm). */
+        void step() {
+            if (!(state instanceof MovingState) &amp;&amp; !(state instanceof IdleState)) return;
+            if (direction == Direction.UP) {
+                if (upStops.isEmpty()) {
+                    direction = downStops.isEmpty() ? Direction.IDLE : Direction.DOWN;
+                    if (direction == Direction.IDLE) setState(new IdleState());
+                    return;
+                }
+                currentFloor++;
+                if (upStops.contains(currentFloor)) {
+                    upStops.remove(currentFloor);
+                    state.handleArrival(this);
+                }
+            } else if (direction == Direction.DOWN) {
+                if (downStops.isEmpty()) {
+                    direction = upStops.isEmpty() ? Direction.IDLE : Direction.UP;
+                    if (direction == Direction.IDLE) setState(new IdleState());
+                    return;
+                }
+                currentFloor--;
+                if (downStops.contains(currentFloor)) {
+                    downStops.remove(currentFloor);
+                    state.handleArrival(this);
+                }
+            }
+        }
+
+        void openDoor() {
+            if (!state.canOpenDoor()) throw new IllegalStateException(&quot;Cannot open doors in state &quot; + state.name());
+            doorState = DoorState.OPEN;
+        }
+
+        void closeDoor() {
+            doorState = DoorState.CLOSED;
+            // Resume motion after servicing this floor, or go idle if nothing left.
+            if (!upStops.isEmpty() || !downStops.isEmpty()) setState(new MovingState());
+            else { direction = Direction.IDLE; setState(new IdleState()); }
+        }
+
+        void setOutOfService() { setState(new OutOfServiceState()); direction = Direction.IDLE; }
+
+        List&lt;Integer&gt; pendingStops() {
+            List&lt;Integer&gt; all = new ArrayList&lt;&gt;(upStops);
+            all.addAll(downStops);
+            return all;
+        }
+    }
+
+    // ---------- DispatchStrategy (interface, Strategy pattern) ----------
+    interface DispatchStrategy {
+        Elevator selectElevator(HallCall call, List&lt;Elevator&gt; elevators);
+    }
+
+    static final class NearestCarStrategy implements DispatchStrategy {
+        @Override
+        public Elevator selectElevator(HallCall call, List&lt;Elevator&gt; elevators) {
+            Elevator best = null;
+            int bestDistance = Integer.MAX_VALUE;
+            for (Elevator e : elevators) {
+                if (!e.isInService()) continue;
+                if (e.direction == call.direction || e.direction == Direction.IDLE) {
+                    int d = Math.abs(e.currentFloor - call.floor);
+                    if (d &lt; bestDistance) { best = e; bestDistance = d; }
+                }
+            }
+            return best;
+        }
+    }
+
+    /** Zones the building into bands; prefers an elevator already assigned near that band. */
+    static final class ScanZoneStrategy implements DispatchStrategy {
+        private final int zoneSize;
+        ScanZoneStrategy(int zoneSize) { this.zoneSize = zoneSize; }
+
+        @Override
+        public Elevator selectElevator(HallCall call, List&lt;Elevator&gt; elevators) {
+            int callZone = call.floor / zoneSize;
+            Elevator best = null;
+            int bestScore = Integer.MAX_VALUE;
+            for (Elevator e : elevators) {
+                if (!e.isInService()) continue;
+                int elevatorZone = e.currentFloor / zoneSize;
+                int zoneDistance = Math.abs(elevatorZone - callZone) * 1000;
+                int floorDistance = Math.abs(e.currentFloor - call.floor);
+                int score = zoneDistance + floorDistance;
+                if (score &lt; bestScore) { best = e; bestScore = score; }
+            }
+            return best;
+        }
+    }
+
+    // ---------- Dispatcher ----------
+    /** Atomically assigns each incoming hall call to one elevator via the active strategy. */
+    static final class Dispatcher {
+        private final List&lt;Elevator&gt; elevators;
+        private volatile DispatchStrategy strategy;
+
+        Dispatcher(List&lt;Elevator&gt; elevators, DispatchStrategy strategy) {
+            this.elevators = elevators;
+            this.strategy = strategy;
+        }
+
+        void setStrategy(DispatchStrategy strategy) { this.strategy = strategy; }
+
+        /** Select then atomically claim; retries against remaining elevators if claim fails. */
+        void dispatch(HallCall call) {
+            List&lt;Elevator&gt; remaining = new ArrayList&lt;&gt;(elevators);
+            while (!remaining.isEmpty()) {
+                Elevator candidate = strategy.selectElevator(call, remaining);
+                if (candidate == null) return; // no elevator can currently serve this call
+                candidate.lock.lock();
+                try {
+                    if (candidate.isInService() &amp;&amp; !candidate.isFull()) {
+                        candidate.addStop(call.floor);
+                        return; // claimed
+                    }
+                } finally {
+                    candidate.lock.unlock();
+                }
+                // candidate became unavailable between selection and claim -- retry with the rest
+                remaining.remove(candidate);
+            }
+        }
+    }
+
+    // ---------- ElevatorController (facade) ----------
+    static final class ElevatorStatus {
+        final String id; final int currentFloor; final Direction direction; final DoorState doorState; final String state;
+        ElevatorStatus(Elevator e) {
+            this.id = e.id; this.currentFloor = e.currentFloor; this.direction = e.direction;
+            this.doorState = e.doorState; this.state = e.getState().name();
+        }
+        @Override public String toString() {
+            return String.format(&quot;Elevator[%s] floor=%d dir=%s door=%s state=%s&quot;, id, currentFloor, direction, doorState, state);
+        }
+    }
+
+    static final class ElevatorController {
+        private final Dispatcher dispatcher;
+        private final Map&lt;String, Elevator&gt; elevators = new LinkedHashMap&lt;&gt;();
+
+        ElevatorController(List&lt;Elevator&gt; elevatorList, DispatchStrategy strategy) {
+            for (Elevator e : elevatorList) elevators.put(e.id, e);
+            this.dispatcher = new Dispatcher(elevatorList, strategy);
+        }
+
+        void requestElevator(int floor, Direction dir) {
+            dispatcher.dispatch(new HallCall(floor, dir));
+        }
+
+        void selectFloor(String elevatorId, int floor) {
+            Elevator e = elevators.get(elevatorId);
+            if (e == null) throw new IllegalArgumentException(&quot;No such elevator: &quot; + elevatorId);
+            e.lock.lock();
+            try {
+                e.addStop(floor); // car call: destination chosen from inside the cabin
+            } finally {
+                e.lock.unlock();
+            }
+        }
+
+        void setOutOfService(String elevatorId) {
+            Elevator e = elevators.get(elevatorId);
+            if (e == null) return;
+            e.lock.lock();
+            try {
+                List&lt;Integer&gt; pending = e.pendingStops();
+                e.setOutOfService();
+                // Redistribute this elevator&#x27;s pending requests to the rest of the fleet.
+                for (int floor : pending) {
+                    dispatcher.dispatch(new HallCall(floor, Direction.IDLE));
+                }
+            } finally {
+                e.lock.unlock();
+            }
+        }
+
+        ElevatorStatus getStatus(String elevatorId) {
+            Elevator e = elevators.get(elevatorId);
+            if (e == null) throw new IllegalArgumentException(&quot;No such elevator: &quot; + elevatorId);
+            return new ElevatorStatus(e);
+        }
+
+        /**
+         * Advance every in-service elevator by one simulated time-step. An elevator that
+         * just opened its doors (previous tick&#x27;s arrival) spends this tick &quot;boarding&quot; and
+         * closes its doors, resuming motion on the following tick.
+         */
+        void tick() {
+            for (Elevator e : elevators.values()) {
+                e.lock.lock();
+                try {
+                    if (e.getState() instanceof DoorsOpenState) e.closeDoor();
+                    else e.step();
+                } finally {
+                    e.lock.unlock();
+                }
+            }
+        }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) {
+        List&lt;Elevator&gt; cabins = List.of(new Elevator(&quot;E1&quot;, 8), new Elevator(&quot;E2&quot;, 8));
+        ElevatorController controller = new ElevatorController(cabins, new NearestCarStrategy());
+
+        controller.requestElevator(5, Direction.UP);
+        controller.requestElevator(2, Direction.DOWN);
+        controller.selectFloor(&quot;E1&quot;, 8);
+
+        for (int i = 0; i &lt; 12; i++) {
+            controller.tick();
+        }
+
+        System.out.println(controller.getStatus(&quot;E1&quot;));
+        System.out.println(controller.getStatus(&quot;E2&quot;));
+
+        controller.setOutOfService(&quot;E2&quot;);
+        System.out.println(&quot;After maintenance: &quot; + controller.getStatus(&quot;E2&quot;));
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Elevator System -- full class-diagram implementation.
+//
+// Elevator delegates behavior to its current ElevatorState (State pattern) so illegal
+// transitions (e.g. opening doors while moving) are structurally unrepresentable.
+// Dispatcher uses a swappable DispatchStrategy to select a candidate elevator, then
+// atomically claims the hall call under a per-elevator lock.
+
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+#include &lt;map&gt;
+#include &lt;set&gt;
+#include &lt;memory&gt;
+#include &lt;mutex&gt;
+#include &lt;algorithm&gt;
+#include &lt;stdexcept&gt;
+#include &lt;cstdlib&gt;
+
+enum class Direction { UP, DOWN, IDLE };
+enum class DoorState { OPEN, CLOSED };
+
+std::string toString(Direction d) {
+    switch (d) { case Direction::UP: return &quot;UP&quot;; case Direction::DOWN: return &quot;DOWN&quot;; default: return &quot;IDLE&quot;; }
+}
+std::string toString(DoorState d) { return d == DoorState::OPEN ? &quot;OPEN&quot; : &quot;CLOSED&quot;; }
+
+// ---------- Value objects ----------
+struct HallCall { int floor; Direction direction; };
+struct CarCall { int destinationFloor; };
+
+class Elevator; // fwd decl
+
+// ---------- ElevatorState (interface, State pattern) ----------
+struct ElevatorState {
+    virtual ~ElevatorState() = default;
+    virtual void handleArrival(Elevator&amp; e) = 0;
+    virtual bool canOpenDoor() const = 0;
+    virtual std::string name() const = 0;
+};
+
+// ---------- Elevator ----------
+// Owns one cabin&#x27;s physical state and its own pending-stop queue.
+class Elevator {
+public:
+    std::string id;
+    int capacity;
+    int currentFloor = 0;
+    Direction direction = Direction::IDLE;
+    DoorState doorState = DoorState::CLOSED;
+    std::mutex lock;
+
+    Elevator(std::string id_, int capacity_) : id(std::move(id_)), capacity(capacity_) {
+        state_ = makeIdle();
+    }
+
+    ElevatorState* getState() { return state_.get(); }
+    void setState(std::unique_ptr&lt;ElevatorState&gt; s) { state_ = std::move(s); }
+
+    bool isInService() const { return stateName_ != &quot;OUT_OF_SERVICE&quot;; }
+    bool isFull() const { return false; } // capacity tracking simplified for this demo
+
+    // Add a stop request; SCAN-style: keep the elevator moving in its current direction if possible.
+    void addStop(int floor) {
+        if (floor &gt; currentFloor) upStops_.insert(floor);
+        else if (floor &lt; currentFloor) downStops_.insert(floor);
+        if (direction == Direction::IDLE &amp;&amp; (!upStops_.empty() || !downStops_.empty())) {
+            direction = !upStops_.empty() ? Direction::UP : Direction::DOWN;
+            setMoving();
+        }
+    }
+
+    // Advance the cabin by one floor toward its next pending stop (SCAN algorithm).
+    void step();
+
+    void openDoor() {
+        if (!state_-&gt;canOpenDoor()) throw std::runtime_error(&quot;Cannot open doors in state &quot; + state_-&gt;name());
+        doorState = DoorState::OPEN;
+    }
+
+    void closeDoor() {
+        doorState = DoorState::CLOSED;
+        if (!upStops_.empty() || !downStops_.empty()) setMoving();
+        else { direction = Direction::IDLE; setIdle(); }
+    }
+
+    void setOutOfService();
+
+    std::vector&lt;int&gt; pendingStops() const {
+        std::vector&lt;int&gt; all(upStops_.begin(), upStops_.end());
+        all.insert(all.end(), downStops_.begin(), downStops_.end());
+        return all;
+    }
+
+    void setIdle();
+    void setMoving();
+    void setDoorsOpen();
+
+private:
+    std::unique_ptr&lt;ElevatorState&gt; state_;
+    std::string stateName_ = &quot;IDLE&quot;;
+    std::set&lt;int&gt; upStops_;
+    std::set&lt;int&gt; downStops_;
+
+    std::unique_ptr&lt;ElevatorState&gt; makeIdle();
+    std::unique_ptr&lt;ElevatorState&gt; makeMoving();
+    std::unique_ptr&lt;ElevatorState&gt; makeDoorsOpen();
+    std::unique_ptr&lt;ElevatorState&gt; makeOutOfService();
+
+    friend struct IdleState;
+    friend struct MovingState;
+    friend struct DoorsOpenState;
+    friend struct OutOfServiceState;
+};
+
+struct IdleState : ElevatorState {
+    void handleArrival(Elevator&amp;) override {}
+    bool canOpenDoor() const override { return true; }
+    std::string name() const override { return &quot;IDLE&quot;; }
+};
+
+struct MovingState : ElevatorState {
+    void handleArrival(Elevator&amp; e) override {
+        // The cabin reports arrival at a floor it must serve -&gt; transition to DoorsOpenState.
+        e.setDoorsOpen();
+        e.openDoor();
+    }
+    bool canOpenDoor() const override { return false; } // cannot open while moving
+    std::string name() const override { return &quot;MOVING&quot;; }
+};
+
+struct DoorsOpenState : ElevatorState {
+    void handleArrival(Elevator&amp;) override {}
+    bool canOpenDoor() const override { return true; }
+    std::string name() const override { return &quot;DOORS_OPEN&quot;; }
+};
+
+struct OutOfServiceState : ElevatorState {
+    void handleArrival(Elevator&amp;) override {}
+    bool canOpenDoor() const override { return false; }
+    std::string name() const override { return &quot;OUT_OF_SERVICE&quot;; }
+};
+
+std::unique_ptr&lt;ElevatorState&gt; Elevator::makeIdle() { return std::make_unique&lt;IdleState&gt;(); }
+std::unique_ptr&lt;ElevatorState&gt; Elevator::makeMoving() { return std::make_unique&lt;MovingState&gt;(); }
+std::unique_ptr&lt;ElevatorState&gt; Elevator::makeDoorsOpen() { return std::make_unique&lt;DoorsOpenState&gt;(); }
+std::unique_ptr&lt;ElevatorState&gt; Elevator::makeOutOfService() { return std::make_unique&lt;OutOfServiceState&gt;(); }
+
+void Elevator::setIdle() { state_ = makeIdle(); stateName_ = &quot;IDLE&quot;; }
+void Elevator::setMoving() { state_ = makeMoving(); stateName_ = &quot;MOVING&quot;; }
+void Elevator::setDoorsOpen() { state_ = makeDoorsOpen(); stateName_ = &quot;DOORS_OPEN&quot;; }
+void Elevator::setOutOfService() { state_ = makeOutOfService(); stateName_ = &quot;OUT_OF_SERVICE&quot;; direction = Direction::IDLE; }
+
+void Elevator::step() {
+    if (stateName_ != &quot;MOVING&quot; &amp;&amp; stateName_ != &quot;IDLE&quot;) return;
+    if (direction == Direction::UP) {
+        if (upStops_.empty()) {
+            direction = downStops_.empty() ? Direction::IDLE : Direction::DOWN;
+            if (direction == Direction::IDLE) setIdle();
+            return;
+        }
+        currentFloor++;
+        if (upStops_.count(currentFloor)) {
+            upStops_.erase(currentFloor);
+            state_-&gt;handleArrival(*this);
+        }
+    } else if (direction == Direction::DOWN) {
+        if (downStops_.empty()) {
+            direction = upStops_.empty() ? Direction::IDLE : Direction::UP;
+            if (direction == Direction::IDLE) setIdle();
+            return;
+        }
+        currentFloor--;
+        if (downStops_.count(currentFloor)) {
+            downStops_.erase(currentFloor);
+            state_-&gt;handleArrival(*this);
+        }
+    }
+}
+
+// ---------- DispatchStrategy (interface, Strategy pattern) ----------
+struct DispatchStrategy {
+    virtual ~DispatchStrategy() = default;
+    virtual Elevator* selectElevator(const HallCall&amp; call, const std::vector&lt;Elevator*&gt;&amp; elevators) = 0;
+};
+
+struct NearestCarStrategy : DispatchStrategy {
+    Elevator* selectElevator(const HallCall&amp; call, const std::vector&lt;Elevator*&gt;&amp; elevators) override {
+        Elevator* best = nullptr;
+        int bestDistance = INT32_MAX;
+        for (auto* e : elevators) {
+            if (!e-&gt;isInService()) continue;
+            if (e-&gt;direction == call.direction || e-&gt;direction == Direction::IDLE) {
+                int d = std::abs(e-&gt;currentFloor - call.floor);
+                if (d &lt; bestDistance) { best = e; bestDistance = d; }
+            }
+        }
+        return best;
+    }
+};
+
+// Zones the building into bands; prefers an elevator already assigned near that band.
+struct ScanZoneStrategy : DispatchStrategy {
+    int zoneSize;
+    explicit ScanZoneStrategy(int zoneSize_) : zoneSize(zoneSize_) {}
+    Elevator* selectElevator(const HallCall&amp; call, const std::vector&lt;Elevator*&gt;&amp; elevators) override {
+        int callZone = call.floor / zoneSize;
+        Elevator* best = nullptr;
+        int bestScore = INT32_MAX;
+        for (auto* e : elevators) {
+            if (!e-&gt;isInService()) continue;
+            int elevatorZone = e-&gt;currentFloor / zoneSize;
+            int score = std::abs(elevatorZone - callZone) * 1000 + std::abs(e-&gt;currentFloor - call.floor);
+            if (score &lt; bestScore) { best = e; bestScore = score; }
+        }
+        return best;
+    }
+};
+
+// ---------- Dispatcher ----------
+// Atomically assigns each incoming hall call to one elevator via the active strategy.
+class Dispatcher {
+public:
+    Dispatcher(std::vector&lt;Elevator*&gt; elevators, std::shared_ptr&lt;DispatchStrategy&gt; strategy)
+        : elevators_(std::move(elevators)), strategy_(std::move(strategy)) {}
+
+    void setStrategy(std::shared_ptr&lt;DispatchStrategy&gt; strategy) { strategy_ = std::move(strategy); }
+
+    // Select then atomically claim; retries against remaining elevators if claim fails.
+    void dispatch(const HallCall&amp; call) {
+        std::vector&lt;Elevator*&gt; remaining = elevators_;
+        while (!remaining.empty()) {
+            Elevator* candidate = strategy_-&gt;selectElevator(call, remaining);
+            if (candidate == nullptr) return; // no elevator can currently serve this call
+            {
+                std::lock_guard&lt;std::mutex&gt; guard(candidate-&gt;lock);
+                if (candidate-&gt;isInService() &amp;&amp; !candidate-&gt;isFull()) {
+                    candidate-&gt;addStop(call.floor);
+                    return; // claimed
+                }
+            }
+            remaining.erase(std::remove(remaining.begin(), remaining.end(), candidate), remaining.end());
+        }
+    }
+
+private:
+    std::vector&lt;Elevator*&gt; elevators_;
+    std::shared_ptr&lt;DispatchStrategy&gt; strategy_;
+};
+
+// ---------- ElevatorController (facade) ----------
+struct ElevatorStatus {
+    std::string id; int currentFloor; Direction direction; DoorState doorState; std::string state;
+};
+
+std::ostream&amp; operator&lt;&lt;(std::ostream&amp; os, const ElevatorStatus&amp; s) {
+    os &lt;&lt; &quot;Elevator[&quot; &lt;&lt; s.id &lt;&lt; &quot;] floor=&quot; &lt;&lt; s.currentFloor &lt;&lt; &quot; dir=&quot; &lt;&lt; toString(s.direction)
+       &lt;&lt; &quot; door=&quot; &lt;&lt; toString(s.doorState) &lt;&lt; &quot; state=&quot; &lt;&lt; s.state;
+    return os;
+}
+
+class ElevatorController {
+public:
+    ElevatorController(std::vector&lt;std::unique_ptr&lt;Elevator&gt;&gt; elevatorList, std::shared_ptr&lt;DispatchStrategy&gt; strategy) {
+        elevators_ = std::move(elevatorList);
+        std::vector&lt;Elevator*&gt; raw;
+        for (auto&amp; e : elevators_) raw.push_back(e.get());
+        dispatcher_ = std::make_unique&lt;Dispatcher&gt;(raw, std::move(strategy));
+    }
+
+    void requestElevator(int floor, Direction dir) {
+        dispatcher_-&gt;dispatch(HallCall{floor, dir});
+    }
+
+    void selectFloor(const std::string&amp; elevatorId, int floor) {
+        Elevator* e = find(elevatorId);
+        std::lock_guard&lt;std::mutex&gt; guard(e-&gt;lock);
+        e-&gt;addStop(floor); // car call: destination chosen from inside the cabin
+    }
+
+    void setOutOfService(const std::string&amp; elevatorId) {
+        Elevator* e = find(elevatorId);
+        std::vector&lt;int&gt; pending;
+        {
+            std::lock_guard&lt;std::mutex&gt; guard(e-&gt;lock);
+            pending = e-&gt;pendingStops();
+            e-&gt;setOutOfService();
+        }
+        // Redistribute this elevator&#x27;s pending requests to the rest of the fleet.
+        for (int floor : pending) dispatcher_-&gt;dispatch(HallCall{floor, Direction::IDLE});
+    }
+
+    ElevatorStatus getStatus(const std::string&amp; elevatorId) {
+        Elevator* e = find(elevatorId);
+        return ElevatorStatus{e-&gt;id, e-&gt;currentFloor, e-&gt;direction, e-&gt;doorState, e-&gt;getState()-&gt;name()};
+    }
+
+    // Advance every in-service elevator by one simulated time-step; an elevator that
+    // just opened its doors spends this tick &quot;boarding&quot; and closes them, resuming next tick.
+    void tick() {
+        for (auto&amp; e : elevators_) {
+            std::lock_guard&lt;std::mutex&gt; guard(e-&gt;lock);
+            if (e-&gt;getState()-&gt;name() == &quot;DOORS_OPEN&quot;) e-&gt;closeDoor();
+            else e-&gt;step();
+        }
+    }
+
+private:
+    std::vector&lt;std::unique_ptr&lt;Elevator&gt;&gt; elevators_;
+    std::unique_ptr&lt;Dispatcher&gt; dispatcher_;
+
+    Elevator* find(const std::string&amp; id) {
+        for (auto&amp; e : elevators_) if (e-&gt;id == id) return e.get();
+        throw std::invalid_argument(&quot;No such elevator: &quot; + id);
+    }
+};
+
+int main() {
+    std::vector&lt;std::unique_ptr&lt;Elevator&gt;&gt; cabins;
+    cabins.push_back(std::make_unique&lt;Elevator&gt;(&quot;E1&quot;, 8));
+    cabins.push_back(std::make_unique&lt;Elevator&gt;(&quot;E2&quot;, 8));
+
+    ElevatorController controller(std::move(cabins), std::make_shared&lt;NearestCarStrategy&gt;());
+
+    controller.requestElevator(5, Direction::UP);
+    controller.requestElevator(2, Direction::DOWN);
+    controller.selectFloor(&quot;E1&quot;, 8);
+
+    for (int i = 0; i &lt; 12; i++) controller.tick();
+
+    std::cout &lt;&lt; controller.getStatus(&quot;E1&quot;) &lt;&lt; &quot;\n&quot;;
+    std::cout &lt;&lt; controller.getStatus(&quot;E2&quot;) &lt;&lt; &quot;\n&quot;;
+
+    controller.setOutOfService(&quot;E2&quot;);
+    std::cout &lt;&lt; &quot;After maintenance: &quot; &lt;&lt; controller.getStatus(&quot;E2&quot;) &lt;&lt; &quot;\n&quot;;
+
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">&#x27;use strict&#x27;;
+/**
+ * Elevator System -- full class-diagram implementation.
+ *
+ * Elevator delegates behavior to its current ElevatorState (State pattern) so illegal
+ * transitions (e.g. opening doors while moving) are structurally unrepresentable.
+ * Dispatcher uses a swappable DispatchStrategy to select a candidate elevator, then
+ * atomically claims the hall call under a per-elevator &quot;lock&quot; (a synchronous critical
+ * section -- Node has no preemptive threading, but the same check-then-act gap this
+ * models is real once you add async I/O around dispatch, so we still guard it explicitly).
+ */
+
+const Direction = { UP: &#x27;UP&#x27;, DOWN: &#x27;DOWN&#x27;, IDLE: &#x27;IDLE&#x27; };
+const DoorState = { OPEN: &#x27;OPEN&#x27;, CLOSED: &#x27;CLOSED&#x27; };
+
+// ---------- ElevatorState (interface, State pattern) ----------
+class ElevatorState {
+  handleArrival(_elevator) { throw new Error(&#x27;not implemented&#x27;); }
+  canOpenDoor() { throw new Error(&#x27;not implemented&#x27;); }
+  name() { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class IdleState extends ElevatorState {
+  handleArrival(_e) {}
+  canOpenDoor() { return true; }
+  name() { return &#x27;IDLE&#x27;; }
+}
+
+class MovingState extends ElevatorState {
+  handleArrival(e) {
+    // The cabin reports arrival at a floor it must serve -&gt; transition to DoorsOpenState.
+    e.setState(new DoorsOpenState());
+    e.openDoor();
+  }
+  canOpenDoor() { return false; } // cannot open while moving
+  name() { return &#x27;MOVING&#x27;; }
+}
+
+class DoorsOpenState extends ElevatorState {
+  handleArrival(_e) {}
+  canOpenDoor() { return true; }
+  name() { return &#x27;DOORS_OPEN&#x27;; }
+}
+
+class OutOfServiceState extends ElevatorState {
+  handleArrival(_e) {}
+  canOpenDoor() { return false; }
+  name() { return &#x27;OUT_OF_SERVICE&#x27;; }
+}
+
+// ---------- Elevator ----------
+// Owns one cabin&#x27;s physical state and its own pending-stop queue.
+class Elevator {
+  constructor(id, capacity) {
+    this.id = id;
+    this.capacity = capacity;
+    this.currentFloor = 0;
+    this.direction = Direction.IDLE;
+    this.doorState = DoorState.CLOSED;
+    this._state = new IdleState();
+    this._upStops = new Set();
+    this._downStops = new Set();
+  }
+
+  setState(state) { this._state = state; }
+  getState() { return this._state; }
+
+  isInService() { return !(this._state instanceof OutOfServiceState); }
+  isFull() { return false; } // capacity tracking simplified for this demo
+
+  // Add a stop request; SCAN-style: keep the elevator moving in its current direction if possible.
+  addStop(floor) {
+    if (floor &gt; this.currentFloor) this._upStops.add(floor);
+    else if (floor &lt; this.currentFloor) this._downStops.add(floor);
+    if (this.direction === Direction.IDLE &amp;&amp; (this._upStops.size &gt; 0 || this._downStops.size &gt; 0)) {
+      this.direction = this._upStops.size &gt; 0 ? Direction.UP : Direction.DOWN;
+      this.setState(new MovingState());
+    }
+  }
+
+  // Advance the cabin by one floor toward its next pending stop (SCAN algorithm).
+  step() {
+    const name = this._state.name();
+    if (name !== &#x27;MOVING&#x27; &amp;&amp; name !== &#x27;IDLE&#x27;) return;
+    if (this.direction === Direction.UP) {
+      if (this._upStops.size === 0) {
+        this.direction = this._downStops.size === 0 ? Direction.IDLE : Direction.DOWN;
+        if (this.direction === Direction.IDLE) this.setState(new IdleState());
+        return;
+      }
+      this.currentFloor++;
+      if (this._upStops.has(this.currentFloor)) {
+        this._upStops.delete(this.currentFloor);
+        this._state.handleArrival(this);
+      }
+    } else if (this.direction === Direction.DOWN) {
+      if (this._downStops.size === 0) {
+        this.direction = this._upStops.size === 0 ? Direction.IDLE : Direction.UP;
+        if (this.direction === Direction.IDLE) this.setState(new IdleState());
+        return;
+      }
+      this.currentFloor--;
+      if (this._downStops.has(this.currentFloor)) {
+        this._downStops.delete(this.currentFloor);
+        this._state.handleArrival(this);
+      }
+    }
+  }
+
+  openDoor() {
+    if (!this._state.canOpenDoor()) throw new Error(`Cannot open doors in state ${this._state.name()}`);
+    this.doorState = DoorState.OPEN;
+  }
+
+  closeDoor() {
+    this.doorState = DoorState.CLOSED;
+    if (this._upStops.size &gt; 0 || this._downStops.size &gt; 0) this.setState(new MovingState());
+    else { this.direction = Direction.IDLE; this.setState(new IdleState()); }
+  }
+
+  setOutOfService() {
+    this.setState(new OutOfServiceState());
+    this.direction = Direction.IDLE;
+  }
+
+  pendingStops() {
+    return [...this._upStops, ...this._downStops];
+  }
+}
+
+// ---------- DispatchStrategy (interface, Strategy pattern) ----------
+class DispatchStrategy {
+  selectElevator(_call, _elevators) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class NearestCarStrategy extends DispatchStrategy {
+  selectElevator(call, elevators) {
+    let best = null;
+    let bestDistance = Infinity;
+    for (const e of elevators) {
+      if (!e.isInService()) continue;
+      if (e.direction === call.direction || e.direction === Direction.IDLE) {
+        const d = Math.abs(e.currentFloor - call.floor);
+        if (d &lt; bestDistance) { best = e; bestDistance = d; }
+      }
+    }
+    return best;
+  }
+}
+
+// Zones the building into bands; prefers an elevator already assigned near that band.
+class ScanZoneStrategy extends DispatchStrategy {
+  constructor(zoneSize) { super(); this.zoneSize = zoneSize; }
+  selectElevator(call, elevators) {
+    const callZone = Math.floor(call.floor / this.zoneSize);
+    let best = null;
+    let bestScore = Infinity;
+    for (const e of elevators) {
+      if (!e.isInService()) continue;
+      const elevatorZone = Math.floor(e.currentFloor / this.zoneSize);
+      const score = Math.abs(elevatorZone - callZone) * 1000 + Math.abs(e.currentFloor - call.floor);
+      if (score &lt; bestScore) { best = e; bestScore = score; }
+    }
+    return best;
+  }
+}
+
+// ---------- Dispatcher ----------
+// Atomically assigns each incoming hall call to one elevator via the active strategy.
+class Dispatcher {
+  constructor(elevators, strategy) {
+    this.elevators = elevators;
+    this.strategy = strategy;
+  }
+
+  setStrategy(strategy) { this.strategy = strategy; }
+
+  // Select then atomically claim; retries against remaining elevators if claim fails.
+  dispatch(hallCall) {
+    let remaining = [...this.elevators];
+    while (remaining.length &gt; 0) {
+      const candidate = this.strategy.selectElevator(hallCall, remaining);
+      if (!candidate) return; // no elevator can currently serve this call
+      // Single synchronous critical section -- stands in for &quot;lock(candidate)&quot;.
+      if (candidate.isInService() &amp;&amp; !candidate.isFull()) {
+        candidate.addStop(hallCall.floor);
+        return; // claimed
+      }
+      remaining = remaining.filter((e) =&gt; e !== candidate);
+    }
+  }
+}
+
+// ---------- ElevatorController (facade) ----------
+class ElevatorController {
+  constructor(elevatorList, strategy) {
+    this.elevators = new Map(elevatorList.map((e) =&gt; [e.id, e]));
+    this.dispatcher = new Dispatcher(elevatorList, strategy);
+  }
+
+  requestElevator(floor, dir) {
+    this.dispatcher.dispatch({ floor, direction: dir });
+  }
+
+  selectFloor(elevatorId, floor) {
+    const e = this._find(elevatorId);
+    e.addStop(floor); // car call: destination chosen from inside the cabin
+  }
+
+  setOutOfService(elevatorId) {
+    const e = this._find(elevatorId);
+    const pending = e.pendingStops();
+    e.setOutOfService();
+    // Redistribute this elevator&#x27;s pending requests to the rest of the fleet.
+    for (const floor of pending) this.dispatcher.dispatch({ floor, direction: Direction.IDLE });
+  }
+
+  getStatus(elevatorId) {
+    const e = this._find(elevatorId);
+    return {
+      id: e.id, currentFloor: e.currentFloor, direction: e.direction,
+      doorState: e.doorState, state: e.getState().name(),
+      toString() { return `Elevator[${this.id}] floor=${this.currentFloor} dir=${this.direction} door=${this.doorState} state=${this.state}`; },
+    };
+  }
+
+  // Advance every in-service elevator by one simulated time-step. An elevator that just
+  // opened its doors spends this tick &quot;boarding&quot; and closes them, resuming motion next tick.
+  tick() {
+    for (const e of this.elevators.values()) {
+      if (e.getState() instanceof DoorsOpenState) e.closeDoor();
+      else e.step();
+    }
+  }
+
+  _find(elevatorId) {
+    const e = this.elevators.get(elevatorId);
+    if (!e) throw new Error(`No such elevator: ${elevatorId}`);
+    return e;
+  }
+}
+
+// ---------- Demo ----------
+function main() {
+  const cabins = [new Elevator(&#x27;E1&#x27;, 8), new Elevator(&#x27;E2&#x27;, 8)];
+  const controller = new ElevatorController(cabins, new NearestCarStrategy());
+
+  controller.requestElevator(5, Direction.UP);
+  controller.requestElevator(2, Direction.DOWN);
+  controller.selectFloor(&#x27;E1&#x27;, 8);
+
+  for (let i = 0; i &lt; 12; i++) controller.tick();
+
+  console.log(controller.getStatus(&#x27;E1&#x27;).toString());
+  console.log(controller.getStatus(&#x27;E2&#x27;).toString());
+
+  controller.setOutOfService(&#x27;E2&#x27;);
+  console.log(&#x27;After maintenance: &#x27; + controller.getStatus(&#x27;E2&#x27;).toString());
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  Direction, DoorState, Elevator, Dispatcher, ElevatorController,
+  NearestCarStrategy, ScanZoneStrategy, IdleState, MovingState, DoorsOpenState, OutOfServiceState,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">/**
+ * Elevator System -- full class-diagram implementation.
+ *
+ * Elevator delegates behavior to its current ElevatorState (State pattern) so illegal
+ * transitions (e.g. opening doors while moving) are structurally unrepresentable.
+ * Dispatcher uses a swappable DispatchStrategy to select a candidate elevator, then
+ * atomically claims the hall call under a per-elevator critical section.
+ */
+
+enum Direction { UP = &#x27;UP&#x27;, DOWN = &#x27;DOWN&#x27;, IDLE = &#x27;IDLE&#x27; }
+enum DoorState { OPEN = &#x27;OPEN&#x27;, CLOSED = &#x27;CLOSED&#x27; }
+
+// ---------- Value objects ----------
+interface HallCall { floor: number; direction: Direction; }
+interface CarCall { destinationFloor: number; }
+
+// ---------- ElevatorState (interface, State pattern) ----------
+interface ElevatorState {
+  handleArrival(elevator: Elevator): void;
+  canOpenDoor(): boolean;
+  name(): string;
+}
+
+class IdleState implements ElevatorState {
+  handleArrival(_e: Elevator): void {}
+  canOpenDoor(): boolean { return true; }
+  name(): string { return &#x27;IDLE&#x27;; }
+}
+
+class MovingState implements ElevatorState {
+  handleArrival(e: Elevator): void {
+    // The cabin reports arrival at a floor it must serve -&gt; transition to DoorsOpenState.
+    e.setState(new DoorsOpenState());
+    e.openDoor();
+  }
+  canOpenDoor(): boolean { return false; } // cannot open while moving
+  name(): string { return &#x27;MOVING&#x27;; }
+}
+
+class DoorsOpenState implements ElevatorState {
+  handleArrival(_e: Elevator): void {}
+  canOpenDoor(): boolean { return true; }
+  name(): string { return &#x27;DOORS_OPEN&#x27;; }
+}
+
+class OutOfServiceState implements ElevatorState {
+  handleArrival(_e: Elevator): void {}
+  canOpenDoor(): boolean { return false; }
+  name(): string { return &#x27;OUT_OF_SERVICE&#x27;; }
+}
+
+// ---------- Elevator ----------
+// Owns one cabin&#x27;s physical state and its own pending-stop queue.
+class Elevator {
+  currentFloor = 0;
+  direction: Direction = Direction.IDLE;
+  doorState: DoorState = DoorState.CLOSED;
+  private state: ElevatorState = new IdleState();
+  private upStops = new Set&lt;number&gt;();
+  private downStops = new Set&lt;number&gt;();
+
+  constructor(readonly id: string, readonly capacity: number) {}
+
+  setState(state: ElevatorState): void { this.state = state; }
+  getState(): ElevatorState { return this.state; }
+
+  isInService(): boolean { return !(this.state instanceof OutOfServiceState); }
+  isFull(): boolean { return false; } // capacity tracking simplified for this demo
+
+  /** Add a stop request; SCAN-style: keep the elevator moving in its current direction if possible. */
+  addStop(floor: number): void {
+    if (floor &gt; this.currentFloor) this.upStops.add(floor);
+    else if (floor &lt; this.currentFloor) this.downStops.add(floor);
+    if (this.direction === Direction.IDLE &amp;&amp; (this.upStops.size &gt; 0 || this.downStops.size &gt; 0)) {
+      this.direction = this.upStops.size &gt; 0 ? Direction.UP : Direction.DOWN;
+      this.setState(new MovingState());
+    }
+  }
+
+  /** Advance the cabin by one floor toward its next pending stop (SCAN algorithm). */
+  step(): void {
+    const name = this.state.name();
+    if (name !== &#x27;MOVING&#x27; &amp;&amp; name !== &#x27;IDLE&#x27;) return;
+    if (this.direction === Direction.UP) {
+      if (this.upStops.size === 0) {
+        this.direction = this.downStops.size === 0 ? Direction.IDLE : Direction.DOWN;
+        if (this.direction === Direction.IDLE) this.setState(new IdleState());
+        return;
+      }
+      this.currentFloor++;
+      if (this.upStops.has(this.currentFloor)) {
+        this.upStops.delete(this.currentFloor);
+        this.state.handleArrival(this);
+      }
+    } else if (this.direction === Direction.DOWN) {
+      if (this.downStops.size === 0) {
+        this.direction = this.upStops.size === 0 ? Direction.IDLE : Direction.UP;
+        if (this.direction === Direction.IDLE) this.setState(new IdleState());
+        return;
+      }
+      this.currentFloor--;
+      if (this.downStops.has(this.currentFloor)) {
+        this.downStops.delete(this.currentFloor);
+        this.state.handleArrival(this);
+      }
+    }
+  }
+
+  openDoor(): void {
+    if (!this.state.canOpenDoor()) throw new Error(`Cannot open doors in state ${this.state.name()}`);
+    this.doorState = DoorState.OPEN;
+  }
+
+  closeDoor(): void {
+    this.doorState = DoorState.CLOSED;
+    if (this.upStops.size &gt; 0 || this.downStops.size &gt; 0) this.setState(new MovingState());
+    else { this.direction = Direction.IDLE; this.setState(new IdleState()); }
+  }
+
+  setOutOfService(): void {
+    this.setState(new OutOfServiceState());
+    this.direction = Direction.IDLE;
+  }
+
+  pendingStops(): number[] {
+    return [...this.upStops, ...this.downStops];
+  }
+}
+
+// ---------- DispatchStrategy (interface, Strategy pattern) ----------
+interface DispatchStrategy {
+  selectElevator(call: HallCall, elevators: Elevator[]): Elevator | null;
+}
+
+class NearestCarStrategy implements DispatchStrategy {
+  selectElevator(call: HallCall, elevators: Elevator[]): Elevator | null {
+    let best: Elevator | null = null;
+    let bestDistance = Infinity;
+    for (const e of elevators) {
+      if (!e.isInService()) continue;
+      if (e.direction === call.direction || e.direction === Direction.IDLE) {
+        const d = Math.abs(e.currentFloor - call.floor);
+        if (d &lt; bestDistance) { best = e; bestDistance = d; }
+      }
+    }
+    return best;
+  }
+}
+
+// Zones the building into bands; prefers an elevator already assigned near that band.
+class ScanZoneStrategy implements DispatchStrategy {
+  constructor(private readonly zoneSize: number) {}
+  selectElevator(call: HallCall, elevators: Elevator[]): Elevator | null {
+    const callZone = Math.floor(call.floor / this.zoneSize);
+    let best: Elevator | null = null;
+    let bestScore = Infinity;
+    for (const e of elevators) {
+      if (!e.isInService()) continue;
+      const elevatorZone = Math.floor(e.currentFloor / this.zoneSize);
+      const score = Math.abs(elevatorZone - callZone) * 1000 + Math.abs(e.currentFloor - call.floor);
+      if (score &lt; bestScore) { best = e; bestScore = score; }
+    }
+    return best;
+  }
+}
+
+// ---------- Dispatcher ----------
+// Atomically assigns each incoming hall call to one elevator via the active strategy.
+class Dispatcher {
+  constructor(private readonly elevators: Elevator[], private strategy: DispatchStrategy) {}
+
+  setStrategy(strategy: DispatchStrategy): void { this.strategy = strategy; }
+
+  /** Select then atomically claim; retries against remaining elevators if claim fails. */
+  dispatch(hallCall: HallCall): void {
+    let remaining = [...this.elevators];
+    while (remaining.length &gt; 0) {
+      const candidate = this.strategy.selectElevator(hallCall, remaining);
+      if (!candidate) return; // no elevator can currently serve this call
+      // Single synchronous critical section -- stands in for &quot;lock(candidate)&quot;.
+      if (candidate.isInService() &amp;&amp; !candidate.isFull()) {
+        candidate.addStop(hallCall.floor);
+        return; // claimed
+      }
+      remaining = remaining.filter((e) =&gt; e !== candidate);
+    }
+  }
+}
+
+// ---------- ElevatorController (facade) ----------
+interface ElevatorStatus {
+  id: string;
+  currentFloor: number;
+  direction: Direction;
+  doorState: DoorState;
+  state: string;
+}
+
+class ElevatorController {
+  private readonly elevators: Map&lt;string, Elevator&gt;;
+  private readonly dispatcher: Dispatcher;
+
+  constructor(elevatorList: Elevator[], strategy: DispatchStrategy) {
+    this.elevators = new Map(elevatorList.map((e) =&gt; [e.id, e]));
+    this.dispatcher = new Dispatcher(elevatorList, strategy);
+  }
+
+  requestElevator(floor: number, dir: Direction): void {
+    this.dispatcher.dispatch({ floor, direction: dir });
+  }
+
+  selectFloor(elevatorId: string, floor: number): void {
+    const e = this.find(elevatorId);
+    e.addStop(floor); // car call: destination chosen from inside the cabin
+  }
+
+  setOutOfService(elevatorId: string): void {
+    const e = this.find(elevatorId);
+    const pending = e.pendingStops();
+    e.setOutOfService();
+    // Redistribute this elevator&#x27;s pending requests to the rest of the fleet.
+    for (const floor of pending) this.dispatcher.dispatch({ floor, direction: Direction.IDLE });
+  }
+
+  getStatus(elevatorId: string): ElevatorStatus {
+    const e = this.find(elevatorId);
+    return { id: e.id, currentFloor: e.currentFloor, direction: e.direction, doorState: e.doorState, state: e.getState().name() };
+  }
+
+  /**
+   * Advance every in-service elevator by one simulated time-step. An elevator that just
+   * opened its doors spends this tick &quot;boarding&quot; and closes them, resuming motion next tick.
+   */
+  tick(): void {
+    for (const e of this.elevators.values()) {
+      if (e.getState() instanceof DoorsOpenState) e.closeDoor();
+      else e.step();
+    }
+  }
+
+  private find(elevatorId: string): Elevator {
+    const e = this.elevators.get(elevatorId);
+    if (!e) throw new Error(`No such elevator: ${elevatorId}`);
+    return e;
+  }
+}
+
+function statusToString(s: ElevatorStatus): string {
+  return `Elevator[${s.id}] floor=${s.currentFloor} dir=${s.direction} door=${s.doorState} state=${s.state}`;
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const cabins = [new Elevator(&#x27;E1&#x27;, 8), new Elevator(&#x27;E2&#x27;, 8)];
+  const controller = new ElevatorController(cabins, new NearestCarStrategy());
+
+  controller.requestElevator(5, Direction.UP);
+  controller.requestElevator(2, Direction.DOWN);
+  controller.selectFloor(&#x27;E1&#x27;, 8);
+
+  for (let i = 0; i &lt; 12; i++) controller.tick();
+
+  console.log(statusToString(controller.getStatus(&#x27;E1&#x27;)));
+  console.log(statusToString(controller.getStatus(&#x27;E2&#x27;)));
+
+  controller.setOutOfService(&#x27;E2&#x27;);
+  console.log(&#x27;After maintenance: &#x27; + statusToString(controller.getStatus(&#x27;E2&#x27;)));
+}
+
+if (require.main === module) {
+  main();
+}
+
+export {
+  Direction, DoorState, Elevator, Dispatcher, ElevatorController,
+  DispatchStrategy, NearestCarStrategy, ScanZoneStrategy,
+  ElevatorState, IdleState, MovingState, DoorsOpenState, OutOfServiceState,
+};
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p10.html">&larr; 10. Pub-Sub / Message Queue</a><a class="prevnext-link next" href="p12.html">12. Tic-Tac-Toe / Board Game Engine &rarr;</a></div>
 </div>
 </main>
 

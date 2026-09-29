@@ -61,7 +61,8 @@
 <a href="#p18-y">Y. Scaling Boundary</a><a href="#p18-z">Z. Failure Scenarios</a><a href="#p18-aa">AA. Bad Designs</a>
 <a href="#p18-ab">AB. Trade-Offs</a><a href="#p18-ac">AC. Interviewer Evaluation</a><a href="#p18-ad">AD. Simulation</a>
 <a href="#p18-ae">AE. Source Comparison</a><a href="#p18-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p18">Jump to section:</label><select id="jump-p18" class="jump-select" data-jump-select><option value="p18-a">A. Realistic Interview Prompt</option><option value="p18-b">B. Difficulty</option><option value="p18-c">C. What This Problem Tests</option><option value="p18-d">D. Requirements</option><option value="p18-e">E. Clarifying Questions</option><option value="p18-f">F. Assumptions</option><option value="p18-g">G. Actors</option><option value="p18-h">H. Core Domain Entities</option><option value="p18-i">I. Class Relationships</option><option value="p18-j">J. Class Diagram</option><option value="p18-k">K. Responsibility Mapping</option><option value="p18-l">L. SOLID Analysis</option><option value="p18-m">M. Design Patterns</option><option value="p18-n">N. What Is Likely to Change?</option><option value="p18-o">O. Design Evolution</option><option value="p18-p">P. API / Interface Design</option><option value="p18-q">Q. Pseudocode — Critical Logic</option><option value="p18-r">R. End-to-End Use Case</option><option value="p18-s">S. Data Structures</option><option value="p18-t">T. Complexity Analysis</option><option value="p18-u">U. Testing Strategy</option><option value="p18-v">V. Interviewer Follow-Ups</option><option value="p18-w">W. Concurrency</option><option value="p18-x">X. Persistence</option><option value="p18-y">Y. Scaling Boundary</option><option value="p18-z">Z. Failure Scenarios</option><option value="p18-aa">AA. Common Bad Designs</option><option value="p18-ab">AB. Design Trade-Offs</option><option value="p18-ac">AC. Interviewer Evaluation</option><option value="p18-ad">AD. Interview Simulation</option><option value="p18-ae">AE. Online Solution Comparison</option><option value="p18-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p18-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p18">Jump to section:</label><select id="jump-p18" class="jump-select" data-jump-select><option value="p18-a">A. Realistic Interview Prompt</option><option value="p18-b">B. Difficulty</option><option value="p18-c">C. What This Problem Tests</option><option value="p18-d">D. Requirements</option><option value="p18-e">E. Clarifying Questions</option><option value="p18-f">F. Assumptions</option><option value="p18-g">G. Actors</option><option value="p18-h">H. Core Domain Entities</option><option value="p18-i">I. Class Relationships</option><option value="p18-j">J. Class Diagram</option><option value="p18-k">K. Responsibility Mapping</option><option value="p18-l">L. SOLID Analysis</option><option value="p18-m">M. Design Patterns</option><option value="p18-n">N. What Is Likely to Change?</option><option value="p18-o">O. Design Evolution</option><option value="p18-p">P. API / Interface Design</option><option value="p18-q">Q. Pseudocode — Critical Logic</option><option value="p18-r">R. End-to-End Use Case</option><option value="p18-s">S. Data Structures</option><option value="p18-t">T. Complexity Analysis</option><option value="p18-u">U. Testing Strategy</option><option value="p18-v">V. Interviewer Follow-Ups</option><option value="p18-w">W. Concurrency</option><option value="p18-x">X. Persistence</option><option value="p18-y">Y. Scaling Boundary</option><option value="p18-z">Z. Failure Scenarios</option><option value="p18-aa">AA. Common Bad Designs</option><option value="p18-ab">AB. Design Trade-Offs</option><option value="p18-ac">AC. Interviewer Evaluation</option><option value="p18-ad">AD. Interview Simulation</option><option value="p18-ae">AE. Online Solution Comparison</option><option value="p18-af">AF. Interview Cheat Sheet</option><option value="p18-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p18-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a food delivery system like DoorDash or Swiggy. Customers order from a restaurant's menu, the order moves through preparation and delivery, and a delivery partner is assigned to carry it. Customers should see live status updates."</div>
@@ -534,7 +535,1246 @@ delivery partner reports delivered → OUT_FOR_DELIVERY → DELIVERED → notifi
 <tr><td><strong>Top follow-ups</strong></td><td>Batched delivery runs, duplicate event idempotency, live location tracking as a separate channel</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Live price reference instead of a snapshot; raw status enum with scattered checks; unlocked select-then-claim; trusting every status event as legal and novel</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design route optimization or city-scale geo-infrastructure unless asked</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p17.html">&larr; 17. Movie Ticket Booking System</a><a class="prevnext-link next" href="p19.html">19. E-commerce Shopping Cart &amp; Checkout &rarr;</a></div>
+</table>
+
+<h3 id="p18-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">import java.util.*;
+
+/**
+ * Problem 18: Restaurant / Food Delivery System (single-threaded -- no concurrency badge)
+ *
+ * Key design decisions faithfully reproduced from the class diagram:
+ *  - MenuItem (live, editable catalog) vs OrderLineItem (frozen price/name snapshot at checkout).
+ *  - OrderState hierarchy: PLACED -&gt; CONFIRMED -&gt; PREPARING -&gt; OUT_FOR_DELIVERY -&gt; DELIVERED, each
+ *    state only accepting its own legal next event; illegal/duplicated events are rejected by the state.
+ *  - DeliveryAssignmentStrategy is injected (Strategy); DeliveryDispatcher does the atomic select-then-claim.
+ *  - OrderStatusNotifier is a thin Observer subject fanning out every legal transition.
+ *  - OrderService is the facade: placeOrder() / updateStatus().
+ */
+public class p18 {
+
+    enum OrderStatus { PLACED, CONFIRMED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED }
+    enum StatusEvent { CONFIRM, PREPARE, PICKUP, DELIVER, CANCEL }
+    enum PartnerStatus { AVAILABLE, BUSY }
+
+    static final class Customer {
+        final String id, name, address;
+        Customer(String id, String name, String address) { this.id = id; this.name = name; this.address = address; }
+    }
+
+    static final class Restaurant {
+        final String id, name, location;
+        final List&lt;MenuItem&gt; menu = new ArrayList&lt;&gt;();
+        Restaurant(String id, String name, String location) { this.id = id; this.name = name; this.location = location; }
+        void addMenuItem(MenuItem item) { menu.add(item); }
+    }
+
+    // ---------- MenuItem (live catalog) vs OrderLineItem (frozen snapshot) ----------
+
+    static final class MenuItem {
+        final String id;
+        String name;
+        double price;
+        boolean available;
+        MenuItem(String id, String name, double price) { this.id = id; this.name = name; this.price = price; this.available = true; }
+    }
+
+    static final class OrderLineItem {
+        final String nameAtOrderTime;
+        final double priceAtOrderTime;
+        final int quantity;
+        OrderLineItem(MenuItem item, int quantity) {
+            // Freeze name/price at checkout -- a later price change must never rewrite a past receipt.
+            this.nameAtOrderTime = item.name;
+            this.priceAtOrderTime = item.price;
+            this.quantity = quantity;
+        }
+        double subtotal() { return priceAtOrderTime * quantity; }
+    }
+
+    static final class CartItem {
+        final MenuItem menuItem;
+        final int quantity;
+        CartItem(MenuItem menuItem, int quantity) { this.menuItem = menuItem; this.quantity = quantity; }
+    }
+
+    static final class Cart {
+        final List&lt;CartItem&gt; items = new ArrayList&lt;&gt;();
+        void addItem(MenuItem item, int quantity) { items.add(new CartItem(item, quantity)); }
+    }
+
+    // ---------- OrderState (State pattern) ----------
+
+    interface OrderState {
+        OrderState onConfirm();
+        OrderState onPrepared();
+        OrderState onPickedUp();
+        OrderState onDelivered();
+        OrderStatus status();
+    }
+
+    static final class PlacedState implements OrderState {
+        static final PlacedState INSTANCE = new PlacedState();
+        public OrderState onConfirm() { return ConfirmedState.INSTANCE; }
+        public OrderState onPrepared() { throw new IllegalStateException(&quot;Cannot prepare before confirmation&quot;); }
+        public OrderState onPickedUp() { throw new IllegalStateException(&quot;Cannot pick up before confirmation&quot;); }
+        public OrderState onDelivered() { throw new IllegalStateException(&quot;Cannot deliver before confirmation&quot;); }
+        public OrderStatus status() { return OrderStatus.PLACED; }
+    }
+
+    static final class ConfirmedState implements OrderState {
+        static final ConfirmedState INSTANCE = new ConfirmedState();
+        public OrderState onConfirm() { throw new IllegalStateException(&quot;Already confirmed&quot;); }
+        public OrderState onPrepared() { return PreparingState.INSTANCE; }
+        public OrderState onPickedUp() { throw new IllegalStateException(&quot;Cannot pick up before preparation&quot;); }
+        public OrderState onDelivered() { throw new IllegalStateException(&quot;Cannot deliver before preparation&quot;); }
+        public OrderStatus status() { return OrderStatus.CONFIRMED; }
+    }
+
+    static final class PreparingState implements OrderState {
+        static final PreparingState INSTANCE = new PreparingState();
+        public OrderState onConfirm() { throw new IllegalStateException(&quot;Already confirmed&quot;); }
+        public OrderState onPrepared() { throw new IllegalStateException(&quot;Already preparing&quot;); }
+        public OrderState onPickedUp() { return OutForDeliveryState.INSTANCE; }
+        public OrderState onDelivered() { throw new IllegalStateException(&quot;Cannot deliver before pickup&quot;); }
+        public OrderStatus status() { return OrderStatus.PREPARING; }
+    }
+
+    static final class OutForDeliveryState implements OrderState {
+        static final OutForDeliveryState INSTANCE = new OutForDeliveryState();
+        public OrderState onConfirm() { throw new IllegalStateException(&quot;Already confirmed&quot;); }
+        public OrderState onPrepared() { throw new IllegalStateException(&quot;Already prepared&quot;); }
+        public OrderState onPickedUp() { throw new IllegalStateException(&quot;Already picked up&quot;); }
+        public OrderState onDelivered() { return DeliveredState.INSTANCE; }
+        public OrderStatus status() { return OrderStatus.OUT_FOR_DELIVERY; }
+    }
+
+    static final class DeliveredState implements OrderState {
+        static final DeliveredState INSTANCE = new DeliveredState();
+        public OrderState onConfirm() { throw new IllegalStateException(&quot;Order already delivered -- terminal state&quot;); }
+        public OrderState onPrepared() { throw new IllegalStateException(&quot;Order already delivered -- terminal state&quot;); }
+        public OrderState onPickedUp() { throw new IllegalStateException(&quot;Order already delivered -- terminal state&quot;); }
+        public OrderState onDelivered() { throw new IllegalStateException(&quot;Order already delivered -- terminal state&quot;); }
+        public OrderStatus status() { return OrderStatus.DELIVERED; }
+    }
+
+    // ---------- Order ----------
+
+    static final class Order {
+        final String id;
+        final Customer customer;
+        final Restaurant restaurant;
+        final List&lt;OrderLineItem&gt; lineItems;
+        private OrderState state = PlacedState.INSTANCE;
+        private final OrderStatusNotifier notifier;
+        DeliveryPartner assignedPartner;
+
+        Order(String id, Customer customer, Restaurant restaurant, List&lt;OrderLineItem&gt; lineItems, OrderStatusNotifier notifier) {
+            this.id = id; this.customer = customer; this.restaurant = restaurant; this.lineItems = lineItems; this.notifier = notifier;
+        }
+
+        OrderStatus getStatus() { return state.status(); }
+
+        double totalPrice() {
+            double total = 0;
+            for (OrderLineItem li : lineItems) total += li.subtotal();
+            return total;
+        }
+
+        /** Delegates transition legality to the current state; illegal events are rejected by the state itself. */
+        void transitionTo(StatusEvent event) {
+            OrderState next;
+            switch (event) {
+                case CONFIRM: next = state.onConfirm(); break;
+                case PREPARE: next = state.onPrepared(); break;
+                case PICKUP: next = state.onPickedUp(); break;
+                case DELIVER: next = state.onDelivered(); break;
+                default: throw new IllegalArgumentException(&quot;Unsupported event via transitionTo: &quot; + event);
+            }
+            state = next;
+            notifier.notifyStatusChanged(this);
+        }
+
+        void cancel() {
+            if (state == DeliveredState.INSTANCE) throw new IllegalStateException(&quot;Cannot cancel a delivered order&quot;);
+            state = new OrderState() {
+                public OrderState onConfirm() { throw new IllegalStateException(&quot;Order is cancelled&quot;); }
+                public OrderState onPrepared() { throw new IllegalStateException(&quot;Order is cancelled&quot;); }
+                public OrderState onPickedUp() { throw new IllegalStateException(&quot;Order is cancelled&quot;); }
+                public OrderState onDelivered() { throw new IllegalStateException(&quot;Order is cancelled&quot;); }
+                public OrderStatus status() { return OrderStatus.CANCELLED; }
+            };
+            notifier.notifyStatusChanged(this);
+        }
+    }
+
+    // ---------- Delivery assignment ----------
+
+    static final class DeliveryPartner {
+        final String id, name;
+        PartnerStatus status = PartnerStatus.AVAILABLE;
+        String location;
+        DeliveryPartner(String id, String name, String location) { this.id = id; this.name = name; this.location = location; }
+
+        /** Claims this partner for a delivery. Caller (DeliveryDispatcher) must already hold the pool lock. */
+        void claim() {
+            if (status != PartnerStatus.AVAILABLE) throw new IllegalStateException(&quot;Partner &quot; + id + &quot; is not available&quot;);
+            status = PartnerStatus.BUSY;
+        }
+
+        void release() { status = PartnerStatus.AVAILABLE; }
+    }
+
+    interface DeliveryAssignmentStrategy {
+        DeliveryPartner selectPartner(Order order, List&lt;DeliveryPartner&gt; candidates);
+    }
+
+    /** Picks the first available partner whose recorded location matches the restaurant&#x27;s -- a simple &quot;nearest&quot; proxy. */
+    static final class NearestAvailablePartnerStrategy implements DeliveryAssignmentStrategy {
+        public DeliveryPartner selectPartner(Order order, List&lt;DeliveryPartner&gt; candidates) {
+            for (DeliveryPartner p : candidates) {
+                if (p.location.equals(order.restaurant.location)) return p;
+            }
+            if (candidates.isEmpty()) throw new NoSuchElementException(&quot;No available delivery partners&quot;);
+            return candidates.get(0); // fall back to any available partner
+        }
+    }
+
+    /** Atomically selects and claims a partner -- selection and claim happen under the same lock. */
+    static final class DeliveryDispatcher {
+        private final List&lt;DeliveryPartner&gt; partnerPool;
+        private final DeliveryAssignmentStrategy strategy;
+
+        DeliveryDispatcher(List&lt;DeliveryPartner&gt; partnerPool, DeliveryAssignmentStrategy strategy) {
+            this.partnerPool = partnerPool;
+            this.strategy = strategy;
+        }
+
+        synchronized DeliveryPartner assign(Order order) {
+            List&lt;DeliveryPartner&gt; candidates = new ArrayList&lt;&gt;();
+            for (DeliveryPartner p : partnerPool) if (p.status == PartnerStatus.AVAILABLE) candidates.add(p);
+            DeliveryPartner chosen = strategy.selectPartner(order, candidates);
+            chosen.claim(); // claim happens inside the same lock as selection -- no double-assignment race
+            order.assignedPartner = chosen;
+            return chosen;
+        }
+    }
+
+    // ---------- OrderStatusNotifier (Observer) ----------
+
+    interface OrderStatusObserver {
+        void onStatusChanged(Order order);
+    }
+
+    static final class OrderStatusNotifier {
+        private final List&lt;OrderStatusObserver&gt; observers = new ArrayList&lt;&gt;();
+        void subscribe(OrderStatusObserver observer) { observers.add(observer); }
+        void notifyStatusChanged(Order order) { for (OrderStatusObserver o : observers) o.onStatusChanged(order); }
+    }
+
+    static final class ConsoleStatusObserver implements OrderStatusObserver {
+        public void onStatusChanged(Order order) {
+            System.out.printf(&quot;[push] Order %s status -&gt; %s%n&quot;, order.id, order.getStatus());
+        }
+    }
+
+    // ---------- OrderService (facade) ----------
+
+    static final class OrderService {
+        private final DeliveryDispatcher dispatcher;
+        private final OrderStatusNotifier notifier;
+        private final Map&lt;String, Order&gt; orders = new HashMap&lt;&gt;();
+        private int orderSeq = 0;
+
+        OrderService(DeliveryDispatcher dispatcher, OrderStatusNotifier notifier) {
+            this.dispatcher = dispatcher;
+            this.notifier = notifier;
+        }
+
+        Order placeOrder(Customer customer, Restaurant restaurant, Cart cart) {
+            List&lt;OrderLineItem&gt; lineItems = new ArrayList&lt;&gt;();
+            for (CartItem ci : cart.items) lineItems.add(new OrderLineItem(ci.menuItem, ci.quantity)); // freeze price/name now
+            String id = &quot;ORD-&quot; + (++orderSeq);
+            Order order = new Order(id, customer, restaurant, lineItems, notifier);
+            orders.put(id, order);
+            notifier.notifyStatusChanged(order); // announce the initial PLACED state too
+            return order;
+        }
+
+        void updateStatus(String orderId, StatusEvent event) {
+            Order order = orders.get(orderId);
+            if (order == null) throw new NoSuchElementException(&quot;Unknown order &quot; + orderId);
+            if (event == StatusEvent.CANCEL) { order.cancel(); return; }
+            if (event == StatusEvent.PICKUP) dispatcher.assign(order); // assign a courier right before pickup
+            order.transitionTo(event);
+        }
+    }
+
+    // ---------- Demo ----------
+
+    public static void main(String[] args) {
+        Restaurant restaurant = new Restaurant(&quot;R1&quot;, &quot;Curry House&quot;, &quot;Downtown&quot;);
+        MenuItem biryani = new MenuItem(&quot;M1&quot;, &quot;Chicken Biryani&quot;, 12.50);
+        MenuItem naan = new MenuItem(&quot;M2&quot;, &quot;Garlic Naan&quot;, 3.00);
+        restaurant.addMenuItem(biryani);
+        restaurant.addMenuItem(naan);
+
+        OrderStatusNotifier notifier = new OrderStatusNotifier();
+        notifier.subscribe(new ConsoleStatusObserver());
+
+        List&lt;DeliveryPartner&gt; partners = List.of(
+                new DeliveryPartner(&quot;P1&quot;, &quot;Sam&quot;, &quot;Downtown&quot;),
+                new DeliveryPartner(&quot;P2&quot;, &quot;Robin&quot;, &quot;Uptown&quot;));
+        DeliveryDispatcher dispatcher = new DeliveryDispatcher(partners, new NearestAvailablePartnerStrategy());
+
+        OrderService orderService = new OrderService(dispatcher, notifier);
+
+        Customer customer = new Customer(&quot;C1&quot;, &quot;Alice&quot;, &quot;12 Elm St&quot;);
+        Cart cart = new Cart();
+        cart.addItem(biryani, 2);
+        cart.addItem(naan, 1);
+
+        Order order = orderService.placeOrder(customer, restaurant, cart);
+        System.out.printf(&quot;Order placed: %s, total=%.2f%n&quot;, order.id, order.totalPrice());
+
+        // Live menu price changes after checkout must NOT affect this already-placed order&#x27;s receipt.
+        biryani.price = 15.00;
+        System.out.printf(&quot;Menu price changed to %.2f, but order total is still %.2f%n&quot;, biryani.price, order.totalPrice());
+
+        orderService.updateStatus(order.id, StatusEvent.CONFIRM);
+        orderService.updateStatus(order.id, StatusEvent.PREPARE);
+        orderService.updateStatus(order.id, StatusEvent.PICKUP); // triggers atomic partner assignment
+        System.out.println(&quot;Assigned partner: &quot; + order.assignedPartner.name);
+        orderService.updateStatus(order.id, StatusEvent.DELIVER);
+
+        // Illegal transition: a duplicated/out-of-order DELIVER event on an already-delivered order must be rejected.
+        try {
+            orderService.updateStatus(order.id, StatusEvent.DELIVER);
+        } catch (IllegalStateException e) {
+            System.out.println(&quot;Rejected duplicate DELIVER event: &quot; + e.getMessage());
+        }
+
+        // A second order competing for the same restaurant-local partner must not double-assign that partner.
+        Order order2 = orderService.placeOrder(customer, restaurant, cart);
+        orderService.updateStatus(order2.id, StatusEvent.CONFIRM);
+        orderService.updateStatus(order2.id, StatusEvent.PREPARE);
+        // P1 was claimed (BUSY) for order1 and is never auto-released on delivery in this simplified model,
+        // so the dispatcher correctly falls back to the only remaining available partner, P2.
+        orderService.updateStatus(order2.id, StatusEvent.PICKUP);
+        System.out.println(&quot;Order2 assigned partner: &quot; + order2.assignedPartner.name);
+
+        // Direct PLACED -&gt; DELIVERED must never be allowed.
+        Order order3 = orderService.placeOrder(customer, restaurant, cart);
+        try {
+            orderService.updateStatus(order3.id, StatusEvent.DELIVER);
+        } catch (IllegalStateException e) {
+            System.out.println(&quot;Rejected out-of-order DELIVER on a freshly placed order: &quot; + e.getMessage());
+        }
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Problem 18: Restaurant / Food Delivery System (single-threaded -- no concurrency badge)
+//
+// MenuItem (live, editable catalog) vs OrderLineItem (frozen price/name snapshot at checkout).
+// OrderState hierarchy: PLACED -&gt; CONFIRMED -&gt; PREPARING -&gt; OUT_FOR_DELIVERY -&gt; DELIVERED, each
+// state only accepting its own legal next event; illegal/duplicated events are rejected by the state.
+// DeliveryAssignmentStrategy is injected (Strategy); DeliveryDispatcher does the atomic select-then-claim.
+// OrderStatusNotifier is a thin Observer subject fanning out every legal transition.
+// OrderService is the facade: placeOrder() / updateStatus().
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+#include &lt;map&gt;
+#include &lt;stdexcept&gt;
+
+enum class OrderStatus { PLACED, CONFIRMED, PREPARING, OUT_FOR_DELIVERY, DELIVERED, CANCELLED };
+enum class StatusEvent { CONFIRM, PREPARE, PICKUP, DELIVER, CANCEL };
+enum class PartnerStatus { AVAILABLE, BUSY };
+
+static const char* statusName(OrderStatus s) {
+    switch (s) {
+        case OrderStatus::PLACED: return &quot;PLACED&quot;;
+        case OrderStatus::CONFIRMED: return &quot;CONFIRMED&quot;;
+        case OrderStatus::PREPARING: return &quot;PREPARING&quot;;
+        case OrderStatus::OUT_FOR_DELIVERY: return &quot;OUT_FOR_DELIVERY&quot;;
+        case OrderStatus::DELIVERED: return &quot;DELIVERED&quot;;
+        case OrderStatus::CANCELLED: return &quot;CANCELLED&quot;;
+    }
+    return &quot;?&quot;;
+}
+
+struct Customer { std::string id, name, address; };
+
+struct MenuItem {
+    std::string id, name;
+    double price;
+    bool available;
+    MenuItem(std::string id_, std::string name_, double price_) : id(std::move(id_)), name(std::move(name_)), price(price_), available(true) {}
+};
+
+struct Restaurant {
+    std::string id, name, location;
+    std::vector&lt;std::shared_ptr&lt;MenuItem&gt;&gt; menu;
+    void addMenuItem(std::shared_ptr&lt;MenuItem&gt; item) { menu.push_back(std::move(item)); }
+};
+
+// Freezes name/price at checkout -- a later price change must never rewrite a past receipt.
+struct OrderLineItem {
+    std::string nameAtOrderTime;
+    double priceAtOrderTime;
+    int quantity;
+    OrderLineItem(const MenuItem&amp; item, int qty) : nameAtOrderTime(item.name), priceAtOrderTime(item.price), quantity(qty) {}
+    double subtotal() const { return priceAtOrderTime * quantity; }
+};
+
+struct CartItem { std::shared_ptr&lt;MenuItem&gt; menuItem; int quantity; };
+
+struct Cart {
+    std::vector&lt;CartItem&gt; items;
+    void addItem(std::shared_ptr&lt;MenuItem&gt; item, int quantity) { items.push_back({std::move(item), quantity}); }
+};
+
+// ---------- OrderState (State pattern) ----------
+class Order;
+
+class OrderState {
+public:
+    virtual ~OrderState() = default;
+    virtual std::shared_ptr&lt;OrderState&gt; onConfirm() = 0;
+    virtual std::shared_ptr&lt;OrderState&gt; onPrepared() = 0;
+    virtual std::shared_ptr&lt;OrderState&gt; onPickedUp() = 0;
+    virtual std::shared_ptr&lt;OrderState&gt; onDelivered() = 0;
+    virtual OrderStatus status() const = 0;
+};
+
+class ConfirmedState;
+class PreparingState;
+class OutForDeliveryState;
+class DeliveredState;
+
+class PlacedState : public OrderState {
+public:
+    std::shared_ptr&lt;OrderState&gt; onConfirm() override;
+    std::shared_ptr&lt;OrderState&gt; onPrepared() override { throw std::logic_error(&quot;Cannot prepare before confirmation&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onPickedUp() override { throw std::logic_error(&quot;Cannot pick up before confirmation&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onDelivered() override { throw std::logic_error(&quot;Cannot deliver before confirmation&quot;); }
+    OrderStatus status() const override { return OrderStatus::PLACED; }
+};
+
+class ConfirmedState : public OrderState {
+public:
+    std::shared_ptr&lt;OrderState&gt; onConfirm() override { throw std::logic_error(&quot;Already confirmed&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onPrepared() override;
+    std::shared_ptr&lt;OrderState&gt; onPickedUp() override { throw std::logic_error(&quot;Cannot pick up before preparation&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onDelivered() override { throw std::logic_error(&quot;Cannot deliver before preparation&quot;); }
+    OrderStatus status() const override { return OrderStatus::CONFIRMED; }
+};
+
+class PreparingState : public OrderState {
+public:
+    std::shared_ptr&lt;OrderState&gt; onConfirm() override { throw std::logic_error(&quot;Already confirmed&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onPrepared() override { throw std::logic_error(&quot;Already preparing&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onPickedUp() override;
+    std::shared_ptr&lt;OrderState&gt; onDelivered() override { throw std::logic_error(&quot;Cannot deliver before pickup&quot;); }
+    OrderStatus status() const override { return OrderStatus::PREPARING; }
+};
+
+class OutForDeliveryState : public OrderState {
+public:
+    std::shared_ptr&lt;OrderState&gt; onConfirm() override { throw std::logic_error(&quot;Already confirmed&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onPrepared() override { throw std::logic_error(&quot;Already prepared&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onPickedUp() override { throw std::logic_error(&quot;Already picked up&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onDelivered() override;
+    OrderStatus status() const override { return OrderStatus::OUT_FOR_DELIVERY; }
+};
+
+class DeliveredState : public OrderState {
+public:
+    std::shared_ptr&lt;OrderState&gt; onConfirm() override { throw std::logic_error(&quot;Order already delivered -- terminal state&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onPrepared() override { throw std::logic_error(&quot;Order already delivered -- terminal state&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onPickedUp() override { throw std::logic_error(&quot;Order already delivered -- terminal state&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onDelivered() override { throw std::logic_error(&quot;Order already delivered -- terminal state&quot;); }
+    OrderStatus status() const override { return OrderStatus::DELIVERED; }
+};
+
+class CancelledState : public OrderState {
+public:
+    std::shared_ptr&lt;OrderState&gt; onConfirm() override { throw std::logic_error(&quot;Order is cancelled&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onPrepared() override { throw std::logic_error(&quot;Order is cancelled&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onPickedUp() override { throw std::logic_error(&quot;Order is cancelled&quot;); }
+    std::shared_ptr&lt;OrderState&gt; onDelivered() override { throw std::logic_error(&quot;Order is cancelled&quot;); }
+    OrderStatus status() const override { return OrderStatus::CANCELLED; }
+};
+
+std::shared_ptr&lt;OrderState&gt; PlacedState::onConfirm() { return std::make_shared&lt;ConfirmedState&gt;(); }
+std::shared_ptr&lt;OrderState&gt; ConfirmedState::onPrepared() { return std::make_shared&lt;PreparingState&gt;(); }
+std::shared_ptr&lt;OrderState&gt; PreparingState::onPickedUp() { return std::make_shared&lt;OutForDeliveryState&gt;(); }
+std::shared_ptr&lt;OrderState&gt; OutForDeliveryState::onDelivered() { return std::make_shared&lt;DeliveredState&gt;(); }
+
+// ---------- Delivery assignment ----------
+struct DeliveryPartner {
+    std::string id, name, location;
+    PartnerStatus status = PartnerStatus::AVAILABLE;
+
+    // Claims this partner for a delivery. Caller (DeliveryDispatcher) is the sole atomic gate.
+    void claim() {
+        if (status != PartnerStatus::AVAILABLE) throw std::runtime_error(&quot;Partner &quot; + id + &quot; is not available&quot;);
+        status = PartnerStatus::BUSY;
+    }
+    void release() { status = PartnerStatus::AVAILABLE; }
+};
+
+class OrderStatusNotifier;
+
+class Order {
+public:
+    std::string id;
+    Customer customer;
+    Restaurant restaurant;
+    std::vector&lt;OrderLineItem&gt; lineItems;
+    DeliveryPartner* assignedPartner = nullptr;
+
+    Order(std::string id_, Customer customer_, Restaurant restaurant_, std::vector&lt;OrderLineItem&gt; lineItems_, OrderStatusNotifier&amp; notifier_)
+        : id(std::move(id_)), customer(std::move(customer_)), restaurant(std::move(restaurant_)),
+          lineItems(std::move(lineItems_)), state_(std::make_shared&lt;PlacedState&gt;()), notifier_(notifier_) {}
+
+    OrderStatus getStatus() const { return state_-&gt;status(); }
+
+    double totalPrice() const {
+        double total = 0;
+        for (auto&amp; li : lineItems) total += li.subtotal();
+        return total;
+    }
+
+    void transitionTo(StatusEvent event); // defined after OrderStatusNotifier below
+    void cancel();
+
+private:
+    std::shared_ptr&lt;OrderState&gt; state_;
+    OrderStatusNotifier&amp; notifier_;
+};
+
+class OrderStatusObserver {
+public:
+    virtual ~OrderStatusObserver() = default;
+    virtual void onStatusChanged(Order&amp; order) = 0;
+};
+
+class OrderStatusNotifier {
+public:
+    void subscribe(std::shared_ptr&lt;OrderStatusObserver&gt; observer) { observers_.push_back(std::move(observer)); }
+    void notifyStatusChanged(Order&amp; order) { for (auto&amp; o : observers_) o-&gt;onStatusChanged(order); }
+private:
+    std::vector&lt;std::shared_ptr&lt;OrderStatusObserver&gt;&gt; observers_;
+};
+
+void Order::transitionTo(StatusEvent event) {
+    std::shared_ptr&lt;OrderState&gt; next;
+    switch (event) {
+        case StatusEvent::CONFIRM: next = state_-&gt;onConfirm(); break;
+        case StatusEvent::PREPARE: next = state_-&gt;onPrepared(); break;
+        case StatusEvent::PICKUP: next = state_-&gt;onPickedUp(); break;
+        case StatusEvent::DELIVER: next = state_-&gt;onDelivered(); break;
+        default: throw std::invalid_argument(&quot;Unsupported event via transitionTo&quot;);
+    }
+    state_ = next;
+    notifier_.notifyStatusChanged(*this);
+}
+
+void Order::cancel() {
+    if (state_-&gt;status() == OrderStatus::DELIVERED) throw std::logic_error(&quot;Cannot cancel a delivered order&quot;);
+    state_ = std::make_shared&lt;CancelledState&gt;();
+    notifier_.notifyStatusChanged(*this);
+}
+
+class ConsoleStatusObserver : public OrderStatusObserver {
+public:
+    void onStatusChanged(Order&amp; order) override {
+        std::cout &lt;&lt; &quot;[push] Order &quot; &lt;&lt; order.id &lt;&lt; &quot; status -&gt; &quot; &lt;&lt; statusName(order.getStatus()) &lt;&lt; &quot;\n&quot;;
+    }
+};
+
+class DeliveryAssignmentStrategy {
+public:
+    virtual ~DeliveryAssignmentStrategy() = default;
+    virtual DeliveryPartner* selectPartner(Order&amp; order, std::vector&lt;DeliveryPartner*&gt;&amp; candidates) = 0;
+};
+
+// Picks the first available partner whose recorded location matches the restaurant&#x27;s -- a simple &quot;nearest&quot; proxy.
+class NearestAvailablePartnerStrategy : public DeliveryAssignmentStrategy {
+public:
+    DeliveryPartner* selectPartner(Order&amp; order, std::vector&lt;DeliveryPartner*&gt;&amp; candidates) override {
+        for (auto* p : candidates) if (p-&gt;location == order.restaurant.location) return p;
+        if (candidates.empty()) throw std::runtime_error(&quot;No available delivery partners&quot;);
+        return candidates.front(); // fall back to any available partner
+    }
+};
+
+// Atomically selects and claims a partner -- selection and claim happen in the same call, no separate lock needed
+// in this single-threaded model, but the shape mirrors the locked select-then-claim used in Problems 11/17.
+class DeliveryDispatcher {
+public:
+    DeliveryDispatcher(std::vector&lt;std::shared_ptr&lt;DeliveryPartner&gt;&gt; pool, std::shared_ptr&lt;DeliveryAssignmentStrategy&gt; strategy)
+        : partnerPool_(std::move(pool)), strategy_(std::move(strategy)) {}
+
+    DeliveryPartner* assign(Order&amp; order) {
+        std::vector&lt;DeliveryPartner*&gt; candidates;
+        for (auto&amp; p : partnerPool_) if (p-&gt;status == PartnerStatus::AVAILABLE) candidates.push_back(p.get());
+        DeliveryPartner* chosen = strategy_-&gt;selectPartner(order, candidates);
+        chosen-&gt;claim();
+        order.assignedPartner = chosen;
+        return chosen;
+    }
+
+private:
+    std::vector&lt;std::shared_ptr&lt;DeliveryPartner&gt;&gt; partnerPool_;
+    std::shared_ptr&lt;DeliveryAssignmentStrategy&gt; strategy_;
+};
+
+// ---------- OrderService (facade) ----------
+class OrderService {
+public:
+    OrderService(std::shared_ptr&lt;DeliveryDispatcher&gt; dispatcher, std::shared_ptr&lt;OrderStatusNotifier&gt; notifier)
+        : dispatcher_(std::move(dispatcher)), notifier_(std::move(notifier)) {}
+
+    std::shared_ptr&lt;Order&gt; placeOrder(Customer customer, Restaurant restaurant, const Cart&amp; cart) {
+        std::vector&lt;OrderLineItem&gt; lineItems;
+        for (auto&amp; ci : cart.items) lineItems.emplace_back(*ci.menuItem, ci.quantity); // freeze price/name now
+        std::string id = &quot;ORD-&quot; + std::to_string(++orderSeq_);
+        auto order = std::make_shared&lt;Order&gt;(id, std::move(customer), std::move(restaurant), std::move(lineItems), *notifier_);
+        orders_[id] = order;
+        notifier_-&gt;notifyStatusChanged(*order); // announce the initial PLACED state too
+        return order;
+    }
+
+    void updateStatus(const std::string&amp; orderId, StatusEvent event) {
+        auto it = orders_.find(orderId);
+        if (it == orders_.end()) throw std::runtime_error(&quot;Unknown order &quot; + orderId);
+        auto&amp; order = *it-&gt;second;
+        if (event == StatusEvent::CANCEL) { order.cancel(); return; }
+        if (event == StatusEvent::PICKUP) dispatcher_-&gt;assign(order); // assign a courier right before pickup
+        order.transitionTo(event);
+    }
+
+private:
+    std::shared_ptr&lt;DeliveryDispatcher&gt; dispatcher_;
+    std::shared_ptr&lt;OrderStatusNotifier&gt; notifier_;
+    std::map&lt;std::string, std::shared_ptr&lt;Order&gt;&gt; orders_;
+    int orderSeq_ = 0;
+};
+
+int main() {
+    Restaurant restaurant;
+    restaurant.id = &quot;R1&quot;; restaurant.name = &quot;Curry House&quot;; restaurant.location = &quot;Downtown&quot;;
+    auto biryani = std::make_shared&lt;MenuItem&gt;(&quot;M1&quot;, &quot;Chicken Biryani&quot;, 12.50);
+    auto naan = std::make_shared&lt;MenuItem&gt;(&quot;M2&quot;, &quot;Garlic Naan&quot;, 3.00);
+    restaurant.addMenuItem(biryani);
+    restaurant.addMenuItem(naan);
+
+    auto notifier = std::make_shared&lt;OrderStatusNotifier&gt;();
+    notifier-&gt;subscribe(std::make_shared&lt;ConsoleStatusObserver&gt;());
+
+    std::vector&lt;std::shared_ptr&lt;DeliveryPartner&gt;&gt; partners = {
+        std::make_shared&lt;DeliveryPartner&gt;(DeliveryPartner{&quot;P1&quot;, &quot;Sam&quot;, &quot;Downtown&quot;}),
+        std::make_shared&lt;DeliveryPartner&gt;(DeliveryPartner{&quot;P2&quot;, &quot;Robin&quot;, &quot;Uptown&quot;}),
+    };
+    auto dispatcher = std::make_shared&lt;DeliveryDispatcher&gt;(partners, std::make_shared&lt;NearestAvailablePartnerStrategy&gt;());
+
+    OrderService orderService(dispatcher, notifier);
+
+    Customer customer{&quot;C1&quot;, &quot;Alice&quot;, &quot;12 Elm St&quot;};
+    Cart cart;
+    cart.addItem(biryani, 2);
+    cart.addItem(naan, 1);
+
+    auto order = orderService.placeOrder(customer, restaurant, cart);
+    std::cout &lt;&lt; &quot;Order placed: &quot; &lt;&lt; order-&gt;id &lt;&lt; &quot;, total=&quot; &lt;&lt; order-&gt;totalPrice() &lt;&lt; &quot;\n&quot;;
+
+    // Live menu price changes after checkout must NOT affect this already-placed order&#x27;s receipt.
+    biryani-&gt;price = 15.00;
+    std::cout &lt;&lt; &quot;Menu price changed to &quot; &lt;&lt; biryani-&gt;price &lt;&lt; &quot;, but order total is still &quot; &lt;&lt; order-&gt;totalPrice() &lt;&lt; &quot;\n&quot;;
+
+    orderService.updateStatus(order-&gt;id, StatusEvent::CONFIRM);
+    orderService.updateStatus(order-&gt;id, StatusEvent::PREPARE);
+    orderService.updateStatus(order-&gt;id, StatusEvent::PICKUP); // triggers atomic partner assignment
+    std::cout &lt;&lt; &quot;Assigned partner: &quot; &lt;&lt; order-&gt;assignedPartner-&gt;name &lt;&lt; &quot;\n&quot;;
+    orderService.updateStatus(order-&gt;id, StatusEvent::DELIVER);
+
+    // Illegal transition: a duplicated/out-of-order DELIVER event on an already-delivered order must be rejected.
+    try {
+        orderService.updateStatus(order-&gt;id, StatusEvent::DELIVER);
+    } catch (const std::exception&amp; e) {
+        std::cout &lt;&lt; &quot;Rejected duplicate DELIVER event: &quot; &lt;&lt; e.what() &lt;&lt; &quot;\n&quot;;
+    }
+
+    // P1 was claimed (BUSY) for order1 and is never auto-released on delivery in this simplified model,
+    // so the dispatcher correctly falls back to the only remaining available partner, P2.
+    auto order2 = orderService.placeOrder(customer, restaurant, cart);
+    orderService.updateStatus(order2-&gt;id, StatusEvent::CONFIRM);
+    orderService.updateStatus(order2-&gt;id, StatusEvent::PREPARE);
+    orderService.updateStatus(order2-&gt;id, StatusEvent::PICKUP);
+    std::cout &lt;&lt; &quot;Order2 assigned partner: &quot; &lt;&lt; order2-&gt;assignedPartner-&gt;name &lt;&lt; &quot;\n&quot;;
+
+    // Direct PLACED -&gt; DELIVERED must never be allowed.
+    auto order3 = orderService.placeOrder(customer, restaurant, cart);
+    try {
+        orderService.updateStatus(order3-&gt;id, StatusEvent::DELIVER);
+    } catch (const std::exception&amp; e) {
+        std::cout &lt;&lt; &quot;Rejected out-of-order DELIVER on a freshly placed order: &quot; &lt;&lt; e.what() &lt;&lt; &quot;\n&quot;;
+    }
+
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">&#x27;use strict&#x27;;
+// Problem 18: Restaurant / Food Delivery System (single-threaded -- no concurrency badge)
+//
+// MenuItem (live, editable catalog) vs OrderLineItem (frozen price/name snapshot at checkout).
+// OrderState hierarchy: PLACED -&gt; CONFIRMED -&gt; PREPARING -&gt; OUT_FOR_DELIVERY -&gt; DELIVERED, each
+// state only accepting its own legal next event; illegal/duplicated events are rejected by the state.
+// DeliveryAssignmentStrategy is injected (Strategy); DeliveryDispatcher does the atomic select-then-claim.
+// OrderStatusNotifier is a thin Observer subject fanning out every legal transition.
+// OrderService is the facade: placeOrder() / updateStatus().
+
+const OrderStatus = Object.freeze({
+  PLACED: &#x27;PLACED&#x27;, CONFIRMED: &#x27;CONFIRMED&#x27;, PREPARING: &#x27;PREPARING&#x27;,
+  OUT_FOR_DELIVERY: &#x27;OUT_FOR_DELIVERY&#x27;, DELIVERED: &#x27;DELIVERED&#x27;, CANCELLED: &#x27;CANCELLED&#x27;,
+});
+const StatusEvent = Object.freeze({ CONFIRM: &#x27;CONFIRM&#x27;, PREPARE: &#x27;PREPARE&#x27;, PICKUP: &#x27;PICKUP&#x27;, DELIVER: &#x27;DELIVER&#x27;, CANCEL: &#x27;CANCEL&#x27; });
+const PartnerStatus = Object.freeze({ AVAILABLE: &#x27;AVAILABLE&#x27;, BUSY: &#x27;BUSY&#x27; });
+
+class Customer {
+  constructor(id, name, address) { this.id = id; this.name = name; this.address = address; }
+}
+
+class MenuItem {
+  constructor(id, name, price) { this.id = id; this.name = name; this.price = price; this.available = true; }
+}
+
+class Restaurant {
+  constructor(id, name, location) { this.id = id; this.name = name; this.location = location; this.menu = []; }
+  addMenuItem(item) { this.menu.push(item); }
+}
+
+/** Freezes name/price at checkout -- a later price change must never rewrite a past receipt. */
+class OrderLineItem {
+  constructor(menuItem, quantity) {
+    this.nameAtOrderTime = menuItem.name;
+    this.priceAtOrderTime = menuItem.price;
+    this.quantity = quantity;
+  }
+  subtotal() { return this.priceAtOrderTime * this.quantity; }
+}
+
+class Cart {
+  constructor() { this.items = []; }
+  addItem(menuItem, quantity) { this.items.push({ menuItem, quantity }); }
+}
+
+// ---------- OrderState (State pattern) ----------
+
+class PlacedState {
+  onConfirm() { return CONFIRMED_STATE; }
+  onPrepared() { throw new Error(&#x27;Cannot prepare before confirmation&#x27;); }
+  onPickedUp() { throw new Error(&#x27;Cannot pick up before confirmation&#x27;); }
+  onDelivered() { throw new Error(&#x27;Cannot deliver before confirmation&#x27;); }
+  status() { return OrderStatus.PLACED; }
+}
+class ConfirmedState {
+  onConfirm() { throw new Error(&#x27;Already confirmed&#x27;); }
+  onPrepared() { return PREPARING_STATE; }
+  onPickedUp() { throw new Error(&#x27;Cannot pick up before preparation&#x27;); }
+  onDelivered() { throw new Error(&#x27;Cannot deliver before preparation&#x27;); }
+  status() { return OrderStatus.CONFIRMED; }
+}
+class PreparingState {
+  onConfirm() { throw new Error(&#x27;Already confirmed&#x27;); }
+  onPrepared() { throw new Error(&#x27;Already preparing&#x27;); }
+  onPickedUp() { return OUT_FOR_DELIVERY_STATE; }
+  onDelivered() { throw new Error(&#x27;Cannot deliver before pickup&#x27;); }
+  status() { return OrderStatus.PREPARING; }
+}
+class OutForDeliveryState {
+  onConfirm() { throw new Error(&#x27;Already confirmed&#x27;); }
+  onPrepared() { throw new Error(&#x27;Already prepared&#x27;); }
+  onPickedUp() { throw new Error(&#x27;Already picked up&#x27;); }
+  onDelivered() { return DELIVERED_STATE; }
+  status() { return OrderStatus.OUT_FOR_DELIVERY; }
+}
+class DeliveredState {
+  onConfirm() { throw new Error(&#x27;Order already delivered -- terminal state&#x27;); }
+  onPrepared() { throw new Error(&#x27;Order already delivered -- terminal state&#x27;); }
+  onPickedUp() { throw new Error(&#x27;Order already delivered -- terminal state&#x27;); }
+  onDelivered() { throw new Error(&#x27;Order already delivered -- terminal state&#x27;); }
+  status() { return OrderStatus.DELIVERED; }
+}
+class CancelledState {
+  onConfirm() { throw new Error(&#x27;Order is cancelled&#x27;); }
+  onPrepared() { throw new Error(&#x27;Order is cancelled&#x27;); }
+  onPickedUp() { throw new Error(&#x27;Order is cancelled&#x27;); }
+  onDelivered() { throw new Error(&#x27;Order is cancelled&#x27;); }
+  status() { return OrderStatus.CANCELLED; }
+}
+const PLACED_STATE = new PlacedState();
+const CONFIRMED_STATE = new ConfirmedState();
+const PREPARING_STATE = new PreparingState();
+const OUT_FOR_DELIVERY_STATE = new OutForDeliveryState();
+const DELIVERED_STATE = new DeliveredState();
+
+class Order {
+  constructor(id, customer, restaurant, lineItems, notifier) {
+    this.id = id;
+    this.customer = customer;
+    this.restaurant = restaurant;
+    this.lineItems = lineItems;
+    this._state = PLACED_STATE;
+    this._notifier = notifier;
+    this.assignedPartner = null;
+  }
+
+  getStatus() { return this._state.status(); }
+  totalPrice() { return this.lineItems.reduce((sum, li) =&gt; sum + li.subtotal(), 0); }
+
+  /** Delegates transition legality to the current state; illegal events are rejected by the state itself. */
+  transitionTo(event) {
+    let next;
+    switch (event) {
+      case StatusEvent.CONFIRM: next = this._state.onConfirm(); break;
+      case StatusEvent.PREPARE: next = this._state.onPrepared(); break;
+      case StatusEvent.PICKUP: next = this._state.onPickedUp(); break;
+      case StatusEvent.DELIVER: next = this._state.onDelivered(); break;
+      default: throw new Error(`Unsupported event via transitionTo: ${event}`);
+    }
+    this._state = next;
+    this._notifier.notifyStatusChanged(this);
+  }
+
+  cancel() {
+    if (this._state === DELIVERED_STATE) throw new Error(&#x27;Cannot cancel a delivered order&#x27;);
+    this._state = new CancelledState();
+    this._notifier.notifyStatusChanged(this);
+  }
+}
+
+// ---------- Delivery assignment ----------
+
+class DeliveryPartner {
+  constructor(id, name, location) { this.id = id; this.name = name; this.location = location; this.status = PartnerStatus.AVAILABLE; }
+  claim() {
+    if (this.status !== PartnerStatus.AVAILABLE) throw new Error(`Partner ${this.id} is not available`);
+    this.status = PartnerStatus.BUSY;
+  }
+  release() { this.status = PartnerStatus.AVAILABLE; }
+}
+
+/** @interface DeliveryAssignmentStrategy: selectPartner(order, candidates) -&gt; DeliveryPartner */
+class NearestAvailablePartnerStrategy {
+  selectPartner(order, candidates) {
+    const match = candidates.find((p) =&gt; p.location === order.restaurant.location);
+    if (match) return match;
+    if (candidates.length === 0) throw new Error(&#x27;No available delivery partners&#x27;);
+    return candidates[0]; // fall back to any available partner
+  }
+}
+
+/** Atomically selects and claims a partner -- selection and claim happen in the same call. */
+class DeliveryDispatcher {
+  constructor(partnerPool, strategy) { this._partnerPool = partnerPool; this._strategy = strategy; }
+  assign(order) {
+    const candidates = this._partnerPool.filter((p) =&gt; p.status === PartnerStatus.AVAILABLE);
+    const chosen = this._strategy.selectPartner(order, candidates);
+    chosen.claim(); // claim happens as part of the same selection step -- no double-assignment race
+    order.assignedPartner = chosen;
+    return chosen;
+  }
+}
+
+// ---------- OrderStatusNotifier (Observer) ----------
+
+class OrderStatusNotifier {
+  constructor() { this._observers = []; }
+  subscribe(observer) { this._observers.push(observer); }
+  notifyStatusChanged(order) { this._observers.forEach((o) =&gt; o.onStatusChanged(order)); }
+}
+class ConsoleStatusObserver {
+  onStatusChanged(order) { console.log(`[push] Order ${order.id} status -&gt; ${order.getStatus()}`); }
+}
+
+// ---------- OrderService (facade) ----------
+
+class OrderService {
+  constructor(dispatcher, notifier) {
+    this._dispatcher = dispatcher;
+    this._notifier = notifier;
+    this._orders = new Map();
+    this._orderSeq = 0;
+  }
+
+  placeOrder(customer, restaurant, cart) {
+    const lineItems = cart.items.map((ci) =&gt; new OrderLineItem(ci.menuItem, ci.quantity)); // freeze price/name now
+    const id = `ORD-${++this._orderSeq}`;
+    const order = new Order(id, customer, restaurant, lineItems, this._notifier);
+    this._orders.set(id, order);
+    this._notifier.notifyStatusChanged(order); // announce the initial PLACED state too
+    return order;
+  }
+
+  updateStatus(orderId, event) {
+    const order = this._orders.get(orderId);
+    if (!order) throw new Error(`Unknown order ${orderId}`);
+    if (event === StatusEvent.CANCEL) { order.cancel(); return; }
+    if (event === StatusEvent.PICKUP) this._dispatcher.assign(order); // assign a courier right before pickup
+    order.transitionTo(event);
+  }
+}
+
+function main() {
+  const restaurant = new Restaurant(&#x27;R1&#x27;, &#x27;Curry House&#x27;, &#x27;Downtown&#x27;);
+  const biryani = new MenuItem(&#x27;M1&#x27;, &#x27;Chicken Biryani&#x27;, 12.50);
+  const naan = new MenuItem(&#x27;M2&#x27;, &#x27;Garlic Naan&#x27;, 3.00);
+  restaurant.addMenuItem(biryani);
+  restaurant.addMenuItem(naan);
+
+  const notifier = new OrderStatusNotifier();
+  notifier.subscribe(new ConsoleStatusObserver());
+
+  const partners = [new DeliveryPartner(&#x27;P1&#x27;, &#x27;Sam&#x27;, &#x27;Downtown&#x27;), new DeliveryPartner(&#x27;P2&#x27;, &#x27;Robin&#x27;, &#x27;Uptown&#x27;)];
+  const dispatcher = new DeliveryDispatcher(partners, new NearestAvailablePartnerStrategy());
+
+  const orderService = new OrderService(dispatcher, notifier);
+
+  const customer = new Customer(&#x27;C1&#x27;, &#x27;Alice&#x27;, &#x27;12 Elm St&#x27;);
+  const cart = new Cart();
+  cart.addItem(biryani, 2);
+  cart.addItem(naan, 1);
+
+  const order = orderService.placeOrder(customer, restaurant, cart);
+  console.log(`Order placed: ${order.id}, total=${order.totalPrice().toFixed(2)}`);
+
+  // Live menu price changes after checkout must NOT affect this already-placed order&#x27;s receipt.
+  biryani.price = 15.00;
+  console.log(`Menu price changed to ${biryani.price.toFixed(2)}, but order total is still ${order.totalPrice().toFixed(2)}`);
+
+  orderService.updateStatus(order.id, StatusEvent.CONFIRM);
+  orderService.updateStatus(order.id, StatusEvent.PREPARE);
+  orderService.updateStatus(order.id, StatusEvent.PICKUP); // triggers atomic partner assignment
+  console.log(&#x27;Assigned partner:&#x27;, order.assignedPartner.name);
+  orderService.updateStatus(order.id, StatusEvent.DELIVER);
+
+  // Illegal transition: a duplicated/out-of-order DELIVER event on an already-delivered order must be rejected.
+  try {
+    orderService.updateStatus(order.id, StatusEvent.DELIVER);
+  } catch (e) {
+    console.log(&#x27;Rejected duplicate DELIVER event:&#x27;, e.message);
+  }
+
+  // P1 was claimed (BUSY) for order1 and is never auto-released on delivery in this simplified model,
+  // so the dispatcher correctly falls back to the only remaining available partner, P2.
+  const order2 = orderService.placeOrder(customer, restaurant, cart);
+  orderService.updateStatus(order2.id, StatusEvent.CONFIRM);
+  orderService.updateStatus(order2.id, StatusEvent.PREPARE);
+  orderService.updateStatus(order2.id, StatusEvent.PICKUP);
+  console.log(&#x27;Order2 assigned partner:&#x27;, order2.assignedPartner.name);
+
+  // Direct PLACED -&gt; DELIVERED must never be allowed.
+  const order3 = orderService.placeOrder(customer, restaurant, cart);
+  try {
+    orderService.updateStatus(order3.id, StatusEvent.DELIVER);
+  } catch (e) {
+    console.log(&#x27;Rejected out-of-order DELIVER on a freshly placed order:&#x27;, e.message);
+  }
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  OrderStatus, StatusEvent, PartnerStatus, Customer, MenuItem, Restaurant, OrderLineItem, Cart,
+  Order, DeliveryPartner, NearestAvailablePartnerStrategy, DeliveryDispatcher,
+  OrderStatusNotifier, ConsoleStatusObserver, OrderService,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Problem 18: Restaurant / Food Delivery System (single-threaded -- no concurrency badge)
+//
+// MenuItem (live, editable catalog) vs OrderLineItem (frozen price/name snapshot at checkout).
+// OrderState hierarchy: PLACED -&gt; CONFIRMED -&gt; PREPARING -&gt; OUT_FOR_DELIVERY -&gt; DELIVERED, each
+// state only accepting its own legal next event; illegal/duplicated events are rejected by the state.
+// DeliveryAssignmentStrategy is injected (Strategy); DeliveryDispatcher does the atomic select-then-claim.
+// OrderStatusNotifier is a thin Observer subject fanning out every legal transition.
+// OrderService is the facade: placeOrder() / updateStatus().
+
+enum OrderStatus { PLACED = &#x27;PLACED&#x27;, CONFIRMED = &#x27;CONFIRMED&#x27;, PREPARING = &#x27;PREPARING&#x27;, OUT_FOR_DELIVERY = &#x27;OUT_FOR_DELIVERY&#x27;, DELIVERED = &#x27;DELIVERED&#x27;, CANCELLED = &#x27;CANCELLED&#x27; }
+enum StatusEvent { CONFIRM = &#x27;CONFIRM&#x27;, PREPARE = &#x27;PREPARE&#x27;, PICKUP = &#x27;PICKUP&#x27;, DELIVER = &#x27;DELIVER&#x27;, CANCEL = &#x27;CANCEL&#x27; }
+enum PartnerStatus { AVAILABLE = &#x27;AVAILABLE&#x27;, BUSY = &#x27;BUSY&#x27; }
+
+class Customer {
+  constructor(public readonly id: string, public readonly name: string, public readonly address: string) {}
+}
+
+class MenuItem {
+  available = true;
+  constructor(public readonly id: string, public name: string, public price: number) {}
+}
+
+class Restaurant {
+  menu: MenuItem[] = [];
+  constructor(public readonly id: string, public readonly name: string, public readonly location: string) {}
+  addMenuItem(item: MenuItem): void { this.menu.push(item); }
+}
+
+/** Freezes name/price at checkout -- a later price change must never rewrite a past receipt. */
+class OrderLineItem {
+  readonly nameAtOrderTime: string;
+  readonly priceAtOrderTime: number;
+  constructor(menuItem: MenuItem, public readonly quantity: number) {
+    this.nameAtOrderTime = menuItem.name;
+    this.priceAtOrderTime = menuItem.price;
+  }
+  subtotal(): number { return this.priceAtOrderTime * this.quantity; }
+}
+
+interface CartEntry { menuItem: MenuItem; quantity: number }
+
+class Cart {
+  items: CartEntry[] = [];
+  addItem(menuItem: MenuItem, quantity: number): void { this.items.push({ menuItem, quantity }); }
+}
+
+// ---------- OrderState (State pattern) ----------
+interface OrderState {
+  onConfirm(): OrderState;
+  onPrepared(): OrderState;
+  onPickedUp(): OrderState;
+  onDelivered(): OrderState;
+  status(): OrderStatus;
+}
+
+class PlacedState implements OrderState {
+  onConfirm(): OrderState { return CONFIRMED_STATE; }
+  onPrepared(): OrderState { throw new Error(&#x27;Cannot prepare before confirmation&#x27;); }
+  onPickedUp(): OrderState { throw new Error(&#x27;Cannot pick up before confirmation&#x27;); }
+  onDelivered(): OrderState { throw new Error(&#x27;Cannot deliver before confirmation&#x27;); }
+  status(): OrderStatus { return OrderStatus.PLACED; }
+}
+class ConfirmedState implements OrderState {
+  onConfirm(): OrderState { throw new Error(&#x27;Already confirmed&#x27;); }
+  onPrepared(): OrderState { return PREPARING_STATE; }
+  onPickedUp(): OrderState { throw new Error(&#x27;Cannot pick up before preparation&#x27;); }
+  onDelivered(): OrderState { throw new Error(&#x27;Cannot deliver before preparation&#x27;); }
+  status(): OrderStatus { return OrderStatus.CONFIRMED; }
+}
+class PreparingState implements OrderState {
+  onConfirm(): OrderState { throw new Error(&#x27;Already confirmed&#x27;); }
+  onPrepared(): OrderState { throw new Error(&#x27;Already preparing&#x27;); }
+  onPickedUp(): OrderState { return OUT_FOR_DELIVERY_STATE; }
+  onDelivered(): OrderState { throw new Error(&#x27;Cannot deliver before pickup&#x27;); }
+  status(): OrderStatus { return OrderStatus.PREPARING; }
+}
+class OutForDeliveryState implements OrderState {
+  onConfirm(): OrderState { throw new Error(&#x27;Already confirmed&#x27;); }
+  onPrepared(): OrderState { throw new Error(&#x27;Already prepared&#x27;); }
+  onPickedUp(): OrderState { throw new Error(&#x27;Already picked up&#x27;); }
+  onDelivered(): OrderState { return DELIVERED_STATE; }
+  status(): OrderStatus { return OrderStatus.OUT_FOR_DELIVERY; }
+}
+class DeliveredState implements OrderState {
+  onConfirm(): OrderState { throw new Error(&#x27;Order already delivered -- terminal state&#x27;); }
+  onPrepared(): OrderState { throw new Error(&#x27;Order already delivered -- terminal state&#x27;); }
+  onPickedUp(): OrderState { throw new Error(&#x27;Order already delivered -- terminal state&#x27;); }
+  onDelivered(): OrderState { throw new Error(&#x27;Order already delivered -- terminal state&#x27;); }
+  status(): OrderStatus { return OrderStatus.DELIVERED; }
+}
+class CancelledState implements OrderState {
+  onConfirm(): OrderState { throw new Error(&#x27;Order is cancelled&#x27;); }
+  onPrepared(): OrderState { throw new Error(&#x27;Order is cancelled&#x27;); }
+  onPickedUp(): OrderState { throw new Error(&#x27;Order is cancelled&#x27;); }
+  onDelivered(): OrderState { throw new Error(&#x27;Order is cancelled&#x27;); }
+  status(): OrderStatus { return OrderStatus.CANCELLED; }
+}
+const PLACED_STATE: OrderState = new PlacedState();
+const CONFIRMED_STATE: OrderState = new ConfirmedState();
+const PREPARING_STATE: OrderState = new PreparingState();
+const OUT_FOR_DELIVERY_STATE: OrderState = new OutForDeliveryState();
+const DELIVERED_STATE: OrderState = new DeliveredState();
+
+interface OrderStatusObserver {
+  onStatusChanged(order: Order): void;
+}
+
+class OrderStatusNotifier {
+  private observers: OrderStatusObserver[] = [];
+  subscribe(observer: OrderStatusObserver): void { this.observers.push(observer); }
+  notifyStatusChanged(order: Order): void { this.observers.forEach((o) =&gt; o.onStatusChanged(order)); }
+}
+
+class Order {
+  private state: OrderState = PLACED_STATE;
+  assignedPartner: DeliveryPartner | null = null;
+
+  constructor(
+    public readonly id: string,
+    public readonly customer: Customer,
+    public readonly restaurant: Restaurant,
+    public readonly lineItems: OrderLineItem[],
+    private readonly notifier: OrderStatusNotifier
+  ) {}
+
+  getStatus(): OrderStatus { return this.state.status(); }
+  totalPrice(): number { return this.lineItems.reduce((sum, li) =&gt; sum + li.subtotal(), 0); }
+
+  /** Delegates transition legality to the current state; illegal events are rejected by the state itself. */
+  transitionTo(event: StatusEvent): void {
+    let next: OrderState;
+    switch (event) {
+      case StatusEvent.CONFIRM: next = this.state.onConfirm(); break;
+      case StatusEvent.PREPARE: next = this.state.onPrepared(); break;
+      case StatusEvent.PICKUP: next = this.state.onPickedUp(); break;
+      case StatusEvent.DELIVER: next = this.state.onDelivered(); break;
+      default: throw new Error(`Unsupported event via transitionTo: ${event}`);
+    }
+    this.state = next;
+    this.notifier.notifyStatusChanged(this);
+  }
+
+  cancel(): void {
+    if (this.state === DELIVERED_STATE) throw new Error(&#x27;Cannot cancel a delivered order&#x27;);
+    this.state = new CancelledState();
+    this.notifier.notifyStatusChanged(this);
+  }
+}
+
+class ConsoleStatusObserver implements OrderStatusObserver {
+  onStatusChanged(order: Order): void {
+    console.log(`[push] Order ${order.id} status -&gt; ${order.getStatus()}`);
+  }
+}
+
+// ---------- Delivery assignment ----------
+class DeliveryPartner {
+  status: PartnerStatus = PartnerStatus.AVAILABLE;
+  constructor(public readonly id: string, public readonly name: string, public readonly location: string) {}
+  claim(): void {
+    if (this.status !== PartnerStatus.AVAILABLE) throw new Error(`Partner ${this.id} is not available`);
+    this.status = PartnerStatus.BUSY;
+  }
+  release(): void { this.status = PartnerStatus.AVAILABLE; }
+}
+
+interface DeliveryAssignmentStrategy {
+  selectPartner(order: Order, candidates: DeliveryPartner[]): DeliveryPartner;
+}
+
+/** Picks the first available partner whose recorded location matches the restaurant&#x27;s -- a simple &quot;nearest&quot; proxy. */
+class NearestAvailablePartnerStrategy implements DeliveryAssignmentStrategy {
+  selectPartner(order: Order, candidates: DeliveryPartner[]): DeliveryPartner {
+    const match = candidates.find((p) =&gt; p.location === order.restaurant.location);
+    if (match) return match;
+    if (candidates.length === 0) throw new Error(&#x27;No available delivery partners&#x27;);
+    return candidates[0]; // fall back to any available partner
+  }
+}
+
+/** Atomically selects and claims a partner -- selection and claim happen in the same call. */
+class DeliveryDispatcher {
+  constructor(private partnerPool: DeliveryPartner[], private strategy: DeliveryAssignmentStrategy) {}
+  assign(order: Order): DeliveryPartner {
+    const candidates = this.partnerPool.filter((p) =&gt; p.status === PartnerStatus.AVAILABLE);
+    const chosen = this.strategy.selectPartner(order, candidates);
+    chosen.claim(); // claim happens as part of the same selection step -- no double-assignment race
+    order.assignedPartner = chosen;
+    return chosen;
+  }
+}
+
+/** Facade: top-level orchestration. */
+class OrderService {
+  private orders = new Map&lt;string, Order&gt;();
+  private orderSeq = 0;
+
+  constructor(private dispatcher: DeliveryDispatcher, private notifier: OrderStatusNotifier) {}
+
+  placeOrder(customer: Customer, restaurant: Restaurant, cart: Cart): Order {
+    const lineItems = cart.items.map((ci) =&gt; new OrderLineItem(ci.menuItem, ci.quantity)); // freeze price/name now
+    const id = `ORD-${++this.orderSeq}`;
+    const order = new Order(id, customer, restaurant, lineItems, this.notifier);
+    this.orders.set(id, order);
+    this.notifier.notifyStatusChanged(order); // announce the initial PLACED state too
+    return order;
+  }
+
+  updateStatus(orderId: string, event: StatusEvent): void {
+    const order = this.orders.get(orderId);
+    if (!order) throw new Error(`Unknown order ${orderId}`);
+    if (event === StatusEvent.CANCEL) { order.cancel(); return; }
+    if (event === StatusEvent.PICKUP) this.dispatcher.assign(order); // assign a courier right before pickup
+    order.transitionTo(event);
+  }
+}
+
+function main(): void {
+  const restaurant = new Restaurant(&#x27;R1&#x27;, &#x27;Curry House&#x27;, &#x27;Downtown&#x27;);
+  const biryani = new MenuItem(&#x27;M1&#x27;, &#x27;Chicken Biryani&#x27;, 12.50);
+  const naan = new MenuItem(&#x27;M2&#x27;, &#x27;Garlic Naan&#x27;, 3.00);
+  restaurant.addMenuItem(biryani);
+  restaurant.addMenuItem(naan);
+
+  const notifier = new OrderStatusNotifier();
+  notifier.subscribe(new ConsoleStatusObserver());
+
+  const partners = [new DeliveryPartner(&#x27;P1&#x27;, &#x27;Sam&#x27;, &#x27;Downtown&#x27;), new DeliveryPartner(&#x27;P2&#x27;, &#x27;Robin&#x27;, &#x27;Uptown&#x27;)];
+  const dispatcher = new DeliveryDispatcher(partners, new NearestAvailablePartnerStrategy());
+
+  const orderService = new OrderService(dispatcher, notifier);
+
+  const customer = new Customer(&#x27;C1&#x27;, &#x27;Alice&#x27;, &#x27;12 Elm St&#x27;);
+  const cart = new Cart();
+  cart.addItem(biryani, 2);
+  cart.addItem(naan, 1);
+
+  const order = orderService.placeOrder(customer, restaurant, cart);
+  console.log(`Order placed: ${order.id}, total=${order.totalPrice().toFixed(2)}`);
+
+  // Live menu price changes after checkout must NOT affect this already-placed order&#x27;s receipt.
+  biryani.price = 15.00;
+  console.log(`Menu price changed to ${biryani.price.toFixed(2)}, but order total is still ${order.totalPrice().toFixed(2)}`);
+
+  orderService.updateStatus(order.id, StatusEvent.CONFIRM);
+  orderService.updateStatus(order.id, StatusEvent.PREPARE);
+  orderService.updateStatus(order.id, StatusEvent.PICKUP); // triggers atomic partner assignment
+  console.log(&#x27;Assigned partner:&#x27;, order.assignedPartner!.name);
+  orderService.updateStatus(order.id, StatusEvent.DELIVER);
+
+  // Illegal transition: a duplicated/out-of-order DELIVER event on an already-delivered order must be rejected.
+  try {
+    orderService.updateStatus(order.id, StatusEvent.DELIVER);
+  } catch (e) {
+    console.log(&#x27;Rejected duplicate DELIVER event:&#x27;, (e as Error).message);
+  }
+
+  // P1 was claimed (BUSY) for order1 and is never auto-released on delivery in this simplified model,
+  // so the dispatcher correctly falls back to the only remaining available partner, P2.
+  const order2 = orderService.placeOrder(customer, restaurant, cart);
+  orderService.updateStatus(order2.id, StatusEvent.CONFIRM);
+  orderService.updateStatus(order2.id, StatusEvent.PREPARE);
+  orderService.updateStatus(order2.id, StatusEvent.PICKUP);
+  console.log(&#x27;Order2 assigned partner:&#x27;, order2.assignedPartner!.name);
+
+  // Direct PLACED -&gt; DELIVERED must never be allowed.
+  const order3 = orderService.placeOrder(customer, restaurant, cart);
+  try {
+    orderService.updateStatus(order3.id, StatusEvent.DELIVER);
+  } catch (e) {
+    console.log(&#x27;Rejected out-of-order DELIVER on a freshly placed order:&#x27;, (e as Error).message);
+  }
+}
+
+main();
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p17.html">&larr; 17. Movie Ticket Booking System</a><a class="prevnext-link next" href="p19.html">19. E-commerce Shopping Cart &amp; Checkout &rarr;</a></div>
 </div>
 </main>
 

@@ -61,7 +61,8 @@
 <a href="#p16-y">Y. Scaling Boundary</a><a href="#p16-z">Z. Failure Scenarios</a><a href="#p16-aa">AA. Bad Designs</a>
 <a href="#p16-ab">AB. Trade-Offs</a><a href="#p16-ac">AC. Interviewer Evaluation</a><a href="#p16-ad">AD. Simulation</a>
 <a href="#p16-ae">AE. Source Comparison</a><a href="#p16-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p16">Jump to section:</label><select id="jump-p16" class="jump-select" data-jump-select><option value="p16-a">A. Realistic Interview Prompt</option><option value="p16-b">B. Difficulty</option><option value="p16-c">C. What This Problem Tests</option><option value="p16-d">D. Requirements</option><option value="p16-e">E. Clarifying Questions</option><option value="p16-f">F. Assumptions</option><option value="p16-g">G. Actors</option><option value="p16-h">H. Core Domain Entities</option><option value="p16-i">I. Class Relationships</option><option value="p16-j">J. Class Diagram</option><option value="p16-k">K. Responsibility Mapping</option><option value="p16-l">L. SOLID Analysis</option><option value="p16-m">M. Design Patterns</option><option value="p16-n">N. What Is Likely to Change?</option><option value="p16-o">O. Design Evolution</option><option value="p16-p">P. API / Interface Design</option><option value="p16-q">Q. Pseudocode — Critical Logic</option><option value="p16-r">R. End-to-End Use Case</option><option value="p16-s">S. Data Structures</option><option value="p16-t">T. Complexity Analysis</option><option value="p16-u">U. Testing Strategy</option><option value="p16-v">V. Interviewer Follow-Ups</option><option value="p16-w">W. Concurrency</option><option value="p16-x">X. Persistence</option><option value="p16-y">Y. Scaling Boundary</option><option value="p16-z">Z. Failure Scenarios</option><option value="p16-aa">AA. Common Bad Designs</option><option value="p16-ab">AB. Design Trade-Offs</option><option value="p16-ac">AC. Interviewer Evaluation</option><option value="p16-ad">AD. Interview Simulation</option><option value="p16-ae">AE. Online Solution Comparison</option><option value="p16-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p16-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p16">Jump to section:</label><select id="jump-p16" class="jump-select" data-jump-select><option value="p16-a">A. Realistic Interview Prompt</option><option value="p16-b">B. Difficulty</option><option value="p16-c">C. What This Problem Tests</option><option value="p16-d">D. Requirements</option><option value="p16-e">E. Clarifying Questions</option><option value="p16-f">F. Assumptions</option><option value="p16-g">G. Actors</option><option value="p16-h">H. Core Domain Entities</option><option value="p16-i">I. Class Relationships</option><option value="p16-j">J. Class Diagram</option><option value="p16-k">K. Responsibility Mapping</option><option value="p16-l">L. SOLID Analysis</option><option value="p16-m">M. Design Patterns</option><option value="p16-n">N. What Is Likely to Change?</option><option value="p16-o">O. Design Evolution</option><option value="p16-p">P. API / Interface Design</option><option value="p16-q">Q. Pseudocode — Critical Logic</option><option value="p16-r">R. End-to-End Use Case</option><option value="p16-s">S. Data Structures</option><option value="p16-t">T. Complexity Analysis</option><option value="p16-u">U. Testing Strategy</option><option value="p16-v">V. Interviewer Follow-Ups</option><option value="p16-w">W. Concurrency</option><option value="p16-x">X. Persistence</option><option value="p16-y">Y. Scaling Boundary</option><option value="p16-z">Z. Failure Scenarios</option><option value="p16-aa">AA. Common Bad Designs</option><option value="p16-ab">AB. Design Trade-Offs</option><option value="p16-ac">AC. Interviewer Evaluation</option><option value="p16-ad">AD. Interview Simulation</option><option value="p16-ae">AE. Online Solution Comparison</option><option value="p16-af">AF. Interview Cheat Sheet</option><option value="p16-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p16-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a hotel reservation system. Guests can search for available rooms over a date range, book a room, and cancel a reservation. Room prices vary by room type and season."</div>
@@ -537,7 +538,1297 @@ guestA.cancelReservation() before Mar 1 → interval released, BookingNotifier.n
 <tr><td><strong>Top follow-ups</strong></td><td>Demand-based pricing, multi-room group bookings, intentional overbooking</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Boolean availability flag; unlocked check-then-book from the caller; hardcoded seasonal constants; god-object Hotel class</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design multi-property/OTA federation unless asked</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p15.html">&larr; 15. Library Management System</a><a class="prevnext-link next" href="p17.html">17. Movie Ticket Booking System &rarr;</a></div>
+</table>
+
+<h3 id="p16-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+ * Problem 16: Hotel Reservation System
+ *
+ * Key design decisions faithfully reproduced from the class diagram:
+ *  - Room (static attrs) vs RoomInventory (per-room booked-interval calendar) split.
+ *  - ReservationRequestBuilder assembles an in-progress booking intent step by step.
+ *  - PricingStrategy is injected (Strategy) so pricing rules can change independently.
+ *  - BookingNotifier is a thin Observer subject for booking lifecycle events.
+ *  - Hotel is the facade orchestrating search/book/cancel.
+ */
+public class p16 {
+
+    // ---------- Shared value types ----------
+
+    enum RoomType { SINGLE, DOUBLE, SUITE, DELUXE }
+
+    enum AddOn { BREAKFAST, LATE_CHECKOUT, AIRPORT_PICKUP, EXTRA_BED }
+
+    enum ReservationStatus { CONFIRMED, CANCELLED }
+
+    /** Half-open [checkIn, checkOut) interval. Overlap math lives here, not on Room. */
+    static final class DateRange {
+        final LocalDate checkIn;
+        final LocalDate checkOut;
+
+        DateRange(LocalDate checkIn, LocalDate checkOut) {
+            if (!checkIn.isBefore(checkOut)) throw new IllegalArgumentException(&quot;checkIn must be before checkOut&quot;);
+            this.checkIn = checkIn;
+            this.checkOut = checkOut;
+        }
+
+        boolean overlaps(DateRange other) {
+            return this.checkIn.isBefore(other.checkOut) &amp;&amp; other.checkIn.isBefore(this.checkOut);
+        }
+
+        long nights() {
+            return checkOut.toEpochDay() - checkIn.toEpochDay();
+        }
+
+        @Override public String toString() { return checkIn + &quot; -&gt; &quot; + checkOut; }
+    }
+
+    static final class Guest {
+        final String id, name, email;
+        Guest(String id, String name, String email) { this.id = id; this.name = name; this.email = email; }
+    }
+
+    // ---------- Room / RoomInventory ----------
+
+    /** Per-room calendar of booked intervals; the sole overlap-checking authority. */
+    static final class RoomInventory {
+        private final List&lt;DateRange&gt; bookedIntervals = new ArrayList&lt;&gt;();
+        private final Lock lock = new ReentrantLock();
+
+        boolean isAvailable(DateRange range) {
+            lock.lock();
+            try {
+                return isAvailableInternal(range);
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        private boolean isAvailableInternal(DateRange range) {
+            for (DateRange existing : bookedIntervals) {
+                if (existing.overlaps(range)) return false;
+            }
+            return true;
+        }
+
+        /** Atomic check-then-book under the same lock, preventing double booking. */
+        boolean book(DateRange range) {
+            lock.lock();
+            try {
+                if (!isAvailableInternal(range)) return false;
+                bookedIntervals.add(range);
+                return true;
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        void release(DateRange range) {
+            lock.lock();
+            try {
+                bookedIntervals.removeIf(r -&gt; r.checkIn.equals(range.checkIn) &amp;&amp; r.checkOut.equals(range.checkOut));
+            } finally {
+                lock.unlock();
+            }
+        }
+    }
+
+    static final class Room {
+        final String roomNumber;
+        final RoomType roomType;
+        final int floor;
+        private final RoomInventory inventory = new RoomInventory(); // composition: Room owns its inventory 1:1
+
+        Room(String roomNumber, RoomType roomType, int floor) {
+            this.roomNumber = roomNumber;
+            this.roomType = roomType;
+            this.floor = floor;
+        }
+
+        RoomInventory getInventory() { return inventory; }
+    }
+
+    // ---------- Reservation request + builder ----------
+
+    static final class ReservationRequest {
+        final DateRange range;
+        final RoomType roomType;
+        final int guestCount;
+        final Set&lt;AddOn&gt; addOns;
+        final String specialRequests;
+
+        ReservationRequest(DateRange range, RoomType roomType, int guestCount, Set&lt;AddOn&gt; addOns, String specialRequests) {
+            this.range = range;
+            this.roomType = roomType;
+            this.guestCount = guestCount;
+            this.addOns = addOns;
+            this.specialRequests = specialRequests;
+        }
+    }
+
+    /** Fluent, step-by-step construction; validates once at build() instead of at every setter. */
+    static final class ReservationRequestBuilder {
+        private DateRange range;
+        private RoomType roomType;
+        private int guestCount = 1;
+        private final Set&lt;AddOn&gt; addOns = new LinkedHashSet&lt;&gt;();
+        private String specialRequests = &quot;&quot;;
+
+        ReservationRequestBuilder withDates(LocalDate checkIn, LocalDate checkOut) {
+            this.range = new DateRange(checkIn, checkOut);
+            return this;
+        }
+
+        ReservationRequestBuilder withRoomType(RoomType type) {
+            this.roomType = type;
+            return this;
+        }
+
+        ReservationRequestBuilder withGuestCount(int count) {
+            this.guestCount = count;
+            return this;
+        }
+
+        ReservationRequestBuilder withAddOn(AddOn addOn) {
+            this.addOns.add(addOn);
+            return this;
+        }
+
+        ReservationRequestBuilder withSpecialRequests(String text) {
+            this.specialRequests = text;
+            return this;
+        }
+
+        ReservationRequest build() {
+            if (range == null) throw new IllegalStateException(&quot;dates are required&quot;);
+            if (roomType == null) throw new IllegalStateException(&quot;roomType is required&quot;);
+            return new ReservationRequest(range, roomType, guestCount, addOns, specialRequests);
+        }
+    }
+
+    // ---------- Pricing strategy ----------
+
+    interface PricingStrategy {
+        double calculatePrice(Room room, DateRange range);
+    }
+
+    /** Flat per-night rate by room type. */
+    static final class StandardPricingStrategy implements PricingStrategy {
+        private final Map&lt;RoomType, Double&gt; baseRates = Map.of(
+                RoomType.SINGLE, 80.0, RoomType.DOUBLE, 120.0, RoomType.SUITE, 220.0, RoomType.DELUXE, 350.0);
+
+        @Override
+        public double calculatePrice(Room room, DateRange range) {
+            return baseRates.get(room.roomType) * range.nights();
+        }
+    }
+
+    /** Adds a weekend surcharge on top of the base rate -- a *new* rule, no change to Reservation/Hotel. */
+    static final class WeekendSurchargePricingStrategy implements PricingStrategy {
+        private final PricingStrategy delegate;
+        private final double weekendMultiplier;
+
+        WeekendSurchargePricingStrategy(PricingStrategy delegate, double weekendMultiplier) {
+            this.delegate = delegate;
+            this.weekendMultiplier = weekendMultiplier;
+        }
+
+        @Override
+        public double calculatePrice(Room room, DateRange range) {
+            double perNightBase = delegate.calculatePrice(room, new DateRange(range.checkIn, range.checkIn.plusDays(1)));
+            double total = 0;
+            LocalDate day = range.checkIn;
+            while (day.isBefore(range.checkOut)) {
+                boolean isWeekend = day.getDayOfWeek() == DayOfWeek.SATURDAY || day.getDayOfWeek() == DayOfWeek.SUNDAY;
+                total += isWeekend ? perNightBase * weekendMultiplier : perNightBase;
+                day = day.plusDays(1);
+            }
+            return total;
+        }
+    }
+
+    // ---------- Reservation ----------
+
+    static final class Reservation {
+        final String id;
+        final Guest guest;
+        final Room room;
+        final DateRange range;
+        ReservationStatus status;
+        final double totalPrice;
+        private final BookingNotifier notifier;
+
+        Reservation(String id, Guest guest, Room room, DateRange range, double totalPrice, BookingNotifier notifier) {
+            this.id = id;
+            this.guest = guest;
+            this.room = room;
+            this.range = range;
+            this.totalPrice = totalPrice;
+            this.notifier = notifier;
+            this.status = ReservationStatus.CONFIRMED;
+        }
+
+        void cancel() {
+            if (status == ReservationStatus.CANCELLED) return;
+            status = ReservationStatus.CANCELLED;
+            room.getInventory().release(range);
+            notifier.notifyCancelled(this);
+        }
+    }
+
+    // ---------- Booking notifier (Observer) ----------
+
+    interface BookingObserver {
+        void onConfirmed(Reservation reservation);
+        void onCancelled(Reservation reservation);
+    }
+
+    static final class BookingNotifier {
+        private final List&lt;BookingObserver&gt; observers = new ArrayList&lt;&gt;();
+
+        void subscribe(BookingObserver observer) { observers.add(observer); }
+
+        void notifyConfirmed(Reservation reservation) {
+            for (BookingObserver o : observers) o.onConfirmed(reservation);
+        }
+
+        void notifyCancelled(Reservation reservation) {
+            for (BookingObserver o : observers) o.onCancelled(reservation);
+        }
+    }
+
+    static final class ConsoleGuestNotifier implements BookingObserver {
+        @Override
+        public void onConfirmed(Reservation r) {
+            System.out.printf(&quot;[notify] Reservation %s CONFIRMED for %s, room %s, %.2f total%n&quot;,
+                    r.id, r.guest.name, r.room.roomNumber, r.totalPrice);
+        }
+
+        @Override
+        public void onCancelled(Reservation r) {
+            System.out.printf(&quot;[notify] Reservation %s CANCELLED for %s%n&quot;, r.id, r.guest.name);
+        }
+    }
+
+    // ---------- Hotel (facade) ----------
+
+    static final class Hotel {
+        private final List&lt;Room&gt; rooms;
+        private final PricingStrategy pricingStrategy;
+        private final BookingNotifier notifier;
+        private final Map&lt;String, Reservation&gt; reservations = new HashMap&lt;&gt;();
+        private int reservationSeq = 0;
+
+        Hotel(List&lt;Room&gt; rooms, PricingStrategy pricingStrategy, BookingNotifier notifier) {
+            this.rooms = rooms;
+            this.pricingStrategy = pricingStrategy;
+            this.notifier = notifier;
+        }
+
+        List&lt;Room&gt; searchAvailability(LocalDate checkIn, LocalDate checkOut, RoomType type) {
+            DateRange range = new DateRange(checkIn, checkOut);
+            List&lt;Room&gt; result = new ArrayList&lt;&gt;();
+            for (Room room : rooms) {
+                if (type != null &amp;&amp; room.roomType != type) continue;
+                if (room.getInventory().isAvailable(range)) result.add(room);
+            }
+            return result;
+        }
+
+        Reservation bookRoom(Guest guest, ReservationRequest request) {
+            for (Room candidate : rooms) {
+                if (candidate.roomType != request.roomType) continue;
+                // Atomic check-then-book lives inside RoomInventory.book(); try the next
+                // candidate room of the same type if this one lost the race or was already booked.
+                if (candidate.getInventory().book(request.range)) {
+                    double price = pricingStrategy.calculatePrice(candidate, request.range);
+                    String id = &quot;RES-&quot; + (++reservationSeq);
+                    Reservation reservation = new Reservation(id, guest, candidate, request.range, price, notifier);
+                    reservations.put(id, reservation);
+                    notifier.notifyConfirmed(reservation);
+                    return reservation;
+                }
+            }
+            throw new IllegalStateException(&quot;No available room of type &quot; + request.roomType + &quot; for &quot; + request.range);
+        }
+
+        void cancelReservation(String reservationId) {
+            Reservation reservation = reservations.get(reservationId);
+            if (reservation == null) throw new NoSuchElementException(&quot;Unknown reservation &quot; + reservationId);
+            reservation.cancel();
+        }
+    }
+
+    // ---------- Demo ----------
+
+    public static void main(String[] args) throws InterruptedException {
+        List&lt;Room&gt; rooms = new ArrayList&lt;&gt;();
+        rooms.add(new Room(&quot;101&quot;, RoomType.DOUBLE, 1));
+        rooms.add(new Room(&quot;102&quot;, RoomType.DOUBLE, 1));
+        rooms.add(new Room(&quot;201&quot;, RoomType.SUITE, 2));
+
+        PricingStrategy pricing = new WeekendSurchargePricingStrategy(new StandardPricingStrategy(), 1.25);
+        BookingNotifier notifier = new BookingNotifier();
+        notifier.subscribe(new ConsoleGuestNotifier());
+
+        Hotel hotel = new Hotel(rooms, pricing, notifier);
+
+        LocalDate in = LocalDate.of(2026, 10, 2);
+        LocalDate out = LocalDate.of(2026, 10, 5);
+
+        System.out.println(&quot;Available DOUBLE rooms: &quot; + hotel.searchAvailability(in, out, RoomType.DOUBLE).size());
+
+        ReservationRequest request = new ReservationRequestBuilder()
+                .withDates(in, out)
+                .withRoomType(RoomType.DOUBLE)
+                .withGuestCount(2)
+                .withAddOn(AddOn.BREAKFAST)
+                .build();
+
+        Guest alice = new Guest(&quot;g1&quot;, &quot;Alice&quot;, &quot;alice@example.com&quot;);
+        Reservation resA = hotel.bookRoom(alice, request);
+        System.out.println(&quot;Booked room: &quot; + resA.room.roomNumber + &quot; price=&quot; + resA.totalPrice);
+
+        // Concurrency demo: two guests race for the SAME remaining double room + dates.
+        Guest bob = new Guest(&quot;g2&quot;, &quot;Bob&quot;, &quot;bob@example.com&quot;);
+        ReservationRequest sameRequest = new ReservationRequestBuilder().withDates(in, out).withRoomType(RoomType.DOUBLE).build();
+        final Reservation[] results = new Reservation[2];
+        Runnable attempt = () -&gt; {
+            try {
+                results[0] = hotel.bookRoom(bob, sameRequest);
+            } catch (Exception ignored) { }
+        };
+        Thread t1 = new Thread(attempt);
+        Thread t2 = new Thread(attempt);
+        t1.start(); t2.start();
+        t1.join(); t2.join();
+        System.out.println(&quot;Second concurrent booking landed on room: &quot; + (results[0] != null ? results[0].room.roomNumber : &quot;none&quot;));
+
+        System.out.println(&quot;Available DOUBLE rooms after bookings: &quot; + hotel.searchAvailability(in, out, RoomType.DOUBLE).size());
+
+        hotel.cancelReservation(resA.id);
+        System.out.println(&quot;Available DOUBLE rooms after cancel: &quot; + hotel.searchAvailability(in, out, RoomType.DOUBLE).size());
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Problem 16: Hotel Reservation System
+//
+// Room (static attrs) vs RoomInventory (per-room booked-interval calendar) split.
+// ReservationRequestBuilder assembles a booking intent step by step.
+// PricingStrategy is injected (Strategy) so pricing rules change independently.
+// BookingNotifier is a thin Observer subject for booking lifecycle events.
+// Hotel is the facade orchestrating search/book/cancel.
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+#include &lt;map&gt;
+#include &lt;set&gt;
+#include &lt;mutex&gt;
+#include &lt;thread&gt;
+#include &lt;stdexcept&gt;
+#include &lt;sstream&gt;
+
+// ---------- Simple date type (days since epoch-ish counter is enough for this demo) ----------
+struct SimpleDate {
+    int y, m, d;
+    long toOrdinal() const { return y * 372L + m * 31L + d; } // stable-enough ordering for a demo
+    int dayOfWeekMod7() const { return static_cast&lt;int&gt;(toOrdinal() % 7); } // pretend weekend detector
+    bool isBefore(const SimpleDate&amp; o) const { return toOrdinal() &lt; o.toOrdinal(); }
+    SimpleDate plusDays(int n) const {
+        // Minimal, non-calendar-accurate increment sufficient for the pricing loop below.
+        SimpleDate copy = *this;
+        for (int i = 0; i &lt; n; ++i) {
+            copy.d++;
+            if (copy.d &gt; 28) { copy.d = 1; copy.m++; if (copy.m &gt; 12) { copy.m = 1; copy.y++; } }
+        }
+        return copy;
+    }
+    std::string toString() const {
+        std::ostringstream os; os &lt;&lt; y &lt;&lt; &quot;-&quot; &lt;&lt; m &lt;&lt; &quot;-&quot; &lt;&lt; d; return os.str();
+    }
+};
+
+enum class RoomType { SINGLE, DOUBLE, SUITE, DELUXE };
+enum class AddOn { BREAKFAST, LATE_CHECKOUT, AIRPORT_PICKUP, EXTRA_BED };
+enum class ReservationStatus { CONFIRMED, CANCELLED };
+
+// Half-open [checkIn, checkOut) interval; overlap math lives here, not on Room.
+struct DateRange {
+    SimpleDate checkIn, checkOut;
+    DateRange(SimpleDate in, SimpleDate out) : checkIn(in), checkOut(out) {
+        if (!in.isBefore(out)) throw std::invalid_argument(&quot;checkIn must be before checkOut&quot;);
+    }
+    bool overlaps(const DateRange&amp; other) const {
+        return checkIn.isBefore(other.checkOut) &amp;&amp; other.checkIn.isBefore(checkOut);
+    }
+    long nights() const { return checkOut.toOrdinal() - checkIn.toOrdinal(); }
+};
+
+struct Guest {
+    std::string id, name, email;
+};
+
+// Per-room calendar of booked intervals; the sole overlap-checking authority.
+class RoomInventory {
+public:
+    bool isAvailable(const DateRange&amp; range) {
+        std::lock_guard&lt;std::mutex&gt; lock(mutex_);
+        return isAvailableInternal(range);
+    }
+
+    // Atomic check-then-book under the same lock, preventing double booking.
+    bool book(const DateRange&amp; range) {
+        std::lock_guard&lt;std::mutex&gt; lock(mutex_);
+        if (!isAvailableInternal(range)) return false;
+        bookedIntervals_.push_back(range);
+        return true;
+    }
+
+    void release(const DateRange&amp; range) {
+        std::lock_guard&lt;std::mutex&gt; lock(mutex_);
+        for (auto it = bookedIntervals_.begin(); it != bookedIntervals_.end(); ++it) {
+            if (it-&gt;checkIn.toOrdinal() == range.checkIn.toOrdinal() &amp;&amp;
+                it-&gt;checkOut.toOrdinal() == range.checkOut.toOrdinal()) {
+                bookedIntervals_.erase(it);
+                return;
+            }
+        }
+    }
+
+private:
+    bool isAvailableInternal(const DateRange&amp; range) const {
+        for (const auto&amp; existing : bookedIntervals_) if (existing.overlaps(range)) return false;
+        return true;
+    }
+    std::vector&lt;DateRange&gt; bookedIntervals_;
+    std::mutex mutex_;
+};
+
+class Room {
+public:
+    std::string roomNumber;
+    RoomType roomType;
+    int floor;
+    Room(std::string number, RoomType type, int fl) : roomNumber(std::move(number)), roomType(type), floor(fl) {}
+    RoomInventory&amp; getInventory() { return inventory_; } // composition: Room owns its inventory 1:1
+private:
+    RoomInventory inventory_;
+};
+
+struct ReservationRequest {
+    DateRange range;
+    RoomType roomType;
+    int guestCount;
+    std::set&lt;AddOn&gt; addOns;
+    std::string specialRequests;
+};
+
+// Fluent, step-by-step construction; validates once at build() instead of at every setter.
+class ReservationRequestBuilder {
+public:
+    ReservationRequestBuilder&amp; withDates(SimpleDate in, SimpleDate out) {
+        range_ = std::make_unique&lt;DateRange&gt;(in, out);
+        return *this;
+    }
+    ReservationRequestBuilder&amp; withRoomType(RoomType type) { roomType_ = type; hasType_ = true; return *this; }
+    ReservationRequestBuilder&amp; withGuestCount(int count) { guestCount_ = count; return *this; }
+    ReservationRequestBuilder&amp; withAddOn(AddOn addOn) { addOns_.insert(addOn); return *this; }
+    ReservationRequestBuilder&amp; withSpecialRequests(std::string text) { specialRequests_ = std::move(text); return *this; }
+
+    ReservationRequest build() {
+        if (!range_) throw std::logic_error(&quot;dates are required&quot;);
+        if (!hasType_) throw std::logic_error(&quot;roomType is required&quot;);
+        return ReservationRequest{*range_, roomType_, guestCount_, addOns_, specialRequests_};
+    }
+
+private:
+    std::unique_ptr&lt;DateRange&gt; range_;
+    RoomType roomType_ = RoomType::SINGLE;
+    bool hasType_ = false;
+    int guestCount_ = 1;
+    std::set&lt;AddOn&gt; addOns_;
+    std::string specialRequests_;
+};
+
+class PricingStrategy {
+public:
+    virtual ~PricingStrategy() = default;
+    virtual double calculatePrice(const Room&amp; room, const DateRange&amp; range) = 0;
+};
+
+// Flat per-night rate by room type.
+class StandardPricingStrategy : public PricingStrategy {
+public:
+    double calculatePrice(const Room&amp; room, const DateRange&amp; range) override {
+        return baseRate(room.roomType) * static_cast&lt;double&gt;(range.nights());
+    }
+    static double baseRate(RoomType type) {
+        switch (type) {
+            case RoomType::SINGLE: return 80.0;
+            case RoomType::DOUBLE: return 120.0;
+            case RoomType::SUITE: return 220.0;
+            case RoomType::DELUXE: return 350.0;
+        }
+        return 0.0;
+    }
+};
+
+// Adds a weekend surcharge on top of a delegate rate -- a *new* rule, no change to Reservation/Hotel.
+class WeekendSurchargePricingStrategy : public PricingStrategy {
+public:
+    WeekendSurchargePricingStrategy(std::shared_ptr&lt;PricingStrategy&gt; delegate, double multiplier)
+        : delegate_(std::move(delegate)), multiplier_(multiplier) {}
+
+    double calculatePrice(const Room&amp; room, const DateRange&amp; range) override {
+        DateRange oneNight(range.checkIn, range.checkIn.plusDays(1));
+        double perNight = delegate_-&gt;calculatePrice(room, oneNight);
+        double total = 0;
+        SimpleDate day = range.checkIn;
+        while (day.isBefore(range.checkOut)) {
+            bool isWeekend = day.dayOfWeekMod7() == 5 || day.dayOfWeekMod7() == 6;
+            total += isWeekend ? perNight * multiplier_ : perNight;
+            day = day.plusDays(1);
+        }
+        return total;
+    }
+
+private:
+    std::shared_ptr&lt;PricingStrategy&gt; delegate_;
+    double multiplier_;
+};
+
+class Reservation;
+
+class BookingObserver {
+public:
+    virtual ~BookingObserver() = default;
+    virtual void onConfirmed(const Reservation&amp; reservation) = 0;
+    virtual void onCancelled(const Reservation&amp; reservation) = 0;
+};
+
+class BookingNotifier {
+public:
+    void subscribe(std::shared_ptr&lt;BookingObserver&gt; observer) { observers_.push_back(std::move(observer)); }
+    void notifyConfirmed(const Reservation&amp; reservation) { for (auto&amp; o : observers_) o-&gt;onConfirmed(reservation); }
+    void notifyCancelled(const Reservation&amp; reservation) { for (auto&amp; o : observers_) o-&gt;onCancelled(reservation); }
+private:
+    std::vector&lt;std::shared_ptr&lt;BookingObserver&gt;&gt; observers_;
+};
+
+class Reservation {
+public:
+    std::string id;
+    Guest guest;
+    Room* room;
+    DateRange range;
+    ReservationStatus status;
+    double totalPrice;
+
+    Reservation(std::string id_, Guest guest_, Room* room_, DateRange range_, double price, BookingNotifier* notifier)
+        : id(std::move(id_)), guest(std::move(guest_)), room(room_), range(range_),
+          status(ReservationStatus::CONFIRMED), totalPrice(price), notifier_(notifier) {}
+
+    void cancel() {
+        if (status == ReservationStatus::CANCELLED) return;
+        status = ReservationStatus::CANCELLED;
+        room-&gt;getInventory().release(range);
+        notifier_-&gt;notifyCancelled(*this);
+    }
+
+private:
+    BookingNotifier* notifier_;
+};
+
+class ConsoleGuestNotifier : public BookingObserver {
+public:
+    void onConfirmed(const Reservation&amp; r) override {
+        std::cout &lt;&lt; &quot;[notify] Reservation &quot; &lt;&lt; r.id &lt;&lt; &quot; CONFIRMED for &quot; &lt;&lt; r.guest.name
+                   &lt;&lt; &quot;, room &quot; &lt;&lt; r.room-&gt;roomNumber &lt;&lt; &quot;, &quot; &lt;&lt; r.totalPrice &lt;&lt; &quot; total\n&quot;;
+    }
+    void onCancelled(const Reservation&amp; r) override {
+        std::cout &lt;&lt; &quot;[notify] Reservation &quot; &lt;&lt; r.id &lt;&lt; &quot; CANCELLED for &quot; &lt;&lt; r.guest.name &lt;&lt; &quot;\n&quot;;
+    }
+};
+
+// Facade: top-level orchestration.
+class Hotel {
+public:
+    Hotel(std::vector&lt;std::unique_ptr&lt;Room&gt;&gt; rooms, std::shared_ptr&lt;PricingStrategy&gt; pricing, std::shared_ptr&lt;BookingNotifier&gt; notifier)
+        : rooms_(std::move(rooms)), pricingStrategy_(std::move(pricing)), notifier_(std::move(notifier)) {}
+
+    std::vector&lt;Room*&gt; searchAvailability(SimpleDate in, SimpleDate out, RoomType type) {
+        DateRange range(in, out);
+        std::vector&lt;Room*&gt; result;
+        for (auto&amp; room : rooms_) {
+            if (room-&gt;roomType != type) continue;
+            if (room-&gt;getInventory().isAvailable(range)) result.push_back(room.get());
+        }
+        return result;
+    }
+
+    std::shared_ptr&lt;Reservation&gt; bookRoom(const Guest&amp; guest, const ReservationRequest&amp; request) {
+        for (auto&amp; candidate : rooms_) {
+            if (candidate-&gt;roomType != request.roomType) continue;
+            // Atomic check-then-book lives inside RoomInventory::book(); try the next
+            // candidate room of the same type if this one lost the race or was already booked.
+            if (candidate-&gt;getInventory().book(request.range)) {
+                double price = pricingStrategy_-&gt;calculatePrice(*candidate, request.range);
+                std::string id = &quot;RES-&quot; + std::to_string(++reservationSeq_);
+                auto reservation = std::make_shared&lt;Reservation&gt;(id, guest, candidate.get(), request.range, price, notifier_.get());
+                std::lock_guard&lt;std::mutex&gt; lock(reservationsMutex_);
+                reservations_[id] = reservation;
+                notifier_-&gt;notifyConfirmed(*reservation);
+                return reservation;
+            }
+        }
+        throw std::runtime_error(&quot;No available room of requested type for given dates&quot;);
+    }
+
+    void cancelReservation(const std::string&amp; reservationId) {
+        std::lock_guard&lt;std::mutex&gt; lock(reservationsMutex_);
+        auto it = reservations_.find(reservationId);
+        if (it == reservations_.end()) throw std::runtime_error(&quot;Unknown reservation &quot; + reservationId);
+        it-&gt;second-&gt;cancel();
+    }
+
+private:
+    std::vector&lt;std::unique_ptr&lt;Room&gt;&gt; rooms_;
+    std::shared_ptr&lt;PricingStrategy&gt; pricingStrategy_;
+    std::shared_ptr&lt;BookingNotifier&gt; notifier_;
+    std::map&lt;std::string, std::shared_ptr&lt;Reservation&gt;&gt; reservations_;
+    std::mutex reservationsMutex_;
+    int reservationSeq_ = 0;
+};
+
+int main() {
+    std::vector&lt;std::unique_ptr&lt;Room&gt;&gt; rooms;
+    rooms.push_back(std::make_unique&lt;Room&gt;(&quot;101&quot;, RoomType::DOUBLE, 1));
+    rooms.push_back(std::make_unique&lt;Room&gt;(&quot;102&quot;, RoomType::DOUBLE, 1));
+    rooms.push_back(std::make_unique&lt;Room&gt;(&quot;201&quot;, RoomType::SUITE, 2));
+
+    auto standard = std::make_shared&lt;StandardPricingStrategy&gt;();
+    auto pricing = std::make_shared&lt;WeekendSurchargePricingStrategy&gt;(standard, 1.25);
+    auto notifier = std::make_shared&lt;BookingNotifier&gt;();
+    notifier-&gt;subscribe(std::make_shared&lt;ConsoleGuestNotifier&gt;());
+
+    Hotel hotel(std::move(rooms), pricing, notifier);
+
+    SimpleDate in{2026, 10, 2};
+    SimpleDate out{2026, 10, 5};
+
+    std::cout &lt;&lt; &quot;Available DOUBLE rooms: &quot; &lt;&lt; hotel.searchAvailability(in, out, RoomType::DOUBLE).size() &lt;&lt; &quot;\n&quot;;
+
+    ReservationRequest request = ReservationRequestBuilder()
+        .withDates(in, out)
+        .withRoomType(RoomType::DOUBLE)
+        .withGuestCount(2)
+        .withAddOn(AddOn::BREAKFAST)
+        .build();
+
+    Guest alice{&quot;g1&quot;, &quot;Alice&quot;, &quot;alice@example.com&quot;};
+    auto resA = hotel.bookRoom(alice, request);
+    std::cout &lt;&lt; &quot;Booked room: &quot; &lt;&lt; resA-&gt;room-&gt;roomNumber &lt;&lt; &quot; price=&quot; &lt;&lt; resA-&gt;totalPrice &lt;&lt; &quot;\n&quot;;
+
+    // Concurrency demo: two guests race for the SAME remaining double room + dates.
+    Guest bob{&quot;g2&quot;, &quot;Bob&quot;, &quot;bob@example.com&quot;};
+    ReservationRequest sameRequest = ReservationRequestBuilder().withDates(in, out).withRoomType(RoomType::DOUBLE).build();
+    std::shared_ptr&lt;Reservation&gt; winner;
+    std::mutex winnerMutex;
+    auto attempt = [&amp;]() {
+        try {
+            auto r = hotel.bookRoom(bob, sameRequest);
+            std::lock_guard&lt;std::mutex&gt; lock(winnerMutex);
+            winner = r;
+        } catch (...) { }
+    };
+    std::thread t1(attempt), t2(attempt);
+    t1.join(); t2.join();
+    std::cout &lt;&lt; &quot;Second concurrent booking landed on room: &quot; &lt;&lt; (winner ? winner-&gt;room-&gt;roomNumber : &quot;none&quot;) &lt;&lt; &quot;\n&quot;;
+
+    std::cout &lt;&lt; &quot;Available DOUBLE rooms after bookings: &quot; &lt;&lt; hotel.searchAvailability(in, out, RoomType::DOUBLE).size() &lt;&lt; &quot;\n&quot;;
+
+    hotel.cancelReservation(resA-&gt;id);
+    std::cout &lt;&lt; &quot;Available DOUBLE rooms after cancel: &quot; &lt;&lt; hotel.searchAvailability(in, out, RoomType::DOUBLE).size() &lt;&lt; &quot;\n&quot;;
+
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">&#x27;use strict&#x27;;
+// Problem 16: Hotel Reservation System
+//
+// Room (static attrs) vs RoomInventory (per-room booked-interval calendar) split.
+// ReservationRequestBuilder assembles a booking intent step by step.
+// PricingStrategy is injected (Strategy) so pricing rules change independently.
+// BookingNotifier is a thin Observer subject for booking lifecycle events.
+// Hotel is the facade orchestrating search/book/cancel.
+//
+// Node&#x27;s event loop is single-threaded, so true data races are impossible here;
+// the AsyncMutex below still models the same &quot;lock the inventory during the
+// check-then-book&quot; shape as the Java/C++ versions for structural fidelity, and
+// matters for real correctness once any I/O (e.g. a DB call) is added inside it.
+
+const RoomType = Object.freeze({ SINGLE: &#x27;SINGLE&#x27;, DOUBLE: &#x27;DOUBLE&#x27;, SUITE: &#x27;SUITE&#x27;, DELUXE: &#x27;DELUXE&#x27; });
+const AddOn = Object.freeze({ BREAKFAST: &#x27;BREAKFAST&#x27;, LATE_CHECKOUT: &#x27;LATE_CHECKOUT&#x27;, AIRPORT_PICKUP: &#x27;AIRPORT_PICKUP&#x27;, EXTRA_BED: &#x27;EXTRA_BED&#x27; });
+const ReservationStatus = Object.freeze({ CONFIRMED: &#x27;CONFIRMED&#x27;, CANCELLED: &#x27;CANCELLED&#x27; });
+
+/** A minimal FIFO mutual-exclusion primitive: a queue of waiters, one holder at a time. */
+class AsyncMutex {
+  constructor() { this._locked = false; this._waiters = []; }
+  _acquire() {
+    return new Promise((resolve) =&gt; {
+      if (!this._locked) { this._locked = true; resolve(); }
+      else this._waiters.push(resolve);
+    });
+  }
+  _release() {
+    if (this._waiters.length &gt; 0) this._waiters.shift()();
+    else this._locked = false;
+  }
+  async runExclusive(fn) {
+    await this._acquire();
+    try {
+      return await fn();
+    } finally {
+      this._release();
+    }
+  }
+}
+
+/** Half-open [checkIn, checkOut) interval; overlap math lives here, not on Room. */
+class DateRange {
+  constructor(checkIn, checkOut) {
+    if (!(checkIn &lt; checkOut)) throw new Error(&#x27;checkIn must be before checkOut&#x27;);
+    this.checkIn = checkIn;
+    this.checkOut = checkOut;
+  }
+  overlaps(other) { return this.checkIn &lt; other.checkOut &amp;&amp; other.checkIn &lt; this.checkOut; }
+  nights() { return Math.round((this.checkOut - this.checkIn) / 86400000); }
+}
+
+class Guest {
+  constructor(id, name, email) { this.id = id; this.name = name; this.email = email; }
+}
+
+/** Per-room calendar of booked intervals; the sole overlap-checking authority. */
+class RoomInventory {
+  constructor() {
+    this._bookedIntervals = [];
+    this._mutex = new AsyncMutex();
+  }
+  _isAvailableInternal(range) {
+    return this._bookedIntervals.every((existing) =&gt; !existing.overlaps(range));
+  }
+  async isAvailable(range) {
+    return this._mutex.runExclusive(() =&gt; this._isAvailableInternal(range));
+  }
+  // Atomic check-then-book under the same lock, preventing double booking.
+  async book(range) {
+    return this._mutex.runExclusive(() =&gt; {
+      if (!this._isAvailableInternal(range)) return false;
+      this._bookedIntervals.push(range);
+      return true;
+    });
+  }
+  async release(range) {
+    return this._mutex.runExclusive(() =&gt; {
+      this._bookedIntervals = this._bookedIntervals.filter(
+        (r) =&gt; !(r.checkIn.getTime() === range.checkIn.getTime() &amp;&amp; r.checkOut.getTime() === range.checkOut.getTime())
+      );
+    });
+  }
+}
+
+class Room {
+  constructor(roomNumber, roomType, floor) {
+    this.roomNumber = roomNumber;
+    this.roomType = roomType;
+    this.floor = floor;
+    this.inventory = new RoomInventory(); // composition: Room owns its inventory 1:1
+  }
+}
+
+class ReservationRequest {
+  constructor(range, roomType, guestCount, addOns, specialRequests) {
+    this.range = range;
+    this.roomType = roomType;
+    this.guestCount = guestCount;
+    this.addOns = addOns;
+    this.specialRequests = specialRequests;
+  }
+}
+
+/** Fluent, step-by-step construction; validates once at build() instead of at every setter. */
+class ReservationRequestBuilder {
+  constructor() {
+    this._range = null;
+    this._roomType = null;
+    this._guestCount = 1;
+    this._addOns = new Set();
+    this._specialRequests = &#x27;&#x27;;
+  }
+  withDates(checkIn, checkOut) { this._range = new DateRange(checkIn, checkOut); return this; }
+  withRoomType(type) { this._roomType = type; return this; }
+  withGuestCount(count) { this._guestCount = count; return this; }
+  withAddOn(addOn) { this._addOns.add(addOn); return this; }
+  withSpecialRequests(text) { this._specialRequests = text; return this; }
+  build() {
+    if (!this._range) throw new Error(&#x27;dates are required&#x27;);
+    if (!this._roomType) throw new Error(&#x27;roomType is required&#x27;);
+    return new ReservationRequest(this._range, this._roomType, this._guestCount, this._addOns, this._specialRequests);
+  }
+}
+
+/** @interface PricingStrategy: calculatePrice(room, range) -&gt; number */
+
+/** Flat per-night rate by room type. */
+class StandardPricingStrategy {
+  constructor() {
+    this._baseRates = { [RoomType.SINGLE]: 80, [RoomType.DOUBLE]: 120, [RoomType.SUITE]: 220, [RoomType.DELUXE]: 350 };
+  }
+  calculatePrice(room, range) { return this._baseRates[room.roomType] * range.nights(); }
+}
+
+/** Adds a weekend surcharge on top of a delegate rate -- a *new* rule, no change to Reservation/Hotel. */
+class WeekendSurchargePricingStrategy {
+  constructor(delegate, weekendMultiplier) { this._delegate = delegate; this._weekendMultiplier = weekendMultiplier; }
+  calculatePrice(room, range) {
+    const oneNight = new DateRange(range.checkIn, new Date(range.checkIn.getTime() + 86400000));
+    const perNight = this._delegate.calculatePrice(room, oneNight);
+    let total = 0;
+    for (let d = new Date(range.checkIn); d &lt; range.checkOut; d = new Date(d.getTime() + 86400000)) {
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      total += isWeekend ? perNight * this._weekendMultiplier : perNight;
+    }
+    return total;
+  }
+}
+
+/** @interface BookingObserver: onConfirmed(reservation), onCancelled(reservation) */
+
+class BookingNotifier {
+  constructor() { this._observers = []; }
+  subscribe(observer) { this._observers.push(observer); }
+  notifyConfirmed(reservation) { this._observers.forEach((o) =&gt; o.onConfirmed(reservation)); }
+  notifyCancelled(reservation) { this._observers.forEach((o) =&gt; o.onCancelled(reservation)); }
+}
+
+class Reservation {
+  constructor(id, guest, room, range, totalPrice, notifier) {
+    this.id = id;
+    this.guest = guest;
+    this.room = room;
+    this.range = range;
+    this.totalPrice = totalPrice;
+    this.status = ReservationStatus.CONFIRMED;
+    this._notifier = notifier;
+  }
+  async cancel() {
+    if (this.status === ReservationStatus.CANCELLED) return;
+    this.status = ReservationStatus.CANCELLED;
+    await this.room.inventory.release(this.range);
+    this._notifier.notifyCancelled(this);
+  }
+}
+
+class ConsoleGuestNotifier {
+  onConfirmed(r) {
+    console.log(`[notify] Reservation ${r.id} CONFIRMED for ${r.guest.name}, room ${r.room.roomNumber}, ${r.totalPrice.toFixed(2)} total`);
+  }
+  onCancelled(r) {
+    console.log(`[notify] Reservation ${r.id} CANCELLED for ${r.guest.name}`);
+  }
+}
+
+/** Facade: top-level orchestration. */
+class Hotel {
+  constructor(rooms, pricingStrategy, notifier) {
+    this._rooms = rooms;
+    this._pricingStrategy = pricingStrategy;
+    this._notifier = notifier;
+    this._reservations = new Map();
+    this._reservationSeq = 0;
+  }
+
+  async searchAvailability(checkIn, checkOut, roomType) {
+    const range = new DateRange(checkIn, checkOut);
+    const result = [];
+    for (const room of this._rooms) {
+      if (roomType &amp;&amp; room.roomType !== roomType) continue;
+      if (await room.inventory.isAvailable(range)) result.push(room);
+    }
+    return result;
+  }
+
+  async bookRoom(guest, request) {
+    for (const candidate of this._rooms) {
+      if (candidate.roomType !== request.roomType) continue;
+      // Atomic check-then-book lives inside RoomInventory.book(); try the next
+      // candidate room of the same type if this one lost the race or was already booked.
+      if (await candidate.inventory.book(request.range)) {
+        const price = this._pricingStrategy.calculatePrice(candidate, request.range);
+        const id = `RES-${++this._reservationSeq}`;
+        const reservation = new Reservation(id, guest, candidate, request.range, price, this._notifier);
+        this._reservations.set(id, reservation);
+        this._notifier.notifyConfirmed(reservation);
+        return reservation;
+      }
+    }
+    throw new Error(`No available room of type ${request.roomType} for given dates`);
+  }
+
+  async cancelReservation(reservationId) {
+    const reservation = this._reservations.get(reservationId);
+    if (!reservation) throw new Error(`Unknown reservation ${reservationId}`);
+    await reservation.cancel();
+  }
+}
+
+async function main() {
+  const rooms = [
+    new Room(&#x27;101&#x27;, RoomType.DOUBLE, 1),
+    new Room(&#x27;102&#x27;, RoomType.DOUBLE, 1),
+    new Room(&#x27;201&#x27;, RoomType.SUITE, 2),
+  ];
+
+  const pricing = new WeekendSurchargePricingStrategy(new StandardPricingStrategy(), 1.25);
+  const notifier = new BookingNotifier();
+  notifier.subscribe(new ConsoleGuestNotifier());
+
+  const hotel = new Hotel(rooms, pricing, notifier);
+
+  const checkIn = new Date(2026, 9, 2);
+  const checkOut = new Date(2026, 9, 5);
+
+  console.log(&#x27;Available DOUBLE rooms:&#x27;, (await hotel.searchAvailability(checkIn, checkOut, RoomType.DOUBLE)).length);
+
+  const request = new ReservationRequestBuilder()
+    .withDates(checkIn, checkOut)
+    .withRoomType(RoomType.DOUBLE)
+    .withGuestCount(2)
+    .withAddOn(AddOn.BREAKFAST)
+    .build();
+
+  const alice = new Guest(&#x27;g1&#x27;, &#x27;Alice&#x27;, &#x27;alice@example.com&#x27;);
+  const resA = await hotel.bookRoom(alice, request);
+  console.log(`Booked room: ${resA.room.roomNumber} price=${resA.totalPrice}`);
+
+  // &quot;Concurrency&quot; demo: two overlapping async attempts racing on the last DOUBLE room.
+  const bob = new Guest(&#x27;g2&#x27;, &#x27;Bob&#x27;, &#x27;bob@example.com&#x27;);
+  const sameRequest = new ReservationRequestBuilder().withDates(checkIn, checkOut).withRoomType(RoomType.DOUBLE).build();
+  const [r1, r2] = await Promise.allSettled([hotel.bookRoom(bob, sameRequest), hotel.bookRoom(bob, sameRequest)]);
+  const winner = r1.status === &#x27;fulfilled&#x27; ? r1.value : (r2.status === &#x27;fulfilled&#x27; ? r2.value : null);
+  console.log(&#x27;Second concurrent booking landed on room:&#x27;, winner ? winner.room.roomNumber : &#x27;none&#x27;);
+
+  console.log(&#x27;Available DOUBLE rooms after bookings:&#x27;, (await hotel.searchAvailability(checkIn, checkOut, RoomType.DOUBLE)).length);
+
+  await hotel.cancelReservation(resA.id);
+  console.log(&#x27;Available DOUBLE rooms after cancel:&#x27;, (await hotel.searchAvailability(checkIn, checkOut, RoomType.DOUBLE)).length);
+}
+
+if (require.main === module) {
+  main().catch((e) =&gt; { console.error(e); process.exit(1); });
+}
+
+module.exports = {
+  RoomType, AddOn, ReservationStatus, DateRange, Guest, RoomInventory, Room,
+  ReservationRequest, ReservationRequestBuilder, StandardPricingStrategy,
+  WeekendSurchargePricingStrategy, BookingNotifier, Reservation, ConsoleGuestNotifier, Hotel,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Problem 16: Hotel Reservation System
+//
+// Room (static attrs) vs RoomInventory (per-room booked-interval calendar) split.
+// ReservationRequestBuilder assembles a booking intent step by step.
+// PricingStrategy is injected (Strategy) so pricing rules change independently.
+// BookingNotifier is a thin Observer subject for booking lifecycle events.
+// Hotel is the facade orchestrating search/book/cancel.
+//
+// Node&#x27;s event loop is single-threaded, so true data races are impossible here;
+// the AsyncMutex below still models the same &quot;lock the inventory during the
+// check-then-book&quot; shape as the Java/C++ versions for structural fidelity, and
+// matters for real correctness once any I/O (e.g. a DB call) is added inside it.
+
+enum RoomType { SINGLE = &#x27;SINGLE&#x27;, DOUBLE = &#x27;DOUBLE&#x27;, SUITE = &#x27;SUITE&#x27;, DELUXE = &#x27;DELUXE&#x27; }
+enum AddOn { BREAKFAST = &#x27;BREAKFAST&#x27;, LATE_CHECKOUT = &#x27;LATE_CHECKOUT&#x27;, AIRPORT_PICKUP = &#x27;AIRPORT_PICKUP&#x27;, EXTRA_BED = &#x27;EXTRA_BED&#x27; }
+enum ReservationStatus { CONFIRMED = &#x27;CONFIRMED&#x27;, CANCELLED = &#x27;CANCELLED&#x27; }
+
+/** A minimal FIFO mutual-exclusion primitive: a queue of waiters, one holder at a time. */
+class AsyncMutex {
+  private locked = false;
+  private waiters: Array&lt;() =&gt; void&gt; = [];
+
+  private acquire(): Promise&lt;void&gt; {
+    return new Promise&lt;void&gt;((resolve) =&gt; {
+      if (!this.locked) { this.locked = true; resolve(); }
+      else this.waiters.push(resolve);
+    });
+  }
+
+  private release(): void {
+    const next = this.waiters.shift();
+    if (next) next();
+    else this.locked = false;
+  }
+
+  async runExclusive&lt;T&gt;(fn: () =&gt; T | Promise&lt;T&gt;): Promise&lt;T&gt; {
+    await this.acquire();
+    try {
+      return await fn();
+    } finally {
+      this.release();
+    }
+  }
+}
+
+/** Half-open [checkIn, checkOut) interval; overlap math lives here, not on Room. */
+class DateRange {
+  constructor(public readonly checkIn: Date, public readonly checkOut: Date) {
+    if (!(checkIn &lt; checkOut)) throw new Error(&#x27;checkIn must be before checkOut&#x27;);
+  }
+  overlaps(other: DateRange): boolean {
+    return this.checkIn &lt; other.checkOut &amp;&amp; other.checkIn &lt; this.checkOut;
+  }
+  nights(): number {
+    return Math.round((this.checkOut.getTime() - this.checkIn.getTime()) / 86400000);
+  }
+}
+
+class Guest {
+  constructor(public readonly id: string, public readonly name: string, public readonly email: string) {}
+}
+
+/** Per-room calendar of booked intervals; the sole overlap-checking authority. */
+class RoomInventory {
+  private bookedIntervals: DateRange[] = [];
+  private mutex = new AsyncMutex();
+
+  private isAvailableInternal(range: DateRange): boolean {
+    return this.bookedIntervals.every((existing) =&gt; !existing.overlaps(range));
+  }
+
+  async isAvailable(range: DateRange): Promise&lt;boolean&gt; {
+    return this.mutex.runExclusive(() =&gt; this.isAvailableInternal(range));
+  }
+
+  // Atomic check-then-book under the same lock, preventing double booking.
+  async book(range: DateRange): Promise&lt;boolean&gt; {
+    return this.mutex.runExclusive(() =&gt; {
+      if (!this.isAvailableInternal(range)) return false;
+      this.bookedIntervals.push(range);
+      return true;
+    });
+  }
+
+  async release(range: DateRange): Promise&lt;void&gt; {
+    await this.mutex.runExclusive(() =&gt; {
+      this.bookedIntervals = this.bookedIntervals.filter(
+        (r) =&gt; !(r.checkIn.getTime() === range.checkIn.getTime() &amp;&amp; r.checkOut.getTime() === range.checkOut.getTime())
+      );
+    });
+  }
+}
+
+class Room {
+  readonly inventory: RoomInventory = new RoomInventory(); // composition: Room owns its inventory 1:1
+  constructor(public readonly roomNumber: string, public readonly roomType: RoomType, public readonly floor: number) {}
+}
+
+class ReservationRequest {
+  constructor(
+    public readonly range: DateRange,
+    public readonly roomType: RoomType,
+    public readonly guestCount: number,
+    public readonly addOns: Set&lt;AddOn&gt;,
+    public readonly specialRequests: string
+  ) {}
+}
+
+/** Fluent, step-by-step construction; validates once at build() instead of at every setter. */
+class ReservationRequestBuilder {
+  private range?: DateRange;
+  private roomType?: RoomType;
+  private guestCount = 1;
+  private addOns = new Set&lt;AddOn&gt;();
+  private specialRequests = &#x27;&#x27;;
+
+  withDates(checkIn: Date, checkOut: Date): this { this.range = new DateRange(checkIn, checkOut); return this; }
+  withRoomType(type: RoomType): this { this.roomType = type; return this; }
+  withGuestCount(count: number): this { this.guestCount = count; return this; }
+  withAddOn(addOn: AddOn): this { this.addOns.add(addOn); return this; }
+  withSpecialRequests(text: string): this { this.specialRequests = text; return this; }
+
+  build(): ReservationRequest {
+    if (!this.range) throw new Error(&#x27;dates are required&#x27;);
+    if (!this.roomType) throw new Error(&#x27;roomType is required&#x27;);
+    return new ReservationRequest(this.range, this.roomType, this.guestCount, this.addOns, this.specialRequests);
+  }
+}
+
+interface PricingStrategy {
+  calculatePrice(room: Room, range: DateRange): number;
+}
+
+/** Flat per-night rate by room type. */
+class StandardPricingStrategy implements PricingStrategy {
+  private baseRates: Record&lt;RoomType, number&gt; = {
+    [RoomType.SINGLE]: 80, [RoomType.DOUBLE]: 120, [RoomType.SUITE]: 220, [RoomType.DELUXE]: 350,
+  };
+  calculatePrice(room: Room, range: DateRange): number {
+    return this.baseRates[room.roomType] * range.nights();
+  }
+}
+
+/** Adds a weekend surcharge on top of a delegate rate -- a *new* rule, no change to Reservation/Hotel. */
+class WeekendSurchargePricingStrategy implements PricingStrategy {
+  constructor(private delegate: PricingStrategy, private weekendMultiplier: number) {}
+  calculatePrice(room: Room, range: DateRange): number {
+    const oneNight = new DateRange(range.checkIn, new Date(range.checkIn.getTime() + 86400000));
+    const perNight = this.delegate.calculatePrice(room, oneNight);
+    let total = 0;
+    for (let d = new Date(range.checkIn); d &lt; range.checkOut; d = new Date(d.getTime() + 86400000)) {
+      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+      total += isWeekend ? perNight * this.weekendMultiplier : perNight;
+    }
+    return total;
+  }
+}
+
+interface BookingObserver {
+  onConfirmed(reservation: Reservation): void;
+  onCancelled(reservation: Reservation): void;
+}
+
+class BookingNotifier {
+  private observers: BookingObserver[] = [];
+  subscribe(observer: BookingObserver): void { this.observers.push(observer); }
+  notifyConfirmed(reservation: Reservation): void { this.observers.forEach((o) =&gt; o.onConfirmed(reservation)); }
+  notifyCancelled(reservation: Reservation): void { this.observers.forEach((o) =&gt; o.onCancelled(reservation)); }
+}
+
+class Reservation {
+  status: ReservationStatus = ReservationStatus.CONFIRMED;
+
+  constructor(
+    public readonly id: string,
+    public readonly guest: Guest,
+    public readonly room: Room,
+    public readonly range: DateRange,
+    public readonly totalPrice: number,
+    private readonly notifier: BookingNotifier
+  ) {}
+
+  async cancel(): Promise&lt;void&gt; {
+    if (this.status === ReservationStatus.CANCELLED) return;
+    this.status = ReservationStatus.CANCELLED;
+    await this.room.inventory.release(this.range);
+    this.notifier.notifyCancelled(this);
+  }
+}
+
+class ConsoleGuestNotifier implements BookingObserver {
+  onConfirmed(r: Reservation): void {
+    console.log(`[notify] Reservation ${r.id} CONFIRMED for ${r.guest.name}, room ${r.room.roomNumber}, ${r.totalPrice.toFixed(2)} total`);
+  }
+  onCancelled(r: Reservation): void {
+    console.log(`[notify] Reservation ${r.id} CANCELLED for ${r.guest.name}`);
+  }
+}
+
+/** Facade: top-level orchestration. */
+class Hotel {
+  private reservations = new Map&lt;string, Reservation&gt;();
+  private reservationSeq = 0;
+
+  constructor(private rooms: Room[], private pricingStrategy: PricingStrategy, private notifier: BookingNotifier) {}
+
+  async searchAvailability(checkIn: Date, checkOut: Date, roomType?: RoomType): Promise&lt;Room[]&gt; {
+    const range = new DateRange(checkIn, checkOut);
+    const result: Room[] = [];
+    for (const room of this.rooms) {
+      if (roomType &amp;&amp; room.roomType !== roomType) continue;
+      if (await room.inventory.isAvailable(range)) result.push(room);
+    }
+    return result;
+  }
+
+  async bookRoom(guest: Guest, request: ReservationRequest): Promise&lt;Reservation&gt; {
+    for (const candidate of this.rooms) {
+      if (candidate.roomType !== request.roomType) continue;
+      // Atomic check-then-book lives inside RoomInventory.book(); try the next
+      // candidate room of the same type if this one lost the race or was already booked.
+      if (await candidate.inventory.book(request.range)) {
+        const price = this.pricingStrategy.calculatePrice(candidate, request.range);
+        const id = `RES-${++this.reservationSeq}`;
+        const reservation = new Reservation(id, guest, candidate, request.range, price, this.notifier);
+        this.reservations.set(id, reservation);
+        this.notifier.notifyConfirmed(reservation);
+        return reservation;
+      }
+    }
+    throw new Error(`No available room of type ${request.roomType} for given dates`);
+  }
+
+  async cancelReservation(reservationId: string): Promise&lt;void&gt; {
+    const reservation = this.reservations.get(reservationId);
+    if (!reservation) throw new Error(`Unknown reservation ${reservationId}`);
+    await reservation.cancel();
+  }
+}
+
+async function main(): Promise&lt;void&gt; {
+  const rooms: Room[] = [
+    new Room(&#x27;101&#x27;, RoomType.DOUBLE, 1),
+    new Room(&#x27;102&#x27;, RoomType.DOUBLE, 1),
+    new Room(&#x27;201&#x27;, RoomType.SUITE, 2),
+  ];
+
+  const pricing = new WeekendSurchargePricingStrategy(new StandardPricingStrategy(), 1.25);
+  const notifier = new BookingNotifier();
+  notifier.subscribe(new ConsoleGuestNotifier());
+
+  const hotel = new Hotel(rooms, pricing, notifier);
+
+  const checkIn = new Date(2026, 9, 2);
+  const checkOut = new Date(2026, 9, 5);
+
+  console.log(&#x27;Available DOUBLE rooms:&#x27;, (await hotel.searchAvailability(checkIn, checkOut, RoomType.DOUBLE)).length);
+
+  const request = new ReservationRequestBuilder()
+    .withDates(checkIn, checkOut)
+    .withRoomType(RoomType.DOUBLE)
+    .withGuestCount(2)
+    .withAddOn(AddOn.BREAKFAST)
+    .build();
+
+  const alice = new Guest(&#x27;g1&#x27;, &#x27;Alice&#x27;, &#x27;alice@example.com&#x27;);
+  const resA = await hotel.bookRoom(alice, request);
+  console.log(`Booked room: ${resA.room.roomNumber} price=${resA.totalPrice}`);
+
+  // &quot;Concurrency&quot; demo: two overlapping async attempts racing on the last DOUBLE room.
+  const bob = new Guest(&#x27;g2&#x27;, &#x27;Bob&#x27;, &#x27;bob@example.com&#x27;);
+  const sameRequest = new ReservationRequestBuilder().withDates(checkIn, checkOut).withRoomType(RoomType.DOUBLE).build();
+  const [r1, r2] = await Promise.allSettled([hotel.bookRoom(bob, sameRequest), hotel.bookRoom(bob, sameRequest)]);
+  const winner = r1.status === &#x27;fulfilled&#x27; ? r1.value : (r2.status === &#x27;fulfilled&#x27; ? r2.value : null);
+  console.log(&#x27;Second concurrent booking landed on room:&#x27;, winner ? winner.room.roomNumber : &#x27;none&#x27;);
+
+  console.log(&#x27;Available DOUBLE rooms after bookings:&#x27;, (await hotel.searchAvailability(checkIn, checkOut, RoomType.DOUBLE)).length);
+
+  await hotel.cancelReservation(resA.id);
+  console.log(&#x27;Available DOUBLE rooms after cancel:&#x27;, (await hotel.searchAvailability(checkIn, checkOut, RoomType.DOUBLE)).length);
+}
+
+main().catch((e) =&gt; { console.error(e); process.exit(1); });
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p15.html">&larr; 15. Library Management System</a><a class="prevnext-link next" href="p17.html">17. Movie Ticket Booking System &rarr;</a></div>
 </div>
 </main>
 

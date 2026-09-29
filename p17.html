@@ -61,7 +61,8 @@
 <a href="#p17-y">Y. Scaling Boundary</a><a href="#p17-z">Z. Failure Scenarios</a><a href="#p17-aa">AA. Bad Designs</a>
 <a href="#p17-ab">AB. Trade-Offs</a><a href="#p17-ac">AC. Interviewer Evaluation</a><a href="#p17-ad">AD. Simulation</a>
 <a href="#p17-ae">AE. Source Comparison</a><a href="#p17-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p17">Jump to section:</label><select id="jump-p17" class="jump-select" data-jump-select><option value="p17-a">A. Realistic Interview Prompt</option><option value="p17-b">B. Difficulty</option><option value="p17-c">C. What This Problem Tests</option><option value="p17-d">D. Requirements</option><option value="p17-e">E. Clarifying Questions</option><option value="p17-f">F. Assumptions</option><option value="p17-g">G. Actors</option><option value="p17-h">H. Core Domain Entities</option><option value="p17-i">I. Class Relationships</option><option value="p17-j">J. Class Diagram</option><option value="p17-k">K. Responsibility Mapping</option><option value="p17-l">L. SOLID Analysis</option><option value="p17-m">M. Design Patterns</option><option value="p17-n">N. What Is Likely to Change?</option><option value="p17-o">O. Design Evolution</option><option value="p17-p">P. API / Interface Design</option><option value="p17-q">Q. Pseudocode — Critical Logic</option><option value="p17-r">R. End-to-End Use Case</option><option value="p17-s">S. Data Structures</option><option value="p17-t">T. Complexity Analysis</option><option value="p17-u">U. Testing Strategy</option><option value="p17-v">V. Interviewer Follow-Ups</option><option value="p17-w">W. Concurrency</option><option value="p17-x">X. Persistence</option><option value="p17-y">Y. Scaling Boundary</option><option value="p17-z">Z. Failure Scenarios</option><option value="p17-aa">AA. Common Bad Designs</option><option value="p17-ab">AB. Design Trade-Offs</option><option value="p17-ac">AC. Interviewer Evaluation</option><option value="p17-ad">AD. Interview Simulation</option><option value="p17-ae">AE. Online Solution Comparison</option><option value="p17-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p17-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p17">Jump to section:</label><select id="jump-p17" class="jump-select" data-jump-select><option value="p17-a">A. Realistic Interview Prompt</option><option value="p17-b">B. Difficulty</option><option value="p17-c">C. What This Problem Tests</option><option value="p17-d">D. Requirements</option><option value="p17-e">E. Clarifying Questions</option><option value="p17-f">F. Assumptions</option><option value="p17-g">G. Actors</option><option value="p17-h">H. Core Domain Entities</option><option value="p17-i">I. Class Relationships</option><option value="p17-j">J. Class Diagram</option><option value="p17-k">K. Responsibility Mapping</option><option value="p17-l">L. SOLID Analysis</option><option value="p17-m">M. Design Patterns</option><option value="p17-n">N. What Is Likely to Change?</option><option value="p17-o">O. Design Evolution</option><option value="p17-p">P. API / Interface Design</option><option value="p17-q">Q. Pseudocode — Critical Logic</option><option value="p17-r">R. End-to-End Use Case</option><option value="p17-s">S. Data Structures</option><option value="p17-t">T. Complexity Analysis</option><option value="p17-u">U. Testing Strategy</option><option value="p17-v">V. Interviewer Follow-Ups</option><option value="p17-w">W. Concurrency</option><option value="p17-x">X. Persistence</option><option value="p17-y">Y. Scaling Boundary</option><option value="p17-z">Z. Failure Scenarios</option><option value="p17-aa">AA. Common Bad Designs</option><option value="p17-ab">AB. Design Trade-Offs</option><option value="p17-ac">AC. Interviewer Evaluation</option><option value="p17-ad">AD. Interview Simulation</option><option value="p17-ae">AE. Online Solution Comparison</option><option value="p17-af">AF. Interview Cheat Sheet</option><option value="p17-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p17-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a movie ticket booking system like BookMyShow. Users can browse shows, select seats, hold them briefly while paying, and confirm a booking. Thousands of users may try to book seats for a popular show at the same time."</div>
@@ -571,7 +572,1312 @@ Same webhook retried by the payment provider due to a network blip
 <tr><td><strong>Top follow-ups</strong></td><td>Opposite-order concurrent multi-seat locks, flash-sale-scale distributed locking, waitlist notifications</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>One booked flag per seat across all shows; unordered multi-seat locking; no hold TTL; non-idempotent payment confirmation</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design the distributed-lock infrastructure itself unless the round explicitly pivots to HLD</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p16.html">&larr; 16. Hotel Reservation System</a><a class="prevnext-link next" href="p18.html">18. Restaurant / Food Delivery System &rarr;</a></div>
+</table>
+
+<h3 id="p17-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">import java.time.LocalDateTime;
+import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+ * Problem 17: Movie Ticket Booking System (Concurrency Showcase)
+ *
+ * Key design decisions faithfully reproduced from the class diagram:
+ *  - Seat (static attrs) vs ShowSeat (per-show status) split.
+ *  - ShowSeatState hierarchy encodes AVAILABLE -&gt; LOCKED -&gt; BOOKED legality, and LOCKED/BOOKED -&gt; AVAILABLE on expire/release.
+ *  - SeatLock is a TTL-bound soft hold; only a successful payment converts it into a Booking confirmation.
+ *  - PricingStrategy is injected (Strategy); WaitlistNotifier is an Observer subject.
+ *  - BookingService is the facade; holdSeats() locks seats in canonical (sorted) order to avoid deadlock
+ *    against another user holding an overlapping seat set.
+ */
+public class p17 {
+
+    enum SeatCategory { SILVER, GOLD, PREMIUM }
+    enum ShowSeatStatus { AVAILABLE, LOCKED, BOOKED }
+    enum BookingStatus { HOLD, CONFIRMED, CANCELLED }
+
+    static final class User {
+        final String id, name;
+        User(String id, String name) { this.id = id; this.name = name; }
+    }
+
+    static final class PaymentResult {
+        final boolean success;
+        PaymentResult(boolean success) { this.success = success; }
+    }
+
+    // ---------- Seat / Show ----------
+
+    static final class Seat {
+        final String seatNumber;
+        final SeatCategory category;
+        Seat(String seatNumber, SeatCategory category) { this.seatNumber = seatNumber; this.category = category; }
+    }
+
+    static final class Movie {
+        final String id, title;
+        final int durationMinutes;
+        Movie(String id, String title, int durationMinutes) { this.id = id; this.title = title; this.durationMinutes = durationMinutes; }
+    }
+
+    static final class Screen {
+        final String id, name;
+        final List&lt;Seat&gt; seats;
+        Screen(String id, String name, List&lt;Seat&gt; seats) { this.id = id; this.name = name; this.seats = seats; }
+    }
+
+    static final class Show {
+        final String id;
+        final Movie movie;
+        final Screen screen;
+        final LocalDateTime startTime;
+        private final Map&lt;String, ShowSeat&gt; showSeats = new LinkedHashMap&lt;&gt;();
+
+        Show(String id, Movie movie, Screen screen, LocalDateTime startTime) {
+            this.id = id;
+            this.movie = movie;
+            this.screen = screen;
+            this.startTime = startTime;
+            // One ShowSeat per physical seat -- the same Seat is independently bookable per Show.
+            for (Seat seat : screen.seats) showSeats.put(seat.seatNumber, new ShowSeat(seat, this));
+        }
+
+        ShowSeat getShowSeat(String seatNumber) {
+            ShowSeat seat = showSeats.get(seatNumber);
+            if (seat == null) throw new NoSuchElementException(&quot;No such seat: &quot; + seatNumber);
+            return seat;
+        }
+    }
+
+    // ---------- ShowSeatState (State pattern) ----------
+
+    interface ShowSeatState {
+        void onLock(ShowSeat seat);
+        void onConfirm(ShowSeat seat);
+        void onExpire(ShowSeat seat);
+    }
+
+    static final class AvailableState implements ShowSeatState {
+        static final AvailableState INSTANCE = new AvailableState();
+        public void onLock(ShowSeat seat) { seat.setState(ShowSeatStatus.LOCKED, LockedState.INSTANCE); }
+        public void onConfirm(ShowSeat seat) { throw new IllegalStateException(&quot;Cannot confirm a seat that was never locked&quot;); }
+        public void onExpire(ShowSeat seat) { /* already available; no-op */ }
+    }
+
+    static final class LockedState implements ShowSeatState {
+        static final LockedState INSTANCE = new LockedState();
+        public void onLock(ShowSeat seat) { throw new IllegalStateException(&quot;Seat already locked&quot;); }
+        public void onConfirm(ShowSeat seat) { seat.setState(ShowSeatStatus.BOOKED, BookedState.INSTANCE); }
+        public void onExpire(ShowSeat seat) { seat.setState(ShowSeatStatus.AVAILABLE, AvailableState.INSTANCE); }
+    }
+
+    static final class BookedState implements ShowSeatState {
+        static final BookedState INSTANCE = new BookedState();
+        public void onLock(ShowSeat seat) { throw new IllegalStateException(&quot;Seat already booked&quot;); }
+        public void onConfirm(ShowSeat seat) { throw new IllegalStateException(&quot;Seat already booked&quot;); }
+        // Freeing a booked seat (e.g. booking cancellation) returns it to the pool.
+        public void onExpire(ShowSeat seat) { seat.setState(ShowSeatStatus.AVAILABLE, AvailableState.INSTANCE); }
+    }
+
+    // ---------- ShowSeat ----------
+
+    static final class ShowSeat {
+        final Seat seat;
+        final Show show;
+        private volatile ShowSeatStatus status = ShowSeatStatus.AVAILABLE;
+        private ShowSeatState state = AvailableState.INSTANCE;
+        private final Lock lock = new ReentrantLock();
+
+        ShowSeat(Seat seat, Show show) { this.seat = seat; this.show = show; }
+
+        void setState(ShowSeatStatus status, ShowSeatState state) { this.status = status; this.state = state; }
+        ShowSeatStatus getStatus() { return status; }
+
+        /** Soft-lock this seat for a pending hold. Throws if not currently AVAILABLE. */
+        void lock() {
+            lock.lock();
+            try { state.onLock(this); } finally { lock.unlock(); }
+        }
+
+        /** Hard-commit: LOCKED -&gt; BOOKED. */
+        void confirm() {
+            lock.lock();
+            try { state.onConfirm(this); } finally { lock.unlock(); }
+        }
+
+        /** Free the seat back to AVAILABLE -- used for hold expiry, payment failure, or booking cancellation. */
+        void release() {
+            lock.lock();
+            try { state.onExpire(this); } finally { lock.unlock(); }
+        }
+    }
+
+    // ---------- SeatLock ----------
+
+    static final class SeatLock {
+        final String id;
+        final User user;
+        final List&lt;ShowSeat&gt; seats;
+        final long expiresAt; // epoch millis
+
+        SeatLock(String id, User user, List&lt;ShowSeat&gt; seats, long expiresAt) {
+            this.id = id; this.user = user; this.seats = seats; this.expiresAt = expiresAt;
+        }
+
+        boolean isExpired() { return System.currentTimeMillis() &gt; expiresAt; }
+    }
+
+    // ---------- PricingStrategy ----------
+
+    interface PricingStrategy {
+        double calculatePrice(Seat seat, Show show);
+    }
+
+    static final class CategoryTimeBasedPricingStrategy implements PricingStrategy {
+        private final Map&lt;SeatCategory, Double&gt; baseRates = Map.of(
+                SeatCategory.SILVER, 100.0, SeatCategory.GOLD, 180.0, SeatCategory.PREMIUM, 280.0);
+
+        public double calculatePrice(Seat seat, Show show) {
+            double base = baseRates.get(seat.category);
+            int hour = show.startTime.getHour();
+            boolean peak = hour &gt;= 18 &amp;&amp; hour &lt; 22; // evening peak window
+            return peak ? base * 1.3 : base;
+        }
+    }
+
+    // ---------- Booking ----------
+
+    static final class Booking {
+        final String id;
+        final User user;
+        final Show show;
+        final List&lt;ShowSeat&gt; seats;
+        BookingStatus status;
+        final double totalPrice;
+
+        Booking(String id, User user, Show show, List&lt;ShowSeat&gt; seats, PricingStrategy pricingStrategy) {
+            this.id = id; this.user = user; this.show = show; this.seats = seats;
+            this.status = BookingStatus.HOLD;
+            double total = 0;
+            for (ShowSeat s : seats) total += pricingStrategy.calculatePrice(s.seat, show);
+            this.totalPrice = total;
+        }
+
+        void confirm() {
+            for (ShowSeat s : seats) s.confirm();
+            status = BookingStatus.CONFIRMED;
+        }
+
+        void cancel() {
+            for (ShowSeat s : seats) s.release();
+            status = BookingStatus.CANCELLED;
+        }
+    }
+
+    // ---------- WaitlistNotifier (Observer) ----------
+
+    interface WaitlistObserver {
+        void onSeatAvailable(ShowSeat seat);
+    }
+
+    static final class WaitlistNotifier {
+        private final List&lt;WaitlistObserver&gt; observers = new ArrayList&lt;&gt;();
+        void subscribe(WaitlistObserver observer) { observers.add(observer); }
+        void notifyWaiting(List&lt;ShowSeat&gt; freedSeats) {
+            for (ShowSeat seat : freedSeats) for (WaitlistObserver o : observers) o.onSeatAvailable(seat);
+        }
+    }
+
+    static final class ConsoleWaitlistNotifier implements WaitlistObserver {
+        public void onSeatAvailable(ShowSeat seat) {
+            System.out.printf(&quot;[waitlist] Seat %s on show %s is available again%n&quot;, seat.seat.seatNumber, seat.show.id);
+        }
+    }
+
+    // ---------- BookingService (facade) ----------
+
+    static final class BookingService {
+        private static final long HOLD_TTL_MILLIS = 2000;
+        private final PricingStrategy pricingStrategy;
+        private final WaitlistNotifier waitlistNotifier;
+        private final Map&lt;String, SeatLock&gt; activeLocks = new HashMap&lt;&gt;();
+        private final Map&lt;String, Booking&gt; bookings = new HashMap&lt;&gt;();
+        private final Map&lt;String, Booking&gt; idempotencyRecords = new HashMap&lt;&gt;();
+        private int lockSeq = 0, bookingSeq = 0;
+
+        BookingService(PricingStrategy pricingStrategy, WaitlistNotifier waitlistNotifier) {
+            this.pricingStrategy = pricingStrategy;
+            this.waitlistNotifier = waitlistNotifier;
+        }
+
+        /** Locks seats in canonical (sorted) order so two overlapping multi-seat holds never deadlock. */
+        synchronized SeatLock holdSeats(User user, Show show, List&lt;String&gt; seatNumbers) {
+            List&lt;String&gt; ordered = new ArrayList&lt;&gt;(seatNumbers);
+            Collections.sort(ordered);
+            List&lt;ShowSeat&gt; locked = new ArrayList&lt;&gt;();
+            try {
+                for (String id : ordered) {
+                    ShowSeat seat = show.getShowSeat(id);
+                    seat.lock(); // throws IllegalStateException if not AVAILABLE
+                    locked.add(seat);
+                }
+            } catch (IllegalStateException rejected) {
+                for (ShowSeat seat : locked) seat.release(); // rollback partial holds
+                throw new IllegalStateException(&quot;Could not hold all requested seats: &quot; + rejected.getMessage());
+            }
+            String lockId = &quot;LOCK-&quot; + (++lockSeq);
+            SeatLock seatLock = new SeatLock(lockId, user, locked, System.currentTimeMillis() + HOLD_TTL_MILLIS);
+            activeLocks.put(lockId, seatLock);
+            return seatLock;
+        }
+
+        synchronized Booking confirmBooking(String lockId, PaymentResult paymentResult, String idempotencyKey) {
+            if (idempotencyRecords.containsKey(idempotencyKey)) return idempotencyRecords.get(idempotencyKey); // idempotent retry
+
+            SeatLock seatLock = activeLocks.get(lockId);
+            if (seatLock == null) throw new NoSuchElementException(&quot;Unknown or already-consumed lock &quot; + lockId);
+            if (seatLock.isExpired()) {
+                activeLocks.remove(lockId);
+                for (ShowSeat seat : seatLock.seats) seat.release();
+                throw new IllegalStateException(&quot;Seat hold expired for lock &quot; + lockId);
+            }
+
+            Booking booking = new Booking(&quot;BKG-&quot; + (++bookingSeq), seatLock.user, seatLock.seats.get(0).show, seatLock.seats, pricingStrategy);
+            if (paymentResult.success) {
+                booking.confirm();
+            } else {
+                booking.cancel();
+                waitlistNotifier.notifyWaiting(seatLock.seats);
+            }
+            activeLocks.remove(lockId);
+            bookings.put(booking.id, booking);
+            idempotencyRecords.put(idempotencyKey, booking);
+            return booking;
+        }
+
+        synchronized void cancelBooking(String bookingId) {
+            Booking booking = bookings.get(bookingId);
+            if (booking == null) throw new NoSuchElementException(&quot;Unknown booking &quot; + bookingId);
+            booking.cancel();
+            waitlistNotifier.notifyWaiting(booking.seats);
+        }
+    }
+
+    // ---------- Demo ----------
+
+    public static void main(String[] args) throws InterruptedException {
+        List&lt;Seat&gt; seats = List.of(
+                new Seat(&quot;A1&quot;, SeatCategory.PREMIUM), new Seat(&quot;A2&quot;, SeatCategory.PREMIUM),
+                new Seat(&quot;B1&quot;, SeatCategory.GOLD), new Seat(&quot;B2&quot;, SeatCategory.GOLD),
+                new Seat(&quot;C1&quot;, SeatCategory.SILVER), new Seat(&quot;C2&quot;, SeatCategory.SILVER));
+        Screen screen = new Screen(&quot;SCR-1&quot;, &quot;Screen 1&quot;, seats);
+        Movie movie = new Movie(&quot;MOV-1&quot;, &quot;Interstellar&quot;, 169);
+        Show show = new Show(&quot;SHOW-1&quot;, movie, screen, LocalDateTime.of(2026, 10, 2, 19, 0)); // peak hour
+
+        WaitlistNotifier waitlistNotifier = new WaitlistNotifier();
+        waitlistNotifier.subscribe(new ConsoleWaitlistNotifier());
+        BookingService bookingService = new BookingService(new CategoryTimeBasedPricingStrategy(), waitlistNotifier);
+
+        User alice = new User(&quot;u1&quot;, &quot;Alice&quot;);
+        User bob = new User(&quot;u2&quot;, &quot;Bob&quot;);
+
+        // Concurrency demo: Alice holds {A1,A2}, Bob holds {A2,B1} -- overlapping sets, sorted-order locking prevents deadlock.
+        final SeatLock[] results = new SeatLock[2];
+        Thread t1 = new Thread(() -&gt; {
+            try { results[0] = bookingService.holdSeats(alice, show, List.of(&quot;A1&quot;, &quot;A2&quot;)); } catch (Exception ignored) { }
+        });
+        Thread t2 = new Thread(() -&gt; {
+            try { results[1] = bookingService.holdSeats(bob, show, List.of(&quot;A2&quot;, &quot;B1&quot;)); } catch (Exception e) {
+                System.out.println(&quot;Bob&#x27;s hold rejected (expected, contends on A2): &quot; + e.getMessage());
+            }
+        });
+        t1.start(); t2.start();
+        t1.join(); t2.join();
+
+        SeatLock aliceLock = results[0];
+        System.out.println(&quot;Alice locked seats: &quot; + aliceLock.seats.size() + &quot; totalPrice will be computed at confirm&quot;);
+
+        Booking booking = bookingService.confirmBooking(aliceLock.id, new PaymentResult(true), &quot;idem-key-1&quot;);
+        System.out.printf(&quot;Booking %s CONFIRMED, total=%.2f%n&quot;, booking.id, booking.totalPrice);
+
+        // Idempotent retry with the same key returns the same booking, no double charge/booking.
+        Booking retry = bookingService.confirmBooking(aliceLock.id, new PaymentResult(true), &quot;idem-key-1&quot;);
+        System.out.println(&quot;Idempotent retry returns same booking: &quot; + (retry == booking));
+
+        // Bob can now hold A2 since Alice&#x27;s booking only used A1 -- retry with a valid, non-conflicting set.
+        SeatLock bobLock = bookingService.holdSeats(bob, show, List.of(&quot;B1&quot;, &quot;B2&quot;));
+        Booking failedPayment = bookingService.confirmBooking(bobLock.id, new PaymentResult(false), &quot;idem-key-2&quot;);
+        System.out.println(&quot;Bob&#x27;s failed-payment booking status: &quot; + failedPayment.status + &quot; (seats released, waitlist notified)&quot;);
+
+        // Cancel Alice&#x27;s confirmed booking, freeing A1 and A2 back to the pool.
+        bookingService.cancelBooking(booking.id);
+        System.out.println(&quot;A1 status after cancellation: &quot; + show.getShowSeat(&quot;A1&quot;).getStatus());
+        System.out.println(&quot;A2 status after cancellation: &quot; + show.getShowSeat(&quot;A2&quot;).getStatus());
+
+        // TTL expiry demo: hold C1, let it expire, then confirming should be rejected.
+        SeatLock shortLock = bookingService.holdSeats(alice, show, List.of(&quot;C1&quot;));
+        Thread.sleep(2100);
+        try {
+            bookingService.confirmBooking(shortLock.id, new PaymentResult(true), &quot;idem-key-3&quot;);
+        } catch (IllegalStateException e) {
+            System.out.println(&quot;Expired hold correctly rejected: &quot; + e.getMessage());
+        }
+        System.out.println(&quot;C1 status after expiry: &quot; + show.getShowSeat(&quot;C1&quot;).getStatus());
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Problem 17: Movie Ticket Booking System (Concurrency Showcase)
+//
+// Seat (static attrs) vs ShowSeat (per-show status) split.
+// ShowSeatState hierarchy encodes AVAILABLE -&gt; LOCKED -&gt; BOOKED legality, and LOCKED/BOOKED -&gt; AVAILABLE on expire/release.
+// SeatLock is a TTL-bound soft hold; only a successful payment converts it into a Booking confirmation.
+// PricingStrategy is injected (Strategy); WaitlistNotifier is an Observer subject.
+// BookingService is the facade; holdSeats() locks seats in canonical (sorted) order to avoid deadlock
+// against another user holding an overlapping seat set.
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+#include &lt;map&gt;
+#include &lt;mutex&gt;
+#include &lt;thread&gt;
+#include &lt;chrono&gt;
+#include &lt;stdexcept&gt;
+#include &lt;algorithm&gt;
+
+enum class SeatCategory { SILVER, GOLD, PREMIUM };
+enum class ShowSeatStatus { AVAILABLE, LOCKED, BOOKED };
+enum class BookingStatus { HOLD, CONFIRMED, CANCELLED };
+
+struct User { std::string id, name; };
+struct PaymentResult { bool success; };
+
+struct Seat {
+    std::string seatNumber;
+    SeatCategory category;
+};
+
+struct Movie { std::string id, title; int durationMinutes; };
+
+struct Screen {
+    std::string id, name;
+    std::vector&lt;Seat&gt; seats;
+};
+
+class ShowSeat;
+
+class Show {
+public:
+    std::string id;
+    Movie movie;
+    Screen screen;
+    int startHour; // simplified: just the hour-of-day, enough to decide &quot;peak&quot;
+
+    Show(std::string id_, Movie movie_, Screen screen_, int startHour_)
+        : id(std::move(id_)), movie(std::move(movie_)), screen(std::move(screen_)), startHour(startHour_) {
+        buildShowSeats();
+    }
+
+    ShowSeat&amp; getShowSeat(const std::string&amp; seatNumber);
+
+private:
+    void buildShowSeats();
+    std::map&lt;std::string, std::unique_ptr&lt;ShowSeat&gt;&gt; showSeats_;
+};
+
+// ---------- ShowSeatState (State pattern) ----------
+class ShowSeat;
+
+class ShowSeatState {
+public:
+    virtual ~ShowSeatState() = default;
+    virtual void onLock(ShowSeat&amp; seat) = 0;
+    virtual void onConfirm(ShowSeat&amp; seat) = 0;
+    virtual void onExpire(ShowSeat&amp; seat) = 0;
+};
+
+class AvailableState : public ShowSeatState {
+public:
+    static ShowSeatState&amp; instance();
+    void onLock(ShowSeat&amp; seat) override;
+    void onConfirm(ShowSeat&amp;) override { throw std::logic_error(&quot;Cannot confirm a seat that was never locked&quot;); }
+    void onExpire(ShowSeat&amp;) override { /* already available; no-op */ }
+};
+
+class LockedState : public ShowSeatState {
+public:
+    static ShowSeatState&amp; instance();
+    void onLock(ShowSeat&amp;) override { throw std::logic_error(&quot;Seat already locked&quot;); }
+    void onConfirm(ShowSeat&amp; seat) override;
+    void onExpire(ShowSeat&amp; seat) override;
+};
+
+class BookedState : public ShowSeatState {
+public:
+    static ShowSeatState&amp; instance();
+    void onLock(ShowSeat&amp;) override { throw std::logic_error(&quot;Seat already booked&quot;); }
+    void onConfirm(ShowSeat&amp;) override { throw std::logic_error(&quot;Seat already booked&quot;); }
+    void onExpire(ShowSeat&amp; seat) override; // booking cancellation frees the seat
+};
+
+class ShowSeat {
+public:
+    Seat seat;
+    Show* show;
+
+    ShowSeat(Seat seat_, Show* show_) : seat(std::move(seat_)), show(show_), status_(ShowSeatStatus::AVAILABLE), state_(&amp;AvailableState::instance()) {}
+
+    void setState(ShowSeatStatus status, ShowSeatState&amp; state) { status_ = status; state_ = &amp;state; }
+    ShowSeatStatus getStatus() const { return status_; }
+
+    void lock() { std::lock_guard&lt;std::mutex&gt; g(mutex_); state_-&gt;onLock(*this); }
+    void confirm() { std::lock_guard&lt;std::mutex&gt; g(mutex_); state_-&gt;onConfirm(*this); }
+    void release() { std::lock_guard&lt;std::mutex&gt; g(mutex_); state_-&gt;onExpire(*this); }
+
+private:
+    ShowSeatStatus status_;
+    ShowSeatState* state_;
+    std::mutex mutex_;
+};
+
+ShowSeatState&amp; AvailableState::instance() { static AvailableState s; return s; }
+ShowSeatState&amp; LockedState::instance() { static LockedState s; return s; }
+ShowSeatState&amp; BookedState::instance() { static BookedState s; return s; }
+void AvailableState::onLock(ShowSeat&amp; seat) { seat.setState(ShowSeatStatus::LOCKED, LockedState::instance()); }
+void LockedState::onConfirm(ShowSeat&amp; seat) { seat.setState(ShowSeatStatus::BOOKED, BookedState::instance()); }
+void LockedState::onExpire(ShowSeat&amp; seat) { seat.setState(ShowSeatStatus::AVAILABLE, AvailableState::instance()); }
+void BookedState::onExpire(ShowSeat&amp; seat) { seat.setState(ShowSeatStatus::AVAILABLE, AvailableState::instance()); }
+
+void Show::buildShowSeats() {
+    for (auto&amp; s : screen.seats) showSeats_[s.seatNumber] = std::make_unique&lt;ShowSeat&gt;(s, this);
+}
+
+ShowSeat&amp; Show::getShowSeat(const std::string&amp; seatNumber) {
+    auto it = showSeats_.find(seatNumber);
+    if (it == showSeats_.end()) throw std::out_of_range(&quot;No such seat: &quot; + seatNumber);
+    return *it-&gt;second;
+}
+
+// ---------- SeatLock ----------
+struct SeatLock {
+    std::string id;
+    User user;
+    std::vector&lt;ShowSeat*&gt; seats;
+    std::chrono::steady_clock::time_point expiresAt;
+
+    bool isExpired() const { return std::chrono::steady_clock::now() &gt; expiresAt; }
+};
+
+// ---------- PricingStrategy ----------
+class PricingStrategy {
+public:
+    virtual ~PricingStrategy() = default;
+    virtual double calculatePrice(const Seat&amp; seat, const Show&amp; show) = 0;
+};
+
+class CategoryTimeBasedPricingStrategy : public PricingStrategy {
+public:
+    double calculatePrice(const Seat&amp; seat, const Show&amp; show) override {
+        double base = baseRate(seat.category);
+        bool peak = show.startHour &gt;= 18 &amp;&amp; show.startHour &lt; 22;
+        return peak ? base * 1.3 : base;
+    }
+private:
+    static double baseRate(SeatCategory c) {
+        switch (c) {
+            case SeatCategory::SILVER: return 100.0;
+            case SeatCategory::GOLD: return 180.0;
+            case SeatCategory::PREMIUM: return 280.0;
+        }
+        return 0.0;
+    }
+};
+
+// ---------- Booking ----------
+class Booking {
+public:
+    std::string id;
+    User user;
+    Show* show;
+    std::vector&lt;ShowSeat*&gt; seats;
+    BookingStatus status;
+    double totalPrice;
+
+    Booking(std::string id_, User user_, Show* show_, std::vector&lt;ShowSeat*&gt; seats_, PricingStrategy&amp; pricingStrategy)
+        : id(std::move(id_)), user(std::move(user_)), show(show_), seats(std::move(seats_)), status(BookingStatus::HOLD) {
+        totalPrice = 0;
+        for (auto* s : seats) totalPrice += pricingStrategy.calculatePrice(s-&gt;seat, *show);
+    }
+
+    void confirm() {
+        for (auto* s : seats) s-&gt;confirm();
+        status = BookingStatus::CONFIRMED;
+    }
+
+    void cancel() {
+        for (auto* s : seats) s-&gt;release();
+        status = BookingStatus::CANCELLED;
+    }
+};
+
+// ---------- WaitlistNotifier (Observer) ----------
+class WaitlistObserver {
+public:
+    virtual ~WaitlistObserver() = default;
+    virtual void onSeatAvailable(ShowSeat&amp; seat) = 0;
+};
+
+class WaitlistNotifier {
+public:
+    void subscribe(std::shared_ptr&lt;WaitlistObserver&gt; observer) { observers_.push_back(std::move(observer)); }
+    void notifyWaiting(const std::vector&lt;ShowSeat*&gt;&amp; freedSeats) {
+        for (auto* seat : freedSeats) for (auto&amp; o : observers_) o-&gt;onSeatAvailable(*seat);
+    }
+private:
+    std::vector&lt;std::shared_ptr&lt;WaitlistObserver&gt;&gt; observers_;
+};
+
+class ConsoleWaitlistNotifier : public WaitlistObserver {
+public:
+    void onSeatAvailable(ShowSeat&amp; seat) override {
+        std::cout &lt;&lt; &quot;[waitlist] Seat &quot; &lt;&lt; seat.seat.seatNumber &lt;&lt; &quot; on show &quot; &lt;&lt; seat.show-&gt;id &lt;&lt; &quot; is available again\n&quot;;
+    }
+};
+
+// ---------- BookingService (facade) ----------
+class BookingService {
+public:
+    BookingService(std::shared_ptr&lt;PricingStrategy&gt; pricingStrategy, std::shared_ptr&lt;WaitlistNotifier&gt; waitlistNotifier)
+        : pricingStrategy_(std::move(pricingStrategy)), waitlistNotifier_(std::move(waitlistNotifier)) {}
+
+    // Locks seats in canonical (sorted) order so two overlapping multi-seat holds never deadlock.
+    std::shared_ptr&lt;SeatLock&gt; holdSeats(const User&amp; user, Show&amp; show, std::vector&lt;std::string&gt; seatNumbers) {
+        std::lock_guard&lt;std::mutex&gt; g(serviceMutex_); // coarse-grained: whole hold operation is atomic
+        std::sort(seatNumbers.begin(), seatNumbers.end());
+        std::vector&lt;ShowSeat*&gt; locked;
+        try {
+            for (auto&amp; id : seatNumbers) {
+                ShowSeat&amp; seat = show.getShowSeat(id);
+                seat.lock(); // throws if not AVAILABLE
+                locked.push_back(&amp;seat);
+            }
+        } catch (const std::exception&amp; rejected) {
+            for (auto* seat : locked) seat-&gt;release(); // rollback partial holds
+            throw std::runtime_error(std::string(&quot;Could not hold all requested seats: &quot;) + rejected.what());
+        }
+        auto lock = std::make_shared&lt;SeatLock&gt;();
+        lock-&gt;id = &quot;LOCK-&quot; + std::to_string(++lockSeq_);
+        lock-&gt;user = user;
+        lock-&gt;seats = locked;
+        lock-&gt;expiresAt = std::chrono::steady_clock::now() + std::chrono::milliseconds(2000);
+        activeLocks_[lock-&gt;id] = lock;
+        return lock;
+    }
+
+    std::shared_ptr&lt;Booking&gt; confirmBooking(const std::string&amp; lockId, PaymentResult paymentResult, const std::string&amp; idempotencyKey) {
+        std::lock_guard&lt;std::mutex&gt; g(serviceMutex_);
+        auto idemIt = idempotencyRecords_.find(idempotencyKey);
+        if (idemIt != idempotencyRecords_.end()) return idemIt-&gt;second; // idempotent retry
+
+        auto lockIt = activeLocks_.find(lockId);
+        if (lockIt == activeLocks_.end()) throw std::runtime_error(&quot;Unknown or already-consumed lock &quot; + lockId);
+        auto seatLock = lockIt-&gt;second;
+        if (seatLock-&gt;isExpired()) {
+            activeLocks_.erase(lockId);
+            for (auto* seat : seatLock-&gt;seats) seat-&gt;release();
+            throw std::runtime_error(&quot;Seat hold expired for lock &quot; + lockId);
+        }
+
+        auto booking = std::make_shared&lt;Booking&gt;(&quot;BKG-&quot; + std::to_string(++bookingSeq_), seatLock-&gt;user,
+                                                   seatLock-&gt;seats[0]-&gt;show, seatLock-&gt;seats, *pricingStrategy_);
+        if (paymentResult.success) {
+            booking-&gt;confirm();
+        } else {
+            booking-&gt;cancel();
+            waitlistNotifier_-&gt;notifyWaiting(seatLock-&gt;seats);
+        }
+        activeLocks_.erase(lockId);
+        bookings_[booking-&gt;id] = booking;
+        idempotencyRecords_[idempotencyKey] = booking;
+        return booking;
+    }
+
+    void cancelBooking(const std::string&amp; bookingId) {
+        std::lock_guard&lt;std::mutex&gt; g(serviceMutex_);
+        auto it = bookings_.find(bookingId);
+        if (it == bookings_.end()) throw std::runtime_error(&quot;Unknown booking &quot; + bookingId);
+        it-&gt;second-&gt;cancel();
+        waitlistNotifier_-&gt;notifyWaiting(it-&gt;second-&gt;seats);
+    }
+
+private:
+    std::shared_ptr&lt;PricingStrategy&gt; pricingStrategy_;
+    std::shared_ptr&lt;WaitlistNotifier&gt; waitlistNotifier_;
+    std::map&lt;std::string, std::shared_ptr&lt;SeatLock&gt;&gt; activeLocks_;
+    std::map&lt;std::string, std::shared_ptr&lt;Booking&gt;&gt; bookings_;
+    std::map&lt;std::string, std::shared_ptr&lt;Booking&gt;&gt; idempotencyRecords_;
+    std::mutex serviceMutex_;
+    int lockSeq_ = 0, bookingSeq_ = 0;
+};
+
+static const char* statusName(ShowSeatStatus s) {
+    switch (s) {
+        case ShowSeatStatus::AVAILABLE: return &quot;AVAILABLE&quot;;
+        case ShowSeatStatus::LOCKED: return &quot;LOCKED&quot;;
+        case ShowSeatStatus::BOOKED: return &quot;BOOKED&quot;;
+    }
+    return &quot;?&quot;;
+}
+static const char* statusName(BookingStatus s) {
+    switch (s) {
+        case BookingStatus::HOLD: return &quot;HOLD&quot;;
+        case BookingStatus::CONFIRMED: return &quot;CONFIRMED&quot;;
+        case BookingStatus::CANCELLED: return &quot;CANCELLED&quot;;
+    }
+    return &quot;?&quot;;
+}
+
+int main() {
+    std::vector&lt;Seat&gt; seats = {
+        {&quot;A1&quot;, SeatCategory::PREMIUM}, {&quot;A2&quot;, SeatCategory::PREMIUM},
+        {&quot;B1&quot;, SeatCategory::GOLD}, {&quot;B2&quot;, SeatCategory::GOLD},
+        {&quot;C1&quot;, SeatCategory::SILVER}, {&quot;C2&quot;, SeatCategory::SILVER},
+    };
+    Screen screen{&quot;SCR-1&quot;, &quot;Screen 1&quot;, seats};
+    Movie movie{&quot;MOV-1&quot;, &quot;Interstellar&quot;, 169};
+    Show show(&quot;SHOW-1&quot;, movie, screen, 19); // peak hour
+
+    auto waitlistNotifier = std::make_shared&lt;WaitlistNotifier&gt;();
+    waitlistNotifier-&gt;subscribe(std::make_shared&lt;ConsoleWaitlistNotifier&gt;());
+    auto pricing = std::make_shared&lt;CategoryTimeBasedPricingStrategy&gt;();
+    BookingService bookingService(pricing, waitlistNotifier);
+
+    User alice{&quot;u1&quot;, &quot;Alice&quot;};
+    User bob{&quot;u2&quot;, &quot;Bob&quot;};
+
+    // Concurrency demo: Alice holds {A1,A2}, Bob holds {A2,B1} -- overlapping sets, sorted-order locking prevents deadlock.
+    std::shared_ptr&lt;SeatLock&gt; aliceLock, bobLockAttempt;
+    std::thread t1([&amp;]() {
+        try { aliceLock = bookingService.holdSeats(alice, show, {&quot;A1&quot;, &quot;A2&quot;}); } catch (...) { }
+    });
+    std::thread t2([&amp;]() {
+        try { bobLockAttempt = bookingService.holdSeats(bob, show, {&quot;A2&quot;, &quot;B1&quot;}); }
+        catch (const std::exception&amp; e) { std::cout &lt;&lt; &quot;Bob&#x27;s hold rejected (expected, contends on A2): &quot; &lt;&lt; e.what() &lt;&lt; &quot;\n&quot;; }
+    });
+    t1.join(); t2.join();
+
+    std::cout &lt;&lt; &quot;Alice locked seats: &quot; &lt;&lt; aliceLock-&gt;seats.size() &lt;&lt; &quot;\n&quot;;
+
+    auto booking = bookingService.confirmBooking(aliceLock-&gt;id, {true}, &quot;idem-key-1&quot;);
+    std::cout &lt;&lt; &quot;Booking &quot; &lt;&lt; booking-&gt;id &lt;&lt; &quot; CONFIRMED, total=&quot; &lt;&lt; booking-&gt;totalPrice &lt;&lt; &quot;\n&quot;;
+
+    auto retry = bookingService.confirmBooking(aliceLock-&gt;id, {true}, &quot;idem-key-1&quot;);
+    std::cout &lt;&lt; &quot;Idempotent retry returns same booking: &quot; &lt;&lt; (retry == booking ? &quot;true&quot; : &quot;false&quot;) &lt;&lt; &quot;\n&quot;;
+
+    auto bobLock = bookingService.holdSeats(bob, show, {&quot;B1&quot;, &quot;B2&quot;});
+    auto failedPayment = bookingService.confirmBooking(bobLock-&gt;id, {false}, &quot;idem-key-2&quot;);
+    std::cout &lt;&lt; &quot;Bob&#x27;s failed-payment booking status: &quot; &lt;&lt; statusName(failedPayment-&gt;status) &lt;&lt; &quot; (seats released, waitlist notified)\n&quot;;
+
+    bookingService.cancelBooking(booking-&gt;id);
+    std::cout &lt;&lt; &quot;A1 status after cancellation: &quot; &lt;&lt; statusName(show.getShowSeat(&quot;A1&quot;).getStatus()) &lt;&lt; &quot;\n&quot;;
+    std::cout &lt;&lt; &quot;A2 status after cancellation: &quot; &lt;&lt; statusName(show.getShowSeat(&quot;A2&quot;).getStatus()) &lt;&lt; &quot;\n&quot;;
+
+    auto shortLock = bookingService.holdSeats(alice, show, {&quot;C1&quot;});
+    std::this_thread::sleep_for(std::chrono::milliseconds(2100));
+    try {
+        bookingService.confirmBooking(shortLock-&gt;id, {true}, &quot;idem-key-3&quot;);
+    } catch (const std::exception&amp; e) {
+        std::cout &lt;&lt; &quot;Expired hold correctly rejected: &quot; &lt;&lt; e.what() &lt;&lt; &quot;\n&quot;;
+    }
+    std::cout &lt;&lt; &quot;C1 status after expiry: &quot; &lt;&lt; statusName(show.getShowSeat(&quot;C1&quot;).getStatus()) &lt;&lt; &quot;\n&quot;;
+
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">&#x27;use strict&#x27;;
+// Problem 17: Movie Ticket Booking System (Concurrency Showcase)
+//
+// Seat (static attrs) vs ShowSeat (per-show status) split.
+// ShowSeatState hierarchy encodes AVAILABLE -&gt; LOCKED -&gt; BOOKED legality, and LOCKED/BOOKED -&gt; AVAILABLE on expire/release.
+// SeatLock is a TTL-bound soft hold; only a successful payment converts it into a Booking confirmation.
+// PricingStrategy is injected (Strategy); WaitlistNotifier is an Observer subject.
+// BookingService is the facade; holdSeats() locks seats in canonical (sorted) order so two overlapping
+// multi-seat holds never deadlock -- modeled here with an AsyncMutex since Node has no real threads.
+
+const SeatCategory = Object.freeze({ SILVER: &#x27;SILVER&#x27;, GOLD: &#x27;GOLD&#x27;, PREMIUM: &#x27;PREMIUM&#x27; });
+const ShowSeatStatus = Object.freeze({ AVAILABLE: &#x27;AVAILABLE&#x27;, LOCKED: &#x27;LOCKED&#x27;, BOOKED: &#x27;BOOKED&#x27; });
+const BookingStatus = Object.freeze({ HOLD: &#x27;HOLD&#x27;, CONFIRMED: &#x27;CONFIRMED&#x27;, CANCELLED: &#x27;CANCELLED&#x27; });
+
+/** A minimal FIFO mutual-exclusion primitive: a queue of waiters, one holder at a time. */
+class AsyncMutex {
+  constructor() { this._locked = false; this._waiters = []; }
+  _acquire() {
+    return new Promise((resolve) =&gt; {
+      if (!this._locked) { this._locked = true; resolve(); }
+      else this._waiters.push(resolve);
+    });
+  }
+  _release() {
+    if (this._waiters.length &gt; 0) this._waiters.shift()();
+    else this._locked = false;
+  }
+  async runExclusive(fn) {
+    await this._acquire();
+    try { return await fn(); } finally { this._release(); }
+  }
+}
+
+class User {
+  constructor(id, name) { this.id = id; this.name = name; }
+}
+
+class Seat {
+  constructor(seatNumber, category) { this.seatNumber = seatNumber; this.category = category; }
+}
+
+class Movie {
+  constructor(id, title, durationMinutes) { this.id = id; this.title = title; this.durationMinutes = durationMinutes; }
+}
+
+class Screen {
+  constructor(id, name, seats) { this.id = id; this.name = name; this.seats = seats; }
+}
+
+// ---------- ShowSeatState (State pattern) ----------
+
+class AvailableState {
+  onLock(seat) { seat._setState(ShowSeatStatus.LOCKED, LOCKED_STATE); }
+  onConfirm() { throw new Error(&#x27;Cannot confirm a seat that was never locked&#x27;); }
+  onExpire() { /* already available; no-op */ }
+}
+class LockedState {
+  onLock() { throw new Error(&#x27;Seat already locked&#x27;); }
+  onConfirm(seat) { seat._setState(ShowSeatStatus.BOOKED, BOOKED_STATE); }
+  onExpire(seat) { seat._setState(ShowSeatStatus.AVAILABLE, AVAILABLE_STATE); }
+}
+class BookedState {
+  onLock() { throw new Error(&#x27;Seat already booked&#x27;); }
+  onConfirm() { throw new Error(&#x27;Seat already booked&#x27;); }
+  onExpire(seat) { seat._setState(ShowSeatStatus.AVAILABLE, AVAILABLE_STATE); } // booking cancellation frees the seat
+}
+const AVAILABLE_STATE = new AvailableState();
+const LOCKED_STATE = new LockedState();
+const BOOKED_STATE = new BookedState();
+
+class ShowSeat {
+  constructor(seat, show) {
+    this.seat = seat;
+    this.show = show;
+    this.status = ShowSeatStatus.AVAILABLE;
+    this._state = AVAILABLE_STATE;
+    this._mutex = new AsyncMutex();
+  }
+  _setState(status, state) { this.status = status; this._state = state; }
+  async lock() { return this._mutex.runExclusive(() =&gt; this._state.onLock(this)); }
+  async confirm() { return this._mutex.runExclusive(() =&gt; this._state.onConfirm(this)); }
+  async release() { return this._mutex.runExclusive(() =&gt; this._state.onExpire(this)); }
+}
+
+class Show {
+  constructor(id, movie, screen, startHour) {
+    this.id = id;
+    this.movie = movie;
+    this.screen = screen;
+    this.startHour = startHour; // simplified: just the hour-of-day, enough to decide &quot;peak&quot;
+    this._showSeats = new Map();
+    for (const seat of screen.seats) this._showSeats.set(seat.seatNumber, new ShowSeat(seat, this));
+  }
+  getShowSeat(seatNumber) {
+    const seat = this._showSeats.get(seatNumber);
+    if (!seat) throw new Error(`No such seat: ${seatNumber}`);
+    return seat;
+  }
+}
+
+/** @interface PricingStrategy: calculatePrice(seat, show) -&gt; number */
+class CategoryTimeBasedPricingStrategy {
+  calculatePrice(seat, show) {
+    const baseRates = { [SeatCategory.SILVER]: 100, [SeatCategory.GOLD]: 180, [SeatCategory.PREMIUM]: 280 };
+    const peak = show.startHour &gt;= 18 &amp;&amp; show.startHour &lt; 22;
+    return peak ? baseRates[seat.category] * 1.3 : baseRates[seat.category];
+  }
+}
+
+class SeatLock {
+  constructor(id, user, seats, ttlMillis) {
+    this.id = id;
+    this.user = user;
+    this.seats = seats;
+    this.expiresAt = Date.now() + ttlMillis;
+  }
+  isExpired() { return Date.now() &gt; this.expiresAt; }
+}
+
+class Booking {
+  constructor(id, user, show, seats, pricingStrategy) {
+    this.id = id;
+    this.user = user;
+    this.show = show;
+    this.seats = seats;
+    this.status = BookingStatus.HOLD;
+    this.totalPrice = seats.reduce((sum, s) =&gt; sum + pricingStrategy.calculatePrice(s.seat, show), 0);
+  }
+  async confirm() {
+    for (const s of this.seats) await s.confirm();
+    this.status = BookingStatus.CONFIRMED;
+  }
+  async cancel() {
+    for (const s of this.seats) await s.release();
+    this.status = BookingStatus.CANCELLED;
+  }
+}
+
+/** @interface WaitlistObserver: onSeatAvailable(showSeat) */
+class WaitlistNotifier {
+  constructor() { this._observers = []; }
+  subscribe(observer) { this._observers.push(observer); }
+  notifyWaiting(freedSeats) {
+    for (const seat of freedSeats) for (const o of this._observers) o.onSeatAvailable(seat);
+  }
+}
+class ConsoleWaitlistNotifier {
+  onSeatAvailable(seat) {
+    console.log(`[waitlist] Seat ${seat.seat.seatNumber} on show ${seat.show.id} is available again`);
+  }
+}
+
+/** Facade: top-level orchestration. holdSeats() locks in canonical (sorted) order. */
+class BookingService {
+  static HOLD_TTL_MILLIS = 2000;
+
+  constructor(pricingStrategy, waitlistNotifier) {
+    this._pricingStrategy = pricingStrategy;
+    this._waitlistNotifier = waitlistNotifier;
+    this._activeLocks = new Map();
+    this._bookings = new Map();
+    this._idempotencyRecords = new Map();
+    this._serviceMutex = new AsyncMutex(); // coarse-grained: whole hold/confirm operation is atomic
+    this._lockSeq = 0;
+    this._bookingSeq = 0;
+  }
+
+  async holdSeats(user, show, seatNumbers) {
+    return this._serviceMutex.runExclusive(async () =&gt; {
+      const ordered = [...seatNumbers].sort();
+      const locked = [];
+      try {
+        for (const id of ordered) {
+          const seat = show.getShowSeat(id);
+          await seat.lock(); // throws if not AVAILABLE
+          locked.push(seat);
+        }
+      } catch (rejected) {
+        for (const seat of locked) await seat.release(); // rollback partial holds
+        throw new Error(`Could not hold all requested seats: ${rejected.message}`);
+      }
+      const lockId = `LOCK-${++this._lockSeq}`;
+      const seatLock = new SeatLock(lockId, user, locked, BookingService.HOLD_TTL_MILLIS);
+      this._activeLocks.set(lockId, seatLock);
+      return seatLock;
+    });
+  }
+
+  async confirmBooking(lockId, paymentResult, idempotencyKey) {
+    return this._serviceMutex.runExclusive(async () =&gt; {
+      if (this._idempotencyRecords.has(idempotencyKey)) return this._idempotencyRecords.get(idempotencyKey);
+
+      const seatLock = this._activeLocks.get(lockId);
+      if (!seatLock) throw new Error(`Unknown or already-consumed lock ${lockId}`);
+      if (seatLock.isExpired()) {
+        this._activeLocks.delete(lockId);
+        for (const seat of seatLock.seats) await seat.release();
+        throw new Error(`Seat hold expired for lock ${lockId}`);
+      }
+
+      const booking = new Booking(`BKG-${++this._bookingSeq}`, seatLock.user, seatLock.seats[0].show, seatLock.seats, this._pricingStrategy);
+      if (paymentResult.success) {
+        await booking.confirm();
+      } else {
+        await booking.cancel();
+        this._waitlistNotifier.notifyWaiting(seatLock.seats);
+      }
+      this._activeLocks.delete(lockId);
+      this._bookings.set(booking.id, booking);
+      this._idempotencyRecords.set(idempotencyKey, booking);
+      return booking;
+    });
+  }
+
+  async cancelBooking(bookingId) {
+    return this._serviceMutex.runExclusive(async () =&gt; {
+      const booking = this._bookings.get(bookingId);
+      if (!booking) throw new Error(`Unknown booking ${bookingId}`);
+      await booking.cancel();
+      this._waitlistNotifier.notifyWaiting(booking.seats);
+    });
+  }
+}
+
+async function main() {
+  const seats = [
+    new Seat(&#x27;A1&#x27;, SeatCategory.PREMIUM), new Seat(&#x27;A2&#x27;, SeatCategory.PREMIUM),
+    new Seat(&#x27;B1&#x27;, SeatCategory.GOLD), new Seat(&#x27;B2&#x27;, SeatCategory.GOLD),
+    new Seat(&#x27;C1&#x27;, SeatCategory.SILVER), new Seat(&#x27;C2&#x27;, SeatCategory.SILVER),
+  ];
+  const screen = new Screen(&#x27;SCR-1&#x27;, &#x27;Screen 1&#x27;, seats);
+  const movie = new Movie(&#x27;MOV-1&#x27;, &#x27;Interstellar&#x27;, 169);
+  const show = new Show(&#x27;SHOW-1&#x27;, movie, screen, 19); // peak hour
+
+  const waitlistNotifier = new WaitlistNotifier();
+  waitlistNotifier.subscribe(new ConsoleWaitlistNotifier());
+  const bookingService = new BookingService(new CategoryTimeBasedPricingStrategy(), waitlistNotifier);
+
+  const alice = new User(&#x27;u1&#x27;, &#x27;Alice&#x27;);
+  const bob = new User(&#x27;u2&#x27;, &#x27;Bob&#x27;);
+
+  // &quot;Concurrency&quot; demo: Alice holds {A1,A2}, Bob holds {A2,B1} -- overlapping sets racing via Promise.allSettled.
+  const [aliceResult, bobResult] = await Promise.allSettled([
+    bookingService.holdSeats(alice, show, [&#x27;A1&#x27;, &#x27;A2&#x27;]),
+    bookingService.holdSeats(bob, show, [&#x27;A2&#x27;, &#x27;B1&#x27;]),
+  ]);
+  if (bobResult.status === &#x27;rejected&#x27;) console.log(&#x27;Bob\&#x27;s hold rejected (expected, contends on A2):&#x27;, bobResult.reason.message);
+  const aliceLock = aliceResult.value;
+  console.log(&#x27;Alice locked seats:&#x27;, aliceLock.seats.length);
+
+  const booking = await bookingService.confirmBooking(aliceLock.id, { success: true }, &#x27;idem-key-1&#x27;);
+  console.log(`Booking ${booking.id} CONFIRMED, total=${booking.totalPrice.toFixed(2)}`);
+
+  const retry = await bookingService.confirmBooking(aliceLock.id, { success: true }, &#x27;idem-key-1&#x27;);
+  console.log(&#x27;Idempotent retry returns same booking:&#x27;, retry === booking);
+
+  const bobLock = await bookingService.holdSeats(bob, show, [&#x27;B1&#x27;, &#x27;B2&#x27;]);
+  const failedPayment = await bookingService.confirmBooking(bobLock.id, { success: false }, &#x27;idem-key-2&#x27;);
+  console.log(&#x27;Bob\&#x27;s failed-payment booking status:&#x27;, failedPayment.status, &#x27;(seats released, waitlist notified)&#x27;);
+
+  await bookingService.cancelBooking(booking.id);
+  console.log(&#x27;A1 status after cancellation:&#x27;, show.getShowSeat(&#x27;A1&#x27;).status);
+  console.log(&#x27;A2 status after cancellation:&#x27;, show.getShowSeat(&#x27;A2&#x27;).status);
+
+  const shortLock = await bookingService.holdSeats(alice, show, [&#x27;C1&#x27;]);
+  await new Promise((resolve) =&gt; setTimeout(resolve, 2100));
+  try {
+    await bookingService.confirmBooking(shortLock.id, { success: true }, &#x27;idem-key-3&#x27;);
+  } catch (e) {
+    console.log(&#x27;Expired hold correctly rejected:&#x27;, e.message);
+  }
+  console.log(&#x27;C1 status after expiry:&#x27;, show.getShowSeat(&#x27;C1&#x27;).status);
+}
+
+if (require.main === module) {
+  main().catch((e) =&gt; { console.error(e); process.exit(1); });
+}
+
+module.exports = {
+  SeatCategory, ShowSeatStatus, BookingStatus, User, Seat, Movie, Screen, Show,
+  CategoryTimeBasedPricingStrategy, SeatLock, Booking, WaitlistNotifier, ConsoleWaitlistNotifier, BookingService,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Problem 17: Movie Ticket Booking System (Concurrency Showcase)
+//
+// Seat (static attrs) vs ShowSeat (per-show status) split.
+// ShowSeatState hierarchy encodes AVAILABLE -&gt; LOCKED -&gt; BOOKED legality, and LOCKED/BOOKED -&gt; AVAILABLE on expire/release.
+// SeatLock is a TTL-bound soft hold; only a successful payment converts it into a Booking confirmation.
+// PricingStrategy is injected (Strategy); WaitlistNotifier is an Observer subject.
+// BookingService is the facade; holdSeats() locks seats in canonical (sorted) order so two overlapping
+// multi-seat holds never deadlock -- modeled here with an AsyncMutex since Node has no real threads.
+
+enum SeatCategory { SILVER = &#x27;SILVER&#x27;, GOLD = &#x27;GOLD&#x27;, PREMIUM = &#x27;PREMIUM&#x27; }
+enum ShowSeatStatus { AVAILABLE = &#x27;AVAILABLE&#x27;, LOCKED = &#x27;LOCKED&#x27;, BOOKED = &#x27;BOOKED&#x27; }
+enum BookingStatus { HOLD = &#x27;HOLD&#x27;, CONFIRMED = &#x27;CONFIRMED&#x27;, CANCELLED = &#x27;CANCELLED&#x27; }
+
+/** A minimal FIFO mutual-exclusion primitive: a queue of waiters, one holder at a time. */
+class AsyncMutex {
+  private locked = false;
+  private waiters: Array&lt;() =&gt; void&gt; = [];
+
+  private acquire(): Promise&lt;void&gt; {
+    return new Promise&lt;void&gt;((resolve) =&gt; {
+      if (!this.locked) { this.locked = true; resolve(); }
+      else this.waiters.push(resolve);
+    });
+  }
+  private release(): void {
+    const next = this.waiters.shift();
+    if (next) next();
+    else this.locked = false;
+  }
+  async runExclusive&lt;T&gt;(fn: () =&gt; T | Promise&lt;T&gt;): Promise&lt;T&gt; {
+    await this.acquire();
+    try { return await fn(); } finally { this.release(); }
+  }
+}
+
+class User {
+  constructor(public readonly id: string, public readonly name: string) {}
+}
+
+interface PaymentResult { success: boolean }
+
+class Seat {
+  constructor(public readonly seatNumber: string, public readonly category: SeatCategory) {}
+}
+
+class Movie {
+  constructor(public readonly id: string, public readonly title: string, public readonly durationMinutes: number) {}
+}
+
+class Screen {
+  constructor(public readonly id: string, public readonly name: string, public readonly seats: Seat[]) {}
+}
+
+// ---------- ShowSeatState (State pattern) ----------
+interface ShowSeatState {
+  onLock(seat: ShowSeat): void;
+  onConfirm(seat: ShowSeat): void;
+  onExpire(seat: ShowSeat): void;
+}
+
+class AvailableState implements ShowSeatState {
+  onLock(seat: ShowSeat): void { seat._setState(ShowSeatStatus.LOCKED, LOCKED_STATE); }
+  onConfirm(): void { throw new Error(&#x27;Cannot confirm a seat that was never locked&#x27;); }
+  onExpire(): void { /* already available; no-op */ }
+}
+class LockedState implements ShowSeatState {
+  onLock(): void { throw new Error(&#x27;Seat already locked&#x27;); }
+  onConfirm(seat: ShowSeat): void { seat._setState(ShowSeatStatus.BOOKED, BOOKED_STATE); }
+  onExpire(seat: ShowSeat): void { seat._setState(ShowSeatStatus.AVAILABLE, AVAILABLE_STATE); }
+}
+class BookedState implements ShowSeatState {
+  onLock(): void { throw new Error(&#x27;Seat already booked&#x27;); }
+  onConfirm(): void { throw new Error(&#x27;Seat already booked&#x27;); }
+  onExpire(seat: ShowSeat): void { seat._setState(ShowSeatStatus.AVAILABLE, AVAILABLE_STATE); } // booking cancellation frees the seat
+}
+const AVAILABLE_STATE: ShowSeatState = new AvailableState();
+const LOCKED_STATE: ShowSeatState = new LockedState();
+const BOOKED_STATE: ShowSeatState = new BookedState();
+
+class ShowSeat {
+  status: ShowSeatStatus = ShowSeatStatus.AVAILABLE;
+  private state: ShowSeatState = AVAILABLE_STATE;
+  private mutex = new AsyncMutex();
+
+  constructor(public readonly seat: Seat, public readonly show: Show) {}
+
+  _setState(status: ShowSeatStatus, state: ShowSeatState): void { this.status = status; this.state = state; }
+  async lock(): Promise&lt;void&gt; { return this.mutex.runExclusive(() =&gt; this.state.onLock(this)); }
+  async confirm(): Promise&lt;void&gt; { return this.mutex.runExclusive(() =&gt; this.state.onConfirm(this)); }
+  async release(): Promise&lt;void&gt; { return this.mutex.runExclusive(() =&gt; this.state.onExpire(this)); }
+}
+
+class Show {
+  private showSeats = new Map&lt;string, ShowSeat&gt;();
+
+  constructor(
+    public readonly id: string,
+    public readonly movie: Movie,
+    public readonly screen: Screen,
+    public readonly startHour: number // simplified: just the hour-of-day, enough to decide &quot;peak&quot;
+  ) {
+    for (const seat of screen.seats) this.showSeats.set(seat.seatNumber, new ShowSeat(seat, this));
+  }
+
+  getShowSeat(seatNumber: string): ShowSeat {
+    const seat = this.showSeats.get(seatNumber);
+    if (!seat) throw new Error(`No such seat: ${seatNumber}`);
+    return seat;
+  }
+}
+
+interface PricingStrategy {
+  calculatePrice(seat: Seat, show: Show): number;
+}
+
+class CategoryTimeBasedPricingStrategy implements PricingStrategy {
+  private baseRates: Record&lt;SeatCategory, number&gt; = {
+    [SeatCategory.SILVER]: 100, [SeatCategory.GOLD]: 180, [SeatCategory.PREMIUM]: 280,
+  };
+  calculatePrice(seat: Seat, show: Show): number {
+    const peak = show.startHour &gt;= 18 &amp;&amp; show.startHour &lt; 22;
+    return peak ? this.baseRates[seat.category] * 1.3 : this.baseRates[seat.category];
+  }
+}
+
+class SeatLock {
+  readonly expiresAt: number;
+  constructor(public readonly id: string, public readonly user: User, public readonly seats: ShowSeat[], ttlMillis: number) {
+    this.expiresAt = Date.now() + ttlMillis;
+  }
+  isExpired(): boolean { return Date.now() &gt; this.expiresAt; }
+}
+
+class Booking {
+  status: BookingStatus = BookingStatus.HOLD;
+  readonly totalPrice: number;
+
+  constructor(
+    public readonly id: string,
+    public readonly user: User,
+    public readonly show: Show,
+    public readonly seats: ShowSeat[],
+    pricingStrategy: PricingStrategy
+  ) {
+    this.totalPrice = seats.reduce((sum, s) =&gt; sum + pricingStrategy.calculatePrice(s.seat, show), 0);
+  }
+
+  async confirm(): Promise&lt;void&gt; {
+    for (const s of this.seats) await s.confirm();
+    this.status = BookingStatus.CONFIRMED;
+  }
+
+  async cancel(): Promise&lt;void&gt; {
+    for (const s of this.seats) await s.release();
+    this.status = BookingStatus.CANCELLED;
+  }
+}
+
+interface WaitlistObserver {
+  onSeatAvailable(seat: ShowSeat): void;
+}
+
+class WaitlistNotifier {
+  private observers: WaitlistObserver[] = [];
+  subscribe(observer: WaitlistObserver): void { this.observers.push(observer); }
+  notifyWaiting(freedSeats: ShowSeat[]): void {
+    for (const seat of freedSeats) for (const o of this.observers) o.onSeatAvailable(seat);
+  }
+}
+class ConsoleWaitlistNotifier implements WaitlistObserver {
+  onSeatAvailable(seat: ShowSeat): void {
+    console.log(`[waitlist] Seat ${seat.seat.seatNumber} on show ${seat.show.id} is available again`);
+  }
+}
+
+/** Facade: top-level orchestration. holdSeats() locks in canonical (sorted) order. */
+class BookingService {
+  private static readonly HOLD_TTL_MILLIS = 2000;
+  private activeLocks = new Map&lt;string, SeatLock&gt;();
+  private bookings = new Map&lt;string, Booking&gt;();
+  private idempotencyRecords = new Map&lt;string, Booking&gt;();
+  private serviceMutex = new AsyncMutex(); // coarse-grained: whole hold/confirm operation is atomic
+  private lockSeq = 0;
+  private bookingSeq = 0;
+
+  constructor(private pricingStrategy: PricingStrategy, private waitlistNotifier: WaitlistNotifier) {}
+
+  async holdSeats(user: User, show: Show, seatNumbers: string[]): Promise&lt;SeatLock&gt; {
+    return this.serviceMutex.runExclusive(async () =&gt; {
+      const ordered = [...seatNumbers].sort();
+      const locked: ShowSeat[] = [];
+      try {
+        for (const id of ordered) {
+          const seat = show.getShowSeat(id);
+          await seat.lock(); // throws if not AVAILABLE
+          locked.push(seat);
+        }
+      } catch (rejected: any) {
+        for (const seat of locked) await seat.release(); // rollback partial holds
+        throw new Error(`Could not hold all requested seats: ${rejected.message}`);
+      }
+      const lockId = `LOCK-${++this.lockSeq}`;
+      const seatLock = new SeatLock(lockId, user, locked, BookingService.HOLD_TTL_MILLIS);
+      this.activeLocks.set(lockId, seatLock);
+      return seatLock;
+    });
+  }
+
+  async confirmBooking(lockId: string, paymentResult: PaymentResult, idempotencyKey: string): Promise&lt;Booking&gt; {
+    return this.serviceMutex.runExclusive(async () =&gt; {
+      const existing = this.idempotencyRecords.get(idempotencyKey);
+      if (existing) return existing;
+
+      const seatLock = this.activeLocks.get(lockId);
+      if (!seatLock) throw new Error(`Unknown or already-consumed lock ${lockId}`);
+      if (seatLock.isExpired()) {
+        this.activeLocks.delete(lockId);
+        for (const seat of seatLock.seats) await seat.release();
+        throw new Error(`Seat hold expired for lock ${lockId}`);
+      }
+
+      const booking = new Booking(`BKG-${++this.bookingSeq}`, seatLock.user, seatLock.seats[0].show, seatLock.seats, this.pricingStrategy);
+      if (paymentResult.success) {
+        await booking.confirm();
+      } else {
+        await booking.cancel();
+        this.waitlistNotifier.notifyWaiting(seatLock.seats);
+      }
+      this.activeLocks.delete(lockId);
+      this.bookings.set(booking.id, booking);
+      this.idempotencyRecords.set(idempotencyKey, booking);
+      return booking;
+    });
+  }
+
+  async cancelBooking(bookingId: string): Promise&lt;void&gt; {
+    return this.serviceMutex.runExclusive(async () =&gt; {
+      const booking = this.bookings.get(bookingId);
+      if (!booking) throw new Error(`Unknown booking ${bookingId}`);
+      await booking.cancel();
+      this.waitlistNotifier.notifyWaiting(booking.seats);
+    });
+  }
+}
+
+async function main(): Promise&lt;void&gt; {
+  const seats: Seat[] = [
+    new Seat(&#x27;A1&#x27;, SeatCategory.PREMIUM), new Seat(&#x27;A2&#x27;, SeatCategory.PREMIUM),
+    new Seat(&#x27;B1&#x27;, SeatCategory.GOLD), new Seat(&#x27;B2&#x27;, SeatCategory.GOLD),
+    new Seat(&#x27;C1&#x27;, SeatCategory.SILVER), new Seat(&#x27;C2&#x27;, SeatCategory.SILVER),
+  ];
+  const screen = new Screen(&#x27;SCR-1&#x27;, &#x27;Screen 1&#x27;, seats);
+  const movie = new Movie(&#x27;MOV-1&#x27;, &#x27;Interstellar&#x27;, 169);
+  const show = new Show(&#x27;SHOW-1&#x27;, movie, screen, 19); // peak hour
+
+  const waitlistNotifier = new WaitlistNotifier();
+  waitlistNotifier.subscribe(new ConsoleWaitlistNotifier());
+  const bookingService = new BookingService(new CategoryTimeBasedPricingStrategy(), waitlistNotifier);
+
+  const alice = new User(&#x27;u1&#x27;, &#x27;Alice&#x27;);
+  const bob = new User(&#x27;u2&#x27;, &#x27;Bob&#x27;);
+
+  // &quot;Concurrency&quot; demo: Alice holds {A1,A2}, Bob holds {A2,B1} -- overlapping sets racing via Promise.allSettled.
+  const [aliceResult, bobResult] = await Promise.allSettled([
+    bookingService.holdSeats(alice, show, [&#x27;A1&#x27;, &#x27;A2&#x27;]),
+    bookingService.holdSeats(bob, show, [&#x27;A2&#x27;, &#x27;B1&#x27;]),
+  ]);
+  if (bobResult.status === &#x27;rejected&#x27;) console.log(&quot;Bob&#x27;s hold rejected (expected, contends on A2):&quot;, (bobResult.reason as Error).message);
+  const aliceLock = (aliceResult as PromiseFulfilledResult&lt;SeatLock&gt;).value;
+  console.log(&#x27;Alice locked seats:&#x27;, aliceLock.seats.length);
+
+  const booking = await bookingService.confirmBooking(aliceLock.id, { success: true }, &#x27;idem-key-1&#x27;);
+  console.log(`Booking ${booking.id} CONFIRMED, total=${booking.totalPrice.toFixed(2)}`);
+
+  const retry = await bookingService.confirmBooking(aliceLock.id, { success: true }, &#x27;idem-key-1&#x27;);
+  console.log(&#x27;Idempotent retry returns same booking:&#x27;, retry === booking);
+
+  const bobLock = await bookingService.holdSeats(bob, show, [&#x27;B1&#x27;, &#x27;B2&#x27;]);
+  const failedPayment = await bookingService.confirmBooking(bobLock.id, { success: false }, &#x27;idem-key-2&#x27;);
+  console.log(&quot;Bob&#x27;s failed-payment booking status:&quot;, failedPayment.status, &#x27;(seats released, waitlist notified)&#x27;);
+
+  await bookingService.cancelBooking(booking.id);
+  console.log(&#x27;A1 status after cancellation:&#x27;, show.getShowSeat(&#x27;A1&#x27;).status);
+  console.log(&#x27;A2 status after cancellation:&#x27;, show.getShowSeat(&#x27;A2&#x27;).status);
+
+  const shortLock = await bookingService.holdSeats(alice, show, [&#x27;C1&#x27;]);
+  await new Promise&lt;void&gt;((resolve) =&gt; setTimeout(resolve, 2100));
+  try {
+    await bookingService.confirmBooking(shortLock.id, { success: true }, &#x27;idem-key-3&#x27;);
+  } catch (e) {
+    console.log(&#x27;Expired hold correctly rejected:&#x27;, (e as Error).message);
+  }
+  console.log(&#x27;C1 status after expiry:&#x27;, show.getShowSeat(&#x27;C1&#x27;).status);
+}
+
+main().catch((e) =&gt; { console.error(e); process.exit(1); });
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p16.html">&larr; 16. Hotel Reservation System</a><a class="prevnext-link next" href="p18.html">18. Restaurant / Food Delivery System &rarr;</a></div>
 </div>
 </main>
 

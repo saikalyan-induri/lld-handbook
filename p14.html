@@ -61,7 +61,8 @@
 <a href="#p14-y">Y. Scaling Boundary</a><a href="#p14-z">Z. Failure Scenarios</a><a href="#p14-aa">AA. Bad Designs</a>
 <a href="#p14-ab">AB. Trade-Offs</a><a href="#p14-ac">AC. Interviewer Evaluation</a><a href="#p14-ad">AD. Simulation</a>
 <a href="#p14-ae">AE. Source Comparison</a><a href="#p14-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p14">Jump to section:</label><select id="jump-p14" class="jump-select" data-jump-select><option value="p14-a">A. Realistic Interview Prompt</option><option value="p14-b">B. Difficulty</option><option value="p14-c">C. What This Problem Tests</option><option value="p14-d">D. Requirements</option><option value="p14-e">E. Clarifying Questions</option><option value="p14-f">F. Assumptions</option><option value="p14-g">G. Actors</option><option value="p14-h">H. Core Domain Entities</option><option value="p14-i">I. Class Relationships</option><option value="p14-j">J. Class Diagram</option><option value="p14-k">K. Responsibility Mapping</option><option value="p14-l">L. SOLID Analysis</option><option value="p14-m">M. Design Patterns</option><option value="p14-n">N. What Is Likely to Change?</option><option value="p14-o">O. Design Evolution</option><option value="p14-p">P. API / Interface Design</option><option value="p14-q">Q. Pseudocode — Critical Logic</option><option value="p14-r">R. End-to-End Use Case</option><option value="p14-s">S. Data Structures</option><option value="p14-t">T. Complexity Analysis</option><option value="p14-u">U. Testing Strategy</option><option value="p14-v">V. Interviewer Follow-Ups</option><option value="p14-w">W. Concurrency</option><option value="p14-x">X. Persistence</option><option value="p14-y">Y. Scaling Boundary</option><option value="p14-z">Z. Failure Scenarios</option><option value="p14-aa">AA. Common Bad Designs</option><option value="p14-ab">AB. Design Trade-Offs</option><option value="p14-ac">AC. Interviewer Evaluation</option><option value="p14-ad">AD. Interview Simulation</option><option value="p14-ae">AE. Online Solution Comparison</option><option value="p14-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p14-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p14">Jump to section:</label><select id="jump-p14" class="jump-select" data-jump-select><option value="p14-a">A. Realistic Interview Prompt</option><option value="p14-b">B. Difficulty</option><option value="p14-c">C. What This Problem Tests</option><option value="p14-d">D. Requirements</option><option value="p14-e">E. Clarifying Questions</option><option value="p14-f">F. Assumptions</option><option value="p14-g">G. Actors</option><option value="p14-h">H. Core Domain Entities</option><option value="p14-i">I. Class Relationships</option><option value="p14-j">J. Class Diagram</option><option value="p14-k">K. Responsibility Mapping</option><option value="p14-l">L. SOLID Analysis</option><option value="p14-m">M. Design Patterns</option><option value="p14-n">N. What Is Likely to Change?</option><option value="p14-o">O. Design Evolution</option><option value="p14-p">P. API / Interface Design</option><option value="p14-q">Q. Pseudocode — Critical Logic</option><option value="p14-r">R. End-to-End Use Case</option><option value="p14-s">S. Data Structures</option><option value="p14-t">T. Complexity Analysis</option><option value="p14-u">U. Testing Strategy</option><option value="p14-v">V. Interviewer Follow-Ups</option><option value="p14-w">W. Concurrency</option><option value="p14-x">X. Persistence</option><option value="p14-y">Y. Scaling Boundary</option><option value="p14-z">Z. Failure Scenarios</option><option value="p14-aa">AA. Common Bad Designs</option><option value="p14-ab">AB. Design Trade-Offs</option><option value="p14-ac">AC. Interviewer Evaluation</option><option value="p14-ad">AD. Interview Simulation</option><option value="p14-ae">AE. Online Solution Comparison</option><option value="p14-af">AF. Interview Cheat Sheet</option><option value="p14-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p14-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design the software for an ATM. Support card insertion, PIN authentication, balance inquiry, cash withdrawal, and deposit. Cash is dispensed as a mix of denominations."</div>
@@ -561,7 +562,1247 @@ ejectCard() → IdleState
 <tr><td><strong>Top follow-ups</strong></td><td>Mid-dispense denomination shortage, concurrent withdrawal race, cardless authentication</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Mode-flag ATM class; hand-rolled dispensing loop; dispense-before-debit ordering; ATM treated as balance authority</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design the bank's internal ledger/distributed-systems architecture — the ATM only needs it to be atomic</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p13.html">&larr; 13. Chess Game</a><a class="prevnext-link next" href="p15.html">15. Library Management System &rarr;</a></div>
+</table>
+
+<h3 id="p14-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">// ATM Machine - full LLD implementation (single-file demo).
+// No &quot;Concurrency&quot; badge -&gt; single-threaded; the &quot;must be atomic&quot; requirement is
+// modeled as BankServer.debit() being a single check-and-deduct call, not via locks.
+//
+// Design notes:
+// - State pattern for the session: withdrawing from IdleState/CardInsertedState is
+//   structurally unavailable (default no-op / rejection), not a scattered runtime if.
+// - Chain of Responsibility for CashDispenser: each DenominationHandler only knows its
+//   own denomination and passes a remainder to the next link - a new bill is a new
+//   link, not a change to a central dispensing algorithm.
+// - Strategy for Transaction: withdrawal/deposit/balance/transfer are mutually
+//   exclusive alternatives selected once per session.
+// - BankServer is the system of record for balance; ATM only tracks its own physical
+//   cash tray - this is why WithdrawTransaction debits first, then dispenses, with a
+//   compensating credit() if dispensing fails.
+import java.util.*;
+
+public class p14 {
+
+    // ---------- Supporting domain types ----------
+    static class Card {
+        final String cardNumber;
+        Card(String cardNumber) { this.cardNumber = cardNumber; }
+    }
+
+    static class Account {
+        final String accountId;
+        double balance;
+        Account(String accountId, double balance) { this.accountId = accountId; this.balance = balance; }
+    }
+
+    enum AuthResult { SUCCESS, INVALID_PIN }
+    enum DebitStatus { SUCCESS, INSUFFICIENT_FUNDS }
+    static class DebitResult {
+        final DebitStatus status;
+        DebitResult(DebitStatus status) { this.status = status; }
+    }
+
+    enum TransactionResult { SUCCESS, INSUFFICIENT_FUNDS, DISPENSE_FAILED, BAD_AMOUNT }
+
+    // ---------- BankServer (interface, external authority) ----------
+    interface BankServer {
+        AuthResult authenticate(Card card, String pin);
+        Account accountFor(Card card);
+        DebitResult debit(Account account, int amount);  // atomic check-and-deduct at the bank
+        void credit(Account account, int amount);
+    }
+
+    // In-memory stand-in for &quot;the bank&quot; - the actual system of record for balance.
+    static class SimpleBankServer implements BankServer {
+        private final Map&lt;String, String&gt; pins = new HashMap&lt;&gt;();
+        private final Map&lt;String, Account&gt; accountsByCard = new HashMap&lt;&gt;();
+
+        void enroll(Card card, String pin, Account account) {
+            pins.put(card.cardNumber, pin);
+            accountsByCard.put(card.cardNumber, account);
+        }
+
+        public AuthResult authenticate(Card card, String pin) {
+            return pin.equals(pins.get(card.cardNumber)) ? AuthResult.SUCCESS : AuthResult.INVALID_PIN;
+        }
+
+        public Account accountFor(Card card) { return accountsByCard.get(card.cardNumber); }
+
+        // Atomic check-and-deduct: never leaves the account debited below zero.
+        public synchronized DebitResult debit(Account account, int amount) {
+            if (account.balance &lt; amount) return new DebitResult(DebitStatus.INSUFFICIENT_FUNDS);
+            account.balance -= amount;
+            return new DebitResult(DebitStatus.SUCCESS);
+        }
+
+        public synchronized void credit(Account account, int amount) { account.balance += amount; }
+    }
+
+    // ---------- CashDispenser / DenominationHandler (Chain of Responsibility) ----------
+    static class InsufficientCashException extends RuntimeException {
+        InsufficientCashException(String msg) { super(msg); }
+    }
+
+    static abstract class DenominationHandler {
+        final int value;
+        int count;
+        DenominationHandler next;
+        DenominationHandler(int value, int count) { this.value = value; this.count = count; }
+
+        void setNext(DenominationHandler next) { this.next = next; }
+
+        // Greedily contributes as many of its own bills as it can, then passes the
+        // remainder down the chain. Only knows its own denomination.
+        void handle(int amount) {
+            int used = Math.min(amount / value, count);
+            if (used &gt; 0) {
+                count -= used;
+                System.out.println(&quot;  dispensing &quot; + used + &quot; x $&quot; + value);
+            }
+            int remainder = amount - used * value;
+            if (remainder &gt; 0 &amp;&amp; next != null) next.handle(remainder);
+            else if (remainder &gt; 0) throw new InsufficientCashException(&quot;Cannot make change for remainder $&quot; + remainder);
+        }
+    }
+
+    static class TwentyHandler extends DenominationHandler { TwentyHandler(int count) { super(20, count); } }
+    static class FiftyHandler extends DenominationHandler { FiftyHandler(int count) { super(50, count); } }
+    static class HundredHandler extends DenominationHandler { HundredHandler(int count) { super(100, count); } }
+
+    static class CashDispenser {
+        private final DenominationHandler chainHead;
+        CashDispenser(DenominationHandler chainHead) { this.chainHead = chainHead; }
+        void dispense(int amount) { chainHead.handle(amount); }
+    }
+
+    // ---------- Transaction (interface, Strategy) ----------
+    interface Transaction {
+        TransactionResult execute(Account account, BankServer bank, ATM atm);
+    }
+
+    static class WithdrawTransaction implements Transaction {
+        final int amount;
+        WithdrawTransaction(int amount) { this.amount = amount; }
+        public TransactionResult execute(Account account, BankServer bank, ATM atm) {
+            if (amount &lt;= 0) return TransactionResult.BAD_AMOUNT;
+            DebitResult result = bank.debit(account, amount); // atomic at the bank
+            if (result.status != DebitStatus.SUCCESS) return TransactionResult.INSUFFICIENT_FUNDS;
+            try {
+                atm.dispense(amount);
+            } catch (InsufficientCashException e) {
+                bank.credit(account, amount); // compensating action - never leave a debit stranded
+                return TransactionResult.DISPENSE_FAILED;
+            }
+            return TransactionResult.SUCCESS;
+        }
+    }
+
+    static class DepositTransaction implements Transaction {
+        final int amount;
+        DepositTransaction(int amount) { this.amount = amount; }
+        public TransactionResult execute(Account account, BankServer bank, ATM atm) {
+            if (amount &lt;= 0) return TransactionResult.BAD_AMOUNT;
+            bank.credit(account, amount);
+            return TransactionResult.SUCCESS;
+        }
+    }
+
+    static class BalanceInquiryTransaction implements Transaction {
+        public TransactionResult execute(Account account, BankServer bank, ATM atm) {
+            System.out.println(&quot;  Balance for &quot; + account.accountId + &quot;: $&quot; + account.balance);
+            return TransactionResult.SUCCESS;
+        }
+    }
+
+    static class TransferTransaction implements Transaction {
+        final Account destination;
+        final int amount;
+        TransferTransaction(Account destination, int amount) { this.destination = destination; this.amount = amount; }
+        public TransactionResult execute(Account account, BankServer bank, ATM atm) {
+            DebitResult result = bank.debit(account, amount);
+            if (result.status != DebitStatus.SUCCESS) return TransactionResult.INSUFFICIENT_FUNDS;
+            bank.credit(destination, amount);
+            return TransactionResult.SUCCESS;
+        }
+    }
+
+    // ---------- ATMState (interface, State) ----------
+    interface ATMState {
+        void insertCard(Card card);
+        void enterPin(String pin);
+        void selectTransaction(Transaction t);
+        void ejectCard();
+        String name();
+    }
+
+    static class IdleState implements ATMState {
+        final ATM atm;
+        IdleState(ATM atm) { this.atm = atm; }
+        public void insertCard(Card card) {
+            atm.currentCard = card;
+            atm.setState(atm.cardInsertedState);
+        }
+        public void enterPin(String pin) { System.out.println(&quot;Reject: insert a card first&quot;); }
+        public void selectTransaction(Transaction t) { System.out.println(&quot;Reject: insert a card first&quot;); }
+        public void ejectCard() { System.out.println(&quot;Reject: no card to eject&quot;); }
+        public String name() { return &quot;Idle&quot;; }
+    }
+
+    static class CardInsertedState implements ATMState {
+        final ATM atm;
+        CardInsertedState(ATM atm) { this.atm = atm; }
+        public void insertCard(Card card) { System.out.println(&quot;Reject: a card is already inserted&quot;); }
+        public void enterPin(String pin) {
+            AuthResult result = atm.bank.authenticate(atm.currentCard, pin);
+            if (result == AuthResult.SUCCESS) {
+                atm.currentAccount = atm.bank.accountFor(atm.currentCard);
+                atm.setState(atm.authenticatedState);
+            } else {
+                System.out.println(&quot;Reject: invalid PIN&quot;);
+                atm.setState(atm.idleState);
+                atm.currentCard = null;
+            }
+        }
+        public void selectTransaction(Transaction t) { System.out.println(&quot;Reject: PIN not verified yet&quot;); }
+        public void ejectCard() { atm.currentCard = null; atm.setState(atm.idleState); }
+        public String name() { return &quot;CardInserted&quot;; }
+    }
+
+    static class AuthenticatedState implements ATMState {
+        final ATM atm;
+        AuthenticatedState(ATM atm) { this.atm = atm; }
+        public void insertCard(Card card) { System.out.println(&quot;Reject: session already active&quot;); }
+        public void enterPin(String pin) { System.out.println(&quot;Reject: already authenticated&quot;); }
+        public void selectTransaction(Transaction t) {
+            atm.setState(atm.dispensingState);
+            TransactionResult result = t.execute(atm.currentAccount, atm.bank, atm);
+            System.out.println(&quot;  Transaction result: &quot; + result);
+            atm.setState(atm.authenticatedState); // back to menu for another transaction, or eject
+        }
+        public void ejectCard() { atm.currentCard = null; atm.currentAccount = null; atm.setState(atm.idleState); }
+        public String name() { return &quot;Authenticated&quot;; }
+    }
+
+    // Transient state while a withdrawal&#x27;s cash is physically moving; kept as its own
+    // state so an in-progress dispense is a distinct, non-reentrant phase.
+    static class DispensingState implements ATMState {
+        final ATM atm;
+        DispensingState(ATM atm) { this.atm = atm; }
+        public void insertCard(Card card) { System.out.println(&quot;Reject: dispensing in progress&quot;); }
+        public void enterPin(String pin) { System.out.println(&quot;Reject: dispensing in progress&quot;); }
+        public void selectTransaction(Transaction t) { System.out.println(&quot;Reject: dispensing in progress&quot;); }
+        public void ejectCard() { System.out.println(&quot;Reject: dispensing in progress&quot;); }
+        public String name() { return &quot;Dispensing&quot;; }
+    }
+
+    static class OutOfServiceState implements ATMState {
+        public void insertCard(Card card) { System.out.println(&quot;ATM out of service&quot;); }
+        public void enterPin(String pin) { System.out.println(&quot;ATM out of service&quot;); }
+        public void selectTransaction(Transaction t) { System.out.println(&quot;ATM out of service&quot;); }
+        public void ejectCard() { System.out.println(&quot;ATM out of service&quot;); }
+        public String name() { return &quot;OutOfService&quot;; }
+    }
+
+    // ---------- ATM (context) ----------
+    static class ATM {
+        ATMState currentState;
+        final IdleState idleState = new IdleState(this);
+        final CardInsertedState cardInsertedState = new CardInsertedState(this);
+        final AuthenticatedState authenticatedState = new AuthenticatedState(this);
+        final DispensingState dispensingState = new DispensingState(this);
+        final OutOfServiceState outOfServiceState = new OutOfServiceState();
+
+        final BankServer bank;
+        final CashDispenser cashDispenser;
+        Card currentCard;
+        Account currentAccount;
+
+        ATM(BankServer bank, CashDispenser cashDispenser) {
+            this.bank = bank;
+            this.cashDispenser = cashDispenser;
+            this.currentState = idleState;
+        }
+
+        void setState(ATMState state) { this.currentState = state; }
+        void dispense(int amount) { cashDispenser.dispense(amount); } // delegates to the chain
+
+        void insertCard(Card card) { currentState.insertCard(card); }
+        void enterPin(String pin) { currentState.enterPin(pin); }
+        void selectTransaction(Transaction t) { currentState.selectTransaction(t); }
+        void ejectCard() { currentState.ejectCard(); }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) {
+        SimpleBankServer bank = new SimpleBankServer();
+        Card card = new Card(&quot;4111-CARD&quot;);
+        Account account = new Account(&quot;ACC-1&quot;, 500);
+        Account friendAccount = new Account(&quot;ACC-2&quot;, 0);
+        bank.enroll(card, &quot;1234&quot;, account);
+
+        HundredHandler hundreds = new HundredHandler(3);
+        FiftyHandler fifties = new FiftyHandler(2);
+        TwentyHandler twenties = new TwentyHandler(5);
+        hundreds.setNext(fifties);
+        fifties.setNext(twenties);
+        CashDispenser dispenser = new CashDispenser(hundreds);
+
+        ATM atm = new ATM(bank, dispenser);
+
+        atm.insertCard(card);
+        System.out.println(&quot;State: &quot; + atm.currentState.name());
+        atm.enterPin(&quot;0000&quot;); // wrong PIN -&gt; ejects back to idle
+        System.out.println(&quot;State after bad PIN: &quot; + atm.currentState.name());
+
+        atm.insertCard(card);
+        atm.enterPin(&quot;1234&quot;); // correct PIN
+        System.out.println(&quot;State: &quot; + atm.currentState.name());
+
+        atm.selectTransaction(new BalanceInquiryTransaction());
+        atm.selectTransaction(new WithdrawTransaction(170)); // 1x100 + 1x50 + 1x20
+        atm.selectTransaction(new BalanceInquiryTransaction());
+        atm.selectTransaction(new TransferTransaction(friendAccount, 100));
+        System.out.println(&quot;  Friend balance: $&quot; + friendAccount.balance);
+
+        atm.selectTransaction(new DepositTransaction(500)); // top up so the next withdrawal fails on CASH, not funds
+        atm.selectTransaction(new WithdrawTransaction(300)); // exceeds remaining cash on hand -&gt; compensating credit
+        atm.selectTransaction(new BalanceInquiryTransaction());
+
+        atm.ejectCard();
+        System.out.println(&quot;State: &quot; + atm.currentState.name());
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// ATM Machine - full LLD implementation (single-file demo).
+// No &quot;Concurrency&quot; badge -&gt; single-threaded; the &quot;must be atomic&quot; requirement is
+// modeled as BankServer::debit() being a single check-and-deduct call, not via mutexes.
+//
+// Design notes:
+// - State pattern for the session: withdrawing from IdleState/CardInsertedState is
+//   structurally unavailable (default rejection), not a scattered runtime if.
+// - Chain of Responsibility for CashDispenser: each DenominationHandler only knows its
+//   own denomination and passes a remainder to the next link.
+// - Strategy for Transaction: withdrawal/deposit/balance/transfer are mutually
+//   exclusive alternatives selected once per session.
+// - BankServer is the system of record for balance; ATM only tracks its physical cash
+//   tray - hence WithdrawTransaction debits first, then dispenses, with a compensating
+//   credit() if dispensing fails.
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;unordered_map&gt;
+#include &lt;memory&gt;
+#include &lt;stdexcept&gt;
+
+using namespace std;
+
+// ---------- Supporting domain types ----------
+struct Card { string cardNumber; };
+
+struct Account {
+    string accountId;
+    double balance;
+};
+
+enum class AuthResult { SUCCESS, INVALID_PIN };
+enum class DebitStatus { SUCCESS, INSUFFICIENT_FUNDS };
+struct DebitResult { DebitStatus status; };
+
+enum class TransactionResult { SUCCESS, INSUFFICIENT_FUNDS, DISPENSE_FAILED, BAD_AMOUNT };
+
+static string toString(TransactionResult r) {
+    switch (r) {
+        case TransactionResult::SUCCESS: return &quot;SUCCESS&quot;;
+        case TransactionResult::INSUFFICIENT_FUNDS: return &quot;INSUFFICIENT_FUNDS&quot;;
+        case TransactionResult::DISPENSE_FAILED: return &quot;DISPENSE_FAILED&quot;;
+        case TransactionResult::BAD_AMOUNT: return &quot;BAD_AMOUNT&quot;;
+    }
+    return &quot;?&quot;;
+}
+
+class ATM; // fwd decl
+
+// ---------- BankServer (interface, external authority) ----------
+class BankServer {
+public:
+    virtual ~BankServer() = default;
+    virtual AuthResult authenticate(const Card&amp; card, const string&amp; pin) = 0;
+    virtual Account* accountFor(const Card&amp; card) = 0;
+    virtual DebitResult debit(Account&amp; account, int amount) = 0; // atomic at the bank
+    virtual void credit(Account&amp; account, int amount) = 0;
+};
+
+class SimpleBankServer : public BankServer {
+    unordered_map&lt;string, string&gt; pins;
+    unordered_map&lt;string, Account*&gt; accountsByCard;
+public:
+    void enroll(const Card&amp; card, const string&amp; pin, Account* account) {
+        pins[card.cardNumber] = pin;
+        accountsByCard[card.cardNumber] = account;
+    }
+    AuthResult authenticate(const Card&amp; card, const string&amp; pin) override {
+        auto it = pins.find(card.cardNumber);
+        return (it != pins.end() &amp;&amp; it-&gt;second == pin) ? AuthResult::SUCCESS : AuthResult::INVALID_PIN;
+    }
+    Account* accountFor(const Card&amp; card) override { return accountsByCard.at(card.cardNumber); }
+    // Atomic check-and-deduct: never leaves the account debited below zero.
+    DebitResult debit(Account&amp; account, int amount) override {
+        if (account.balance &lt; amount) return { DebitStatus::INSUFFICIENT_FUNDS };
+        account.balance -= amount;
+        return { DebitStatus::SUCCESS };
+    }
+    void credit(Account&amp; account, int amount) override { account.balance += amount; }
+};
+
+// ---------- CashDispenser / DenominationHandler (Chain of Responsibility) ----------
+struct InsufficientCashException : public runtime_error {
+    InsufficientCashException(const string&amp; msg) : runtime_error(msg) {}
+};
+
+class DenominationHandler {
+public:
+    int value;
+    int count;
+    DenominationHandler* next = nullptr;
+    DenominationHandler(int value, int count) : value(value), count(count) {}
+    virtual ~DenominationHandler() = default;
+    void setNext(DenominationHandler* n) { next = n; }
+
+    // Greedily contributes as many of its own bills as possible, passes the remainder on.
+    void handle(int amount) {
+        int used = min(amount / value, count);
+        if (used &gt; 0) {
+            count -= used;
+            cout &lt;&lt; &quot;  dispensing &quot; &lt;&lt; used &lt;&lt; &quot; x $&quot; &lt;&lt; value &lt;&lt; &quot;\n&quot;;
+        }
+        int remainder = amount - used * value;
+        if (remainder &gt; 0 &amp;&amp; next != nullptr) next-&gt;handle(remainder);
+        else if (remainder &gt; 0) throw InsufficientCashException(&quot;Cannot make change for remainder $&quot; + to_string(remainder));
+    }
+};
+
+class TwentyHandler : public DenominationHandler { public: TwentyHandler(int c) : DenominationHandler(20, c) {} };
+class FiftyHandler : public DenominationHandler { public: FiftyHandler(int c) : DenominationHandler(50, c) {} };
+class HundredHandler : public DenominationHandler { public: HundredHandler(int c) : DenominationHandler(100, c) {} };
+
+class CashDispenser {
+    DenominationHandler* chainHead;
+public:
+    explicit CashDispenser(DenominationHandler* chainHead) : chainHead(chainHead) {}
+    void dispense(int amount) { chainHead-&gt;handle(amount); }
+};
+
+// ---------- Transaction (interface, Strategy) ----------
+class Transaction {
+public:
+    virtual ~Transaction() = default;
+    virtual TransactionResult execute(Account&amp; account, BankServer&amp; bank, ATM&amp; atm) = 0;
+};
+
+class WithdrawTransaction : public Transaction {
+    int amount;
+public:
+    explicit WithdrawTransaction(int amount) : amount(amount) {}
+    TransactionResult execute(Account&amp; account, BankServer&amp; bank, ATM&amp; atm) override;
+};
+
+class DepositTransaction : public Transaction {
+    int amount;
+public:
+    explicit DepositTransaction(int amount) : amount(amount) {}
+    TransactionResult execute(Account&amp; account, BankServer&amp; bank, ATM&amp;) override {
+        if (amount &lt;= 0) return TransactionResult::BAD_AMOUNT;
+        bank.credit(account, amount);
+        return TransactionResult::SUCCESS;
+    }
+};
+
+class BalanceInquiryTransaction : public Transaction {
+public:
+    TransactionResult execute(Account&amp; account, BankServer&amp;, ATM&amp;) override {
+        cout &lt;&lt; &quot;  Balance for &quot; &lt;&lt; account.accountId &lt;&lt; &quot;: $&quot; &lt;&lt; account.balance &lt;&lt; &quot;\n&quot;;
+        return TransactionResult::SUCCESS;
+    }
+};
+
+class TransferTransaction : public Transaction {
+    Account* destination;
+    int amount;
+public:
+    TransferTransaction(Account* destination, int amount) : destination(destination), amount(amount) {}
+    TransactionResult execute(Account&amp; account, BankServer&amp; bank, ATM&amp;) override {
+        DebitResult result = bank.debit(account, amount);
+        if (result.status != DebitStatus::SUCCESS) return TransactionResult::INSUFFICIENT_FUNDS;
+        bank.credit(*destination, amount);
+        return TransactionResult::SUCCESS;
+    }
+};
+
+// ---------- ATMState (interface, State) ----------
+class ATMState {
+public:
+    virtual ~ATMState() = default;
+    virtual void insertCard(const Card&amp; card) = 0;
+    virtual void enterPin(const string&amp; pin) = 0;
+    virtual void selectTransaction(Transaction&amp; t) = 0;
+    virtual void ejectCard() = 0;
+    virtual string name() = 0;
+};
+
+// ---------- ATM (context) ----------
+class ATM {
+public:
+    ATMState* currentState;
+    unique_ptr&lt;ATMState&gt; idleState, cardInsertedState, authenticatedState, dispensingState, outOfServiceState;
+
+    BankServer&amp; bank;
+    CashDispenser&amp; cashDispenser;
+    Card currentCard;
+    bool hasCard = false;
+    Account* currentAccount = nullptr;
+
+    ATM(BankServer&amp; bank, CashDispenser&amp; dispenser);
+
+    void setState(ATMState* state) { currentState = state; }
+    void dispense(int amount) { cashDispenser.dispense(amount); } // delegates to the chain
+
+    void insertCard(const Card&amp; card) { currentState-&gt;insertCard(card); }
+    void enterPin(const string&amp; pin) { currentState-&gt;enterPin(pin); }
+    void selectTransaction(Transaction&amp; t) { currentState-&gt;selectTransaction(t); }
+    void ejectCard() { currentState-&gt;ejectCard(); }
+};
+
+TransactionResult WithdrawTransaction::execute(Account&amp; account, BankServer&amp; bank, ATM&amp; atm) {
+    if (amount &lt;= 0) return TransactionResult::BAD_AMOUNT;
+    DebitResult result = bank.debit(account, amount); // atomic at the bank
+    if (result.status != DebitStatus::SUCCESS) return TransactionResult::INSUFFICIENT_FUNDS;
+    try {
+        atm.dispense(amount);
+    } catch (const InsufficientCashException&amp;) {
+        bank.credit(account, amount); // compensating action - never leave a debit stranded
+        return TransactionResult::DISPENSE_FAILED;
+    }
+    return TransactionResult::SUCCESS;
+}
+
+class IdleStateImpl : public ATMState {
+    ATM&amp; atm;
+public:
+    explicit IdleStateImpl(ATM&amp; atm) : atm(atm) {}
+    void insertCard(const Card&amp; card) override;
+    void enterPin(const string&amp;) override { cout &lt;&lt; &quot;Reject: insert a card first\n&quot;; }
+    void selectTransaction(Transaction&amp;) override { cout &lt;&lt; &quot;Reject: insert a card first\n&quot;; }
+    void ejectCard() override { cout &lt;&lt; &quot;Reject: no card to eject\n&quot;; }
+    string name() override { return &quot;Idle&quot;; }
+};
+
+class CardInsertedStateImpl : public ATMState {
+    ATM&amp; atm;
+public:
+    explicit CardInsertedStateImpl(ATM&amp; atm) : atm(atm) {}
+    void insertCard(const Card&amp;) override { cout &lt;&lt; &quot;Reject: a card is already inserted\n&quot;; }
+    void enterPin(const string&amp; pin) override;
+    void selectTransaction(Transaction&amp;) override { cout &lt;&lt; &quot;Reject: PIN not verified yet\n&quot;; }
+    void ejectCard() override { atm.hasCard = false; atm.setState(atm.idleState.get()); }
+    string name() override { return &quot;CardInserted&quot;; }
+};
+
+class AuthenticatedStateImpl : public ATMState {
+    ATM&amp; atm;
+public:
+    explicit AuthenticatedStateImpl(ATM&amp; atm) : atm(atm) {}
+    void insertCard(const Card&amp;) override { cout &lt;&lt; &quot;Reject: session already active\n&quot;; }
+    void enterPin(const string&amp;) override { cout &lt;&lt; &quot;Reject: already authenticated\n&quot;; }
+    void selectTransaction(Transaction&amp; t) override {
+        atm.setState(atm.dispensingState.get());
+        TransactionResult result = t.execute(*atm.currentAccount, atm.bank, atm);
+        cout &lt;&lt; &quot;  Transaction result: &quot; &lt;&lt; toString(result) &lt;&lt; &quot;\n&quot;;
+        atm.setState(atm.authenticatedState.get()); // back to menu, or eject
+    }
+    void ejectCard() override { atm.hasCard = false; atm.currentAccount = nullptr; atm.setState(atm.idleState.get()); }
+    string name() override { return &quot;Authenticated&quot;; }
+};
+
+// Transient state while cash is physically moving - a distinct, non-reentrant phase.
+class DispensingStateImpl : public ATMState {
+public:
+    void insertCard(const Card&amp;) override { cout &lt;&lt; &quot;Reject: dispensing in progress\n&quot;; }
+    void enterPin(const string&amp;) override { cout &lt;&lt; &quot;Reject: dispensing in progress\n&quot;; }
+    void selectTransaction(Transaction&amp;) override { cout &lt;&lt; &quot;Reject: dispensing in progress\n&quot;; }
+    void ejectCard() override { cout &lt;&lt; &quot;Reject: dispensing in progress\n&quot;; }
+    string name() override { return &quot;Dispensing&quot;; }
+};
+
+class OutOfServiceStateImpl : public ATMState {
+public:
+    void insertCard(const Card&amp;) override { cout &lt;&lt; &quot;ATM out of service\n&quot;; }
+    void enterPin(const string&amp;) override { cout &lt;&lt; &quot;ATM out of service\n&quot;; }
+    void selectTransaction(Transaction&amp;) override { cout &lt;&lt; &quot;ATM out of service\n&quot;; }
+    void ejectCard() override { cout &lt;&lt; &quot;ATM out of service\n&quot;; }
+    string name() override { return &quot;OutOfService&quot;; }
+};
+
+void IdleStateImpl::insertCard(const Card&amp; card) {
+    atm.currentCard = card;
+    atm.hasCard = true;
+    atm.setState(atm.cardInsertedState.get());
+}
+
+void CardInsertedStateImpl::enterPin(const string&amp; pin) {
+    AuthResult result = atm.bank.authenticate(atm.currentCard, pin);
+    if (result == AuthResult::SUCCESS) {
+        atm.currentAccount = atm.bank.accountFor(atm.currentCard);
+        atm.setState(atm.authenticatedState.get());
+    } else {
+        cout &lt;&lt; &quot;Reject: invalid PIN\n&quot;;
+        atm.setState(atm.idleState.get());
+        atm.hasCard = false;
+    }
+}
+
+ATM::ATM(BankServer&amp; bank, CashDispenser&amp; dispenser) : bank(bank), cashDispenser(dispenser) {
+    idleState = make_unique&lt;IdleStateImpl&gt;(*this);
+    cardInsertedState = make_unique&lt;CardInsertedStateImpl&gt;(*this);
+    authenticatedState = make_unique&lt;AuthenticatedStateImpl&gt;(*this);
+    dispensingState = make_unique&lt;DispensingStateImpl&gt;();
+    outOfServiceState = make_unique&lt;OutOfServiceStateImpl&gt;();
+    currentState = idleState.get();
+}
+
+// ---------- Demo ----------
+int main() {
+    SimpleBankServer bank;
+    Card card{&quot;4111-CARD&quot;};
+    Account account{&quot;ACC-1&quot;, 500};
+    Account friendAccount{&quot;ACC-2&quot;, 0};
+    bank.enroll(card, &quot;1234&quot;, &amp;account);
+
+    HundredHandler hundreds(3);
+    FiftyHandler fifties(2);
+    TwentyHandler twenties(5);
+    hundreds.setNext(&amp;fifties);
+    fifties.setNext(&amp;twenties);
+    CashDispenser dispenser(&amp;hundreds);
+
+    ATM atm(bank, dispenser);
+
+    atm.insertCard(card);
+    cout &lt;&lt; &quot;State: &quot; &lt;&lt; atm.currentState-&gt;name() &lt;&lt; &quot;\n&quot;;
+    atm.enterPin(&quot;0000&quot;); // wrong PIN -&gt; ejects back to idle
+    cout &lt;&lt; &quot;State after bad PIN: &quot; &lt;&lt; atm.currentState-&gt;name() &lt;&lt; &quot;\n&quot;;
+
+    atm.insertCard(card);
+    atm.enterPin(&quot;1234&quot;); // correct PIN
+    cout &lt;&lt; &quot;State: &quot; &lt;&lt; atm.currentState-&gt;name() &lt;&lt; &quot;\n&quot;;
+
+    BalanceInquiryTransaction balanceTxn;
+    atm.selectTransaction(balanceTxn);
+    WithdrawTransaction withdraw170(170); // 1x100 + 1x50 + 1x20
+    atm.selectTransaction(withdraw170);
+    atm.selectTransaction(balanceTxn);
+    TransferTransaction transfer(&amp;friendAccount, 100);
+    atm.selectTransaction(transfer);
+    cout &lt;&lt; &quot;  Friend balance: $&quot; &lt;&lt; friendAccount.balance &lt;&lt; &quot;\n&quot;;
+
+    DepositTransaction deposit500(500);
+    atm.selectTransaction(deposit500);
+    WithdrawTransaction withdraw300(300); // exceeds remaining cash on hand -&gt; compensating credit
+    atm.selectTransaction(withdraw300);
+    atm.selectTransaction(balanceTxn);
+
+    atm.ejectCard();
+    cout &lt;&lt; &quot;State: &quot; &lt;&lt; atm.currentState-&gt;name() &lt;&lt; &quot;\n&quot;;
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">// ATM Machine - full LLD implementation (single-file demo, Node/CommonJS).
+// No &quot;Concurrency&quot; badge -&gt; single-threaded; the &quot;must be atomic&quot; requirement is
+// modeled as BankServer.debit() being a single check-and-deduct call, not via locks.
+//
+// Design notes:
+// - State pattern for the session: withdrawing from IdleState/CardInsertedState is
+//   structurally unavailable (default rejection), not a scattered runtime if.
+// - Chain of Responsibility for CashDispenser: each DenominationHandler only knows its
+//   own denomination and passes a remainder to the next link.
+// - Strategy for Transaction: withdrawal/deposit/balance/transfer are mutually
+//   exclusive alternatives selected once per session.
+// - BankServer is the system of record for balance; ATM only tracks its physical cash
+//   tray - hence WithdrawTransaction debits first, then dispenses, with a compensating
+//   credit() if dispensing fails.
+
+class Card {
+  constructor(cardNumber) { this.cardNumber = cardNumber; }
+}
+
+class Account {
+  constructor(accountId, balance) { this.accountId = accountId; this.balance = balance; }
+}
+
+const AuthResult = Object.freeze({ SUCCESS: &#x27;SUCCESS&#x27;, INVALID_PIN: &#x27;INVALID_PIN&#x27; });
+const DebitStatus = Object.freeze({ SUCCESS: &#x27;SUCCESS&#x27;, INSUFFICIENT_FUNDS: &#x27;INSUFFICIENT_FUNDS&#x27; });
+const TransactionResult = Object.freeze({
+  SUCCESS: &#x27;SUCCESS&#x27;, INSUFFICIENT_FUNDS: &#x27;INSUFFICIENT_FUNDS&#x27;,
+  DISPENSE_FAILED: &#x27;DISPENSE_FAILED&#x27;, BAD_AMOUNT: &#x27;BAD_AMOUNT&#x27;,
+});
+
+class InsufficientCashException extends Error {}
+
+// ---------- BankServer (interface, external authority) ----------
+class BankServer {
+  authenticate(_card, _pin) { throw new Error(&#x27;not implemented&#x27;); }
+  accountFor(_card) { throw new Error(&#x27;not implemented&#x27;); }
+  debit(_account, _amount) { throw new Error(&#x27;not implemented&#x27;); }
+  credit(_account, _amount) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class SimpleBankServer extends BankServer {
+  constructor() {
+    super();
+    this.pins = new Map();
+    this.accountsByCard = new Map();
+  }
+  enroll(card, pin, account) {
+    this.pins.set(card.cardNumber, pin);
+    this.accountsByCard.set(card.cardNumber, account);
+  }
+  authenticate(card, pin) {
+    return this.pins.get(card.cardNumber) === pin ? AuthResult.SUCCESS : AuthResult.INVALID_PIN;
+  }
+  accountFor(card) { return this.accountsByCard.get(card.cardNumber); }
+  // Atomic check-and-deduct: never leaves the account debited below zero.
+  debit(account, amount) {
+    if (account.balance &lt; amount) return { status: DebitStatus.INSUFFICIENT_FUNDS };
+    account.balance -= amount;
+    return { status: DebitStatus.SUCCESS };
+  }
+  credit(account, amount) { account.balance += amount; }
+}
+
+// ---------- CashDispenser / DenominationHandler (Chain of Responsibility) ----------
+class DenominationHandler {
+  constructor(value, count) {
+    this.value = value;
+    this.count = count;
+    this.next = null;
+  }
+  setNext(next) { this.next = next; }
+
+  // Greedily contributes as many of its own bills as possible, passes the remainder on.
+  handle(amount) {
+    const used = Math.min(Math.floor(amount / this.value), this.count);
+    if (used &gt; 0) {
+      this.count -= used;
+      console.log(`  dispensing ${used} x $${this.value}`);
+    }
+    const remainder = amount - used * this.value;
+    if (remainder &gt; 0 &amp;&amp; this.next != null) this.next.handle(remainder);
+    else if (remainder &gt; 0) throw new InsufficientCashException(`Cannot make change for remainder $${remainder}`);
+  }
+}
+
+class TwentyHandler extends DenominationHandler { constructor(count) { super(20, count); } }
+class FiftyHandler extends DenominationHandler { constructor(count) { super(50, count); } }
+class HundredHandler extends DenominationHandler { constructor(count) { super(100, count); } }
+
+class CashDispenser {
+  constructor(chainHead) { this.chainHead = chainHead; }
+  dispense(amount) { this.chainHead.handle(amount); }
+}
+
+// ---------- Transaction (interface, Strategy) ----------
+class Transaction {
+  execute(_account, _bank, _atm) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class WithdrawTransaction extends Transaction {
+  constructor(amount) { super(); this.amount = amount; }
+  execute(account, bank, atm) {
+    if (this.amount &lt;= 0) return TransactionResult.BAD_AMOUNT;
+    const result = bank.debit(account, this.amount); // atomic at the bank
+    if (result.status !== DebitStatus.SUCCESS) return TransactionResult.INSUFFICIENT_FUNDS;
+    try {
+      atm.dispense(this.amount);
+    } catch (e) {
+      if (!(e instanceof InsufficientCashException)) throw e;
+      bank.credit(account, this.amount); // compensating action - never leave a debit stranded
+      return TransactionResult.DISPENSE_FAILED;
+    }
+    return TransactionResult.SUCCESS;
+  }
+}
+
+class DepositTransaction extends Transaction {
+  constructor(amount) { super(); this.amount = amount; }
+  execute(account, bank, _atm) {
+    if (this.amount &lt;= 0) return TransactionResult.BAD_AMOUNT;
+    bank.credit(account, this.amount);
+    return TransactionResult.SUCCESS;
+  }
+}
+
+class BalanceInquiryTransaction extends Transaction {
+  execute(account, _bank, _atm) {
+    console.log(`  Balance for ${account.accountId}: $${account.balance}`);
+    return TransactionResult.SUCCESS;
+  }
+}
+
+class TransferTransaction extends Transaction {
+  constructor(destination, amount) { super(); this.destination = destination; this.amount = amount; }
+  execute(account, bank, _atm) {
+    const result = bank.debit(account, this.amount);
+    if (result.status !== DebitStatus.SUCCESS) return TransactionResult.INSUFFICIENT_FUNDS;
+    bank.credit(this.destination, this.amount);
+    return TransactionResult.SUCCESS;
+  }
+}
+
+// ---------- ATMState (interface, State) ----------
+class ATMState {
+  insertCard(_card) { throw new Error(&#x27;not implemented&#x27;); }
+  enterPin(_pin) { throw new Error(&#x27;not implemented&#x27;); }
+  selectTransaction(_t) { throw new Error(&#x27;not implemented&#x27;); }
+  ejectCard() { throw new Error(&#x27;not implemented&#x27;); }
+  name() { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class IdleState extends ATMState {
+  constructor(atm) { super(); this.atm = atm; }
+  insertCard(card) {
+    this.atm.currentCard = card;
+    this.atm.setState(this.atm.cardInsertedState);
+  }
+  enterPin(_pin) { console.log(&#x27;Reject: insert a card first&#x27;); }
+  selectTransaction(_t) { console.log(&#x27;Reject: insert a card first&#x27;); }
+  ejectCard() { console.log(&#x27;Reject: no card to eject&#x27;); }
+  name() { return &#x27;Idle&#x27;; }
+}
+
+class CardInsertedState extends ATMState {
+  constructor(atm) { super(); this.atm = atm; }
+  insertCard(_card) { console.log(&#x27;Reject: a card is already inserted&#x27;); }
+  enterPin(pin) {
+    const result = this.atm.bank.authenticate(this.atm.currentCard, pin);
+    if (result === AuthResult.SUCCESS) {
+      this.atm.currentAccount = this.atm.bank.accountFor(this.atm.currentCard);
+      this.atm.setState(this.atm.authenticatedState);
+    } else {
+      console.log(&#x27;Reject: invalid PIN&#x27;);
+      this.atm.setState(this.atm.idleState);
+      this.atm.currentCard = null;
+    }
+  }
+  selectTransaction(_t) { console.log(&#x27;Reject: PIN not verified yet&#x27;); }
+  ejectCard() { this.atm.currentCard = null; this.atm.setState(this.atm.idleState); }
+  name() { return &#x27;CardInserted&#x27;; }
+}
+
+class AuthenticatedState extends ATMState {
+  constructor(atm) { super(); this.atm = atm; }
+  insertCard(_card) { console.log(&#x27;Reject: session already active&#x27;); }
+  enterPin(_pin) { console.log(&#x27;Reject: already authenticated&#x27;); }
+  selectTransaction(t) {
+    this.atm.setState(this.atm.dispensingState);
+    const result = t.execute(this.atm.currentAccount, this.atm.bank, this.atm);
+    console.log(`  Transaction result: ${result}`);
+    this.atm.setState(this.atm.authenticatedState); // back to menu, or eject
+  }
+  ejectCard() { this.atm.currentCard = null; this.atm.currentAccount = null; this.atm.setState(this.atm.idleState); }
+  name() { return &#x27;Authenticated&#x27;; }
+}
+
+// Transient state while cash is physically moving - a distinct, non-reentrant phase.
+class DispensingState extends ATMState {
+  insertCard(_card) { console.log(&#x27;Reject: dispensing in progress&#x27;); }
+  enterPin(_pin) { console.log(&#x27;Reject: dispensing in progress&#x27;); }
+  selectTransaction(_t) { console.log(&#x27;Reject: dispensing in progress&#x27;); }
+  ejectCard() { console.log(&#x27;Reject: dispensing in progress&#x27;); }
+  name() { return &#x27;Dispensing&#x27;; }
+}
+
+class OutOfServiceState extends ATMState {
+  insertCard(_card) { console.log(&#x27;ATM out of service&#x27;); }
+  enterPin(_pin) { console.log(&#x27;ATM out of service&#x27;); }
+  selectTransaction(_t) { console.log(&#x27;ATM out of service&#x27;); }
+  ejectCard() { console.log(&#x27;ATM out of service&#x27;); }
+  name() { return &#x27;OutOfService&#x27;; }
+}
+
+// ---------- ATM (context) ----------
+class ATM {
+  constructor(bank, cashDispenser) {
+    this.bank = bank;
+    this.cashDispenser = cashDispenser;
+    this.idleState = new IdleState(this);
+    this.cardInsertedState = new CardInsertedState(this);
+    this.authenticatedState = new AuthenticatedState(this);
+    this.dispensingState = new DispensingState();
+    this.outOfServiceState = new OutOfServiceState();
+    this.currentState = this.idleState;
+    this.currentCard = null;
+    this.currentAccount = null;
+  }
+  setState(state) { this.currentState = state; }
+  dispense(amount) { this.cashDispenser.dispense(amount); } // delegates to the chain
+
+  insertCard(card) { this.currentState.insertCard(card); }
+  enterPin(pin) { this.currentState.enterPin(pin); }
+  selectTransaction(t) { this.currentState.selectTransaction(t); }
+  ejectCard() { this.currentState.ejectCard(); }
+}
+
+// ---------- Demo ----------
+function main() {
+  const bank = new SimpleBankServer();
+  const card = new Card(&#x27;4111-CARD&#x27;);
+  const account = new Account(&#x27;ACC-1&#x27;, 500);
+  const friendAccount = new Account(&#x27;ACC-2&#x27;, 0);
+  bank.enroll(card, &#x27;1234&#x27;, account);
+
+  const hundreds = new HundredHandler(3);
+  const fifties = new FiftyHandler(2);
+  const twenties = new TwentyHandler(5);
+  hundreds.setNext(fifties);
+  fifties.setNext(twenties);
+  const dispenser = new CashDispenser(hundreds);
+
+  const atm = new ATM(bank, dispenser);
+
+  atm.insertCard(card);
+  console.log(&#x27;State:&#x27;, atm.currentState.name());
+  atm.enterPin(&#x27;0000&#x27;); // wrong PIN -&gt; ejects back to idle
+  console.log(&#x27;State after bad PIN:&#x27;, atm.currentState.name());
+
+  atm.insertCard(card);
+  atm.enterPin(&#x27;1234&#x27;); // correct PIN
+  console.log(&#x27;State:&#x27;, atm.currentState.name());
+
+  atm.selectTransaction(new BalanceInquiryTransaction());
+  atm.selectTransaction(new WithdrawTransaction(170)); // 1x100 + 1x50 + 1x20
+  atm.selectTransaction(new BalanceInquiryTransaction());
+  atm.selectTransaction(new TransferTransaction(friendAccount, 100));
+  console.log(`  Friend balance: $${friendAccount.balance}`);
+
+  atm.selectTransaction(new DepositTransaction(500));
+  atm.selectTransaction(new WithdrawTransaction(300)); // exceeds remaining cash -&gt; compensating credit
+  atm.selectTransaction(new BalanceInquiryTransaction());
+
+  atm.ejectCard();
+  console.log(&#x27;State:&#x27;, atm.currentState.name());
+}
+
+if (require.main === module) main();
+
+module.exports = {
+  Card, Account, AuthResult, DebitStatus, TransactionResult, BankServer, SimpleBankServer,
+  DenominationHandler, TwentyHandler, FiftyHandler, HundredHandler, CashDispenser,
+  Transaction, WithdrawTransaction, DepositTransaction, BalanceInquiryTransaction, TransferTransaction,
+  ATMState, IdleState, CardInsertedState, AuthenticatedState, DispensingState, OutOfServiceState, ATM,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// ATM Machine - full LLD implementation (single-file demo).
+// No &quot;Concurrency&quot; badge -&gt; single-threaded; the &quot;must be atomic&quot; requirement is
+// modeled as BankServer.debit() being a single check-and-deduct call, not via locks.
+//
+// Design notes:
+// - State pattern for the session: withdrawing from IdleState/CardInsertedState is
+//   structurally unavailable (default rejection), not a scattered runtime if.
+// - Chain of Responsibility for CashDispenser: each DenominationHandler only knows its
+//   own denomination and passes a remainder to the next link.
+// - Strategy for Transaction: withdrawal/deposit/balance/transfer are mutually
+//   exclusive alternatives selected once per session.
+// - BankServer is the system of record for balance; ATM only tracks its physical cash
+//   tray - hence WithdrawTransaction debits first, then dispenses, with a compensating
+//   credit() if dispensing fails.
+
+class Card {
+  constructor(public cardNumber: string) {}
+}
+
+class Account {
+  constructor(public accountId: string, public balance: number) {}
+}
+
+enum AuthResult { SUCCESS = &#x27;SUCCESS&#x27;, INVALID_PIN = &#x27;INVALID_PIN&#x27; }
+enum DebitStatus { SUCCESS = &#x27;SUCCESS&#x27;, INSUFFICIENT_FUNDS = &#x27;INSUFFICIENT_FUNDS&#x27; }
+interface DebitResult { status: DebitStatus; }
+
+enum TransactionResult {
+  SUCCESS = &#x27;SUCCESS&#x27;, INSUFFICIENT_FUNDS = &#x27;INSUFFICIENT_FUNDS&#x27;,
+  DISPENSE_FAILED = &#x27;DISPENSE_FAILED&#x27;, BAD_AMOUNT = &#x27;BAD_AMOUNT&#x27;,
+}
+
+class InsufficientCashException extends Error {}
+
+// ---------- BankServer (interface, external authority) ----------
+interface BankServer {
+  authenticate(card: Card, pin: string): AuthResult;
+  accountFor(card: Card): Account;
+  debit(account: Account, amount: number): DebitResult; // atomic at the bank
+  credit(account: Account, amount: number): void;
+}
+
+class SimpleBankServer implements BankServer {
+  private pins = new Map&lt;string, string&gt;();
+  private accountsByCard = new Map&lt;string, Account&gt;();
+
+  enroll(card: Card, pin: string, account: Account): void {
+    this.pins.set(card.cardNumber, pin);
+    this.accountsByCard.set(card.cardNumber, account);
+  }
+
+  authenticate(card: Card, pin: string): AuthResult {
+    return this.pins.get(card.cardNumber) === pin ? AuthResult.SUCCESS : AuthResult.INVALID_PIN;
+  }
+
+  accountFor(card: Card): Account {
+    const account = this.accountsByCard.get(card.cardNumber);
+    if (!account) throw new Error(&#x27;Unknown card&#x27;);
+    return account;
+  }
+
+  // Atomic check-and-deduct: never leaves the account debited below zero.
+  debit(account: Account, amount: number): DebitResult {
+    if (account.balance &lt; amount) return { status: DebitStatus.INSUFFICIENT_FUNDS };
+    account.balance -= amount;
+    return { status: DebitStatus.SUCCESS };
+  }
+
+  credit(account: Account, amount: number): void { account.balance += amount; }
+}
+
+// ---------- CashDispenser / DenominationHandler (Chain of Responsibility) ----------
+abstract class DenominationHandler {
+  next: DenominationHandler | null = null;
+  constructor(public value: number, public count: number) {}
+  setNext(next: DenominationHandler): void { this.next = next; }
+
+  // Greedily contributes as many of its own bills as possible, passes the remainder on.
+  handle(amount: number): void {
+    const used = Math.min(Math.floor(amount / this.value), this.count);
+    if (used &gt; 0) {
+      this.count -= used;
+      console.log(`  dispensing ${used} x $${this.value}`);
+    }
+    const remainder = amount - used * this.value;
+    if (remainder &gt; 0 &amp;&amp; this.next != null) this.next.handle(remainder);
+    else if (remainder &gt; 0) throw new InsufficientCashException(`Cannot make change for remainder $${remainder}`);
+  }
+}
+
+class TwentyHandler extends DenominationHandler { constructor(count: number) { super(20, count); } }
+class FiftyHandler extends DenominationHandler { constructor(count: number) { super(50, count); } }
+class HundredHandler extends DenominationHandler { constructor(count: number) { super(100, count); } }
+
+class CashDispenser {
+  constructor(private chainHead: DenominationHandler) {}
+  dispense(amount: number): void { this.chainHead.handle(amount); }
+}
+
+// ---------- Transaction (interface, Strategy) ----------
+interface Transaction {
+  execute(account: Account, bank: BankServer, atm: ATM): TransactionResult;
+}
+
+class WithdrawTransaction implements Transaction {
+  constructor(private amount: number) {}
+  execute(account: Account, bank: BankServer, atm: ATM): TransactionResult {
+    if (this.amount &lt;= 0) return TransactionResult.BAD_AMOUNT;
+    const result = bank.debit(account, this.amount); // atomic at the bank
+    if (result.status !== DebitStatus.SUCCESS) return TransactionResult.INSUFFICIENT_FUNDS;
+    try {
+      atm.dispense(this.amount);
+    } catch (e) {
+      if (!(e instanceof InsufficientCashException)) throw e;
+      bank.credit(account, this.amount); // compensating action - never leave a debit stranded
+      return TransactionResult.DISPENSE_FAILED;
+    }
+    return TransactionResult.SUCCESS;
+  }
+}
+
+class DepositTransaction implements Transaction {
+  constructor(private amount: number) {}
+  execute(account: Account, bank: BankServer, _atm: ATM): TransactionResult {
+    if (this.amount &lt;= 0) return TransactionResult.BAD_AMOUNT;
+    bank.credit(account, this.amount);
+    return TransactionResult.SUCCESS;
+  }
+}
+
+class BalanceInquiryTransaction implements Transaction {
+  execute(account: Account, _bank: BankServer, _atm: ATM): TransactionResult {
+    console.log(`  Balance for ${account.accountId}: $${account.balance}`);
+    return TransactionResult.SUCCESS;
+  }
+}
+
+class TransferTransaction implements Transaction {
+  constructor(private destination: Account, private amount: number) {}
+  execute(account: Account, bank: BankServer, _atm: ATM): TransactionResult {
+    const result = bank.debit(account, this.amount);
+    if (result.status !== DebitStatus.SUCCESS) return TransactionResult.INSUFFICIENT_FUNDS;
+    bank.credit(this.destination, this.amount);
+    return TransactionResult.SUCCESS;
+  }
+}
+
+// ---------- ATMState (interface, State) ----------
+interface ATMState {
+  insertCard(card: Card): void;
+  enterPin(pin: string): void;
+  selectTransaction(t: Transaction): void;
+  ejectCard(): void;
+  name(): string;
+}
+
+class IdleState implements ATMState {
+  constructor(private atm: ATM) {}
+  insertCard(card: Card): void {
+    this.atm.currentCard = card;
+    this.atm.setState(this.atm.cardInsertedState);
+  }
+  enterPin(_pin: string): void { console.log(&#x27;Reject: insert a card first&#x27;); }
+  selectTransaction(_t: Transaction): void { console.log(&#x27;Reject: insert a card first&#x27;); }
+  ejectCard(): void { console.log(&#x27;Reject: no card to eject&#x27;); }
+  name(): string { return &#x27;Idle&#x27;; }
+}
+
+class CardInsertedState implements ATMState {
+  constructor(private atm: ATM) {}
+  insertCard(_card: Card): void { console.log(&#x27;Reject: a card is already inserted&#x27;); }
+  enterPin(pin: string): void {
+    const result = this.atm.bank.authenticate(this.atm.currentCard as Card, pin);
+    if (result === AuthResult.SUCCESS) {
+      this.atm.currentAccount = this.atm.bank.accountFor(this.atm.currentCard as Card);
+      this.atm.setState(this.atm.authenticatedState);
+    } else {
+      console.log(&#x27;Reject: invalid PIN&#x27;);
+      this.atm.setState(this.atm.idleState);
+      this.atm.currentCard = null;
+    }
+  }
+  selectTransaction(_t: Transaction): void { console.log(&#x27;Reject: PIN not verified yet&#x27;); }
+  ejectCard(): void { this.atm.currentCard = null; this.atm.setState(this.atm.idleState); }
+  name(): string { return &#x27;CardInserted&#x27;; }
+}
+
+class AuthenticatedState implements ATMState {
+  constructor(private atm: ATM) {}
+  insertCard(_card: Card): void { console.log(&#x27;Reject: session already active&#x27;); }
+  enterPin(_pin: string): void { console.log(&#x27;Reject: already authenticated&#x27;); }
+  selectTransaction(t: Transaction): void {
+    this.atm.setState(this.atm.dispensingState);
+    const result = t.execute(this.atm.currentAccount as Account, this.atm.bank, this.atm);
+    console.log(`  Transaction result: ${result}`);
+    this.atm.setState(this.atm.authenticatedState); // back to menu, or eject
+  }
+  ejectCard(): void {
+    this.atm.currentCard = null;
+    this.atm.currentAccount = null;
+    this.atm.setState(this.atm.idleState);
+  }
+  name(): string { return &#x27;Authenticated&#x27;; }
+}
+
+// Transient state while cash is physically moving - a distinct, non-reentrant phase.
+class DispensingState implements ATMState {
+  insertCard(_card: Card): void { console.log(&#x27;Reject: dispensing in progress&#x27;); }
+  enterPin(_pin: string): void { console.log(&#x27;Reject: dispensing in progress&#x27;); }
+  selectTransaction(_t: Transaction): void { console.log(&#x27;Reject: dispensing in progress&#x27;); }
+  ejectCard(): void { console.log(&#x27;Reject: dispensing in progress&#x27;); }
+  name(): string { return &#x27;Dispensing&#x27;; }
+}
+
+class OutOfServiceState implements ATMState {
+  insertCard(_card: Card): void { console.log(&#x27;ATM out of service&#x27;); }
+  enterPin(_pin: string): void { console.log(&#x27;ATM out of service&#x27;); }
+  selectTransaction(_t: Transaction): void { console.log(&#x27;ATM out of service&#x27;); }
+  ejectCard(): void { console.log(&#x27;ATM out of service&#x27;); }
+  name(): string { return &#x27;OutOfService&#x27;; }
+}
+
+// ---------- ATM (context) ----------
+class ATM {
+  currentState: ATMState;
+  idleState: ATMState;
+  cardInsertedState: ATMState;
+  authenticatedState: ATMState;
+  dispensingState: ATMState;
+  outOfServiceState: ATMState;
+  currentCard: Card | null = null;
+  currentAccount: Account | null = null;
+
+  constructor(public bank: BankServer, private cashDispenser: CashDispenser) {
+    this.idleState = new IdleState(this);
+    this.cardInsertedState = new CardInsertedState(this);
+    this.authenticatedState = new AuthenticatedState(this);
+    this.dispensingState = new DispensingState();
+    this.outOfServiceState = new OutOfServiceState();
+    this.currentState = this.idleState;
+  }
+
+  setState(state: ATMState): void { this.currentState = state; }
+  dispense(amount: number): void { this.cashDispenser.dispense(amount); } // delegates to the chain
+
+  insertCard(card: Card): void { this.currentState.insertCard(card); }
+  enterPin(pin: string): void { this.currentState.enterPin(pin); }
+  selectTransaction(t: Transaction): void { this.currentState.selectTransaction(t); }
+  ejectCard(): void { this.currentState.ejectCard(); }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const bank = new SimpleBankServer();
+  const card = new Card(&#x27;4111-CARD&#x27;);
+  const account = new Account(&#x27;ACC-1&#x27;, 500);
+  const friendAccount = new Account(&#x27;ACC-2&#x27;, 0);
+  bank.enroll(card, &#x27;1234&#x27;, account);
+
+  const hundreds = new HundredHandler(3);
+  const fifties = new FiftyHandler(2);
+  const twenties = new TwentyHandler(5);
+  hundreds.setNext(fifties);
+  fifties.setNext(twenties);
+  const dispenser = new CashDispenser(hundreds);
+
+  const atm = new ATM(bank, dispenser);
+
+  atm.insertCard(card);
+  console.log(&#x27;State:&#x27;, atm.currentState.name());
+  atm.enterPin(&#x27;0000&#x27;); // wrong PIN -&gt; ejects back to idle
+  console.log(&#x27;State after bad PIN:&#x27;, atm.currentState.name());
+
+  atm.insertCard(card);
+  atm.enterPin(&#x27;1234&#x27;); // correct PIN
+  console.log(&#x27;State:&#x27;, atm.currentState.name());
+
+  atm.selectTransaction(new BalanceInquiryTransaction());
+  atm.selectTransaction(new WithdrawTransaction(170)); // 1x100 + 1x50 + 1x20
+  atm.selectTransaction(new BalanceInquiryTransaction());
+  atm.selectTransaction(new TransferTransaction(friendAccount, 100));
+  console.log(`  Friend balance: $${friendAccount.balance}`);
+
+  atm.selectTransaction(new DepositTransaction(500));
+  atm.selectTransaction(new WithdrawTransaction(300)); // exceeds remaining cash -&gt; compensating credit
+  atm.selectTransaction(new BalanceInquiryTransaction());
+
+  atm.ejectCard();
+  console.log(&#x27;State:&#x27;, atm.currentState.name());
+}
+
+main();
+
+export {
+  Card, Account, AuthResult, DebitStatus, TransactionResult, BankServer, SimpleBankServer,
+  DenominationHandler, TwentyHandler, FiftyHandler, HundredHandler, CashDispenser,
+  Transaction, WithdrawTransaction, DepositTransaction, BalanceInquiryTransaction, TransferTransaction,
+  ATMState, IdleState, CardInsertedState, AuthenticatedState, DispensingState, OutOfServiceState, ATM,
+};
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p13.html">&larr; 13. Chess Game</a><a class="prevnext-link next" href="p15.html">15. Library Management System &rarr;</a></div>
 </div>
 </main>
 

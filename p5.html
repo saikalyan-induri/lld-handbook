@@ -61,7 +61,8 @@
 <a href="#p5-y">Y. Scaling Boundary</a><a href="#p5-z">Z. Failure Scenarios</a><a href="#p5-aa">AA. Bad Designs</a>
 <a href="#p5-ab">AB. Trade-Offs</a><a href="#p5-ac">AC. Interviewer Evaluation</a><a href="#p5-ad">AD. Simulation</a>
 <a href="#p5-ae">AE. Source Comparison</a><a href="#p5-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p5">Jump to section:</label><select id="jump-p5" class="jump-select" data-jump-select><option value="p5-a">A. Realistic Interview Prompt</option><option value="p5-b">B. Difficulty</option><option value="p5-c">C. What This Problem Tests</option><option value="p5-d">D. Requirements</option><option value="p5-e">E. Clarifying Questions</option><option value="p5-f">F. Assumptions</option><option value="p5-g">G. Actors</option><option value="p5-h">H. Core Domain Entities</option><option value="p5-i">I. Class Relationships</option><option value="p5-j">J. Class Diagram</option><option value="p5-k">K. Responsibility Mapping</option><option value="p5-l">L. SOLID Analysis</option><option value="p5-m">M. Design Patterns</option><option value="p5-n">N. What Is Likely to Change?</option><option value="p5-o">O. Design Evolution</option><option value="p5-p">P. API / Interface Design</option><option value="p5-q">Q. Pseudocode — Critical Logic</option><option value="p5-r">R. End-to-End Use Case</option><option value="p5-s">S. Data Structures</option><option value="p5-t">T. Complexity Analysis</option><option value="p5-u">U. Testing Strategy</option><option value="p5-v">V. Interviewer Follow-Ups</option><option value="p5-w">W. Concurrency</option><option value="p5-x">X. Persistence</option><option value="p5-y">Y. Scaling Boundary</option><option value="p5-z">Z. Failure Scenarios</option><option value="p5-aa">AA. Common Bad Designs</option><option value="p5-ab">AB. Design Trade-Offs</option><option value="p5-ac">AC. Interviewer Evaluation</option><option value="p5-ad">AD. Interview Simulation</option><option value="p5-ae">AE. Online Solution Comparison</option><option value="p5-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p5-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p5">Jump to section:</label><select id="jump-p5" class="jump-select" data-jump-select><option value="p5-a">A. Realistic Interview Prompt</option><option value="p5-b">B. Difficulty</option><option value="p5-c">C. What This Problem Tests</option><option value="p5-d">D. Requirements</option><option value="p5-e">E. Clarifying Questions</option><option value="p5-f">F. Assumptions</option><option value="p5-g">G. Actors</option><option value="p5-h">H. Core Domain Entities</option><option value="p5-i">I. Class Relationships</option><option value="p5-j">J. Class Diagram</option><option value="p5-k">K. Responsibility Mapping</option><option value="p5-l">L. SOLID Analysis</option><option value="p5-m">M. Design Patterns</option><option value="p5-n">N. What Is Likely to Change?</option><option value="p5-o">O. Design Evolution</option><option value="p5-p">P. API / Interface Design</option><option value="p5-q">Q. Pseudocode — Critical Logic</option><option value="p5-r">R. End-to-End Use Case</option><option value="p5-s">S. Data Structures</option><option value="p5-t">T. Complexity Analysis</option><option value="p5-u">U. Testing Strategy</option><option value="p5-v">V. Interviewer Follow-Ups</option><option value="p5-w">W. Concurrency</option><option value="p5-x">X. Persistence</option><option value="p5-y">Y. Scaling Boundary</option><option value="p5-z">Z. Failure Scenarios</option><option value="p5-aa">AA. Common Bad Designs</option><option value="p5-ab">AB. Design Trade-Offs</option><option value="p5-ac">AC. Interviewer Evaluation</option><option value="p5-ad">AD. Interview Simulation</option><option value="p5-ae">AE. Online Solution Comparison</option><option value="p5-af">AF. Interview Cheat Sheet</option><option value="p5-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p5-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a ride-sharing service like Uber or Lyft. Riders request a trip from a pickup location to a destination; the system matches them with a nearby available driver, the ride proceeds through pickup and drop-off, and a fare is calculated and charged at the end."</div>
@@ -674,7 +675,1308 @@ PaymentGateway.charge(rider, $23.92); D1.release() → AVAILABLE again
 <tr><td><strong>Top follow-ups</strong></td><td>Concurrent reservation race, ride pooling, city-scale matching, driver-goes-offline mid-trip, unresponsive-driver timeout</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Check-then-set reservation; surge as a duplicate parallel strategy; free-form status field; designing HLD infrastructure instead of classes</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't build a production quadtree or a real message-broker pipeline — name them as the HLD extension, don't implement them</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p4.html">&larr; 4. Splitwise (Expense Sharing)</a><a class="prevnext-link next" href="p6.html">6. Logging Framework &rarr;</a></div>
+</table>
+
+<h3 id="p5-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">// Ride-Sharing Service (Uber/Lyft) — full LLD implementation with demo.
+// Single-file Java translation of the Mermaid class diagram in section J.
+import java.util.*;
+
+public class p5 {
+
+    // ---------- Value objects ----------
+
+    static final class Money {
+        final long cents;
+        private Money(long c) { cents = c; }
+        static Money of(double dollars) { return new Money(Math.round(dollars * 100)); }
+        Money times(double factor) { return new Money(Math.round(cents * factor)); }
+        public String toString() { return String.format(&quot;$%.2f&quot;, cents / 100.0); }
+    }
+
+    /** Immutable geo point. Distance math lives here; storage/indexing is GeoIndex&#x27;s job. */
+    static final class Location {
+        final double lat, lng;
+        Location(double lat, double lng) { this.lat = lat; this.lng = lng; }
+        /** Haversine great-circle distance in kilometers. */
+        double distanceTo(Location o) {
+            double R = 6371.0;
+            double dLat = Math.toRadians(o.lat - lat);
+            double dLng = Math.toRadians(o.lng - lng);
+            double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                    + Math.cos(Math.toRadians(lat)) * Math.cos(Math.toRadians(o.lat))
+                    * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        }
+    }
+
+    static final class Vehicle {
+        final String make, model, plate, type;
+        Vehicle(String make, String model, String plate, String type) {
+            this.make = make; this.model = model; this.plate = plate; this.type = type;
+        }
+    }
+
+    // ---------- Identity hierarchy ----------
+
+    static abstract class User {
+        final String id, name, phone;
+        double rating = 5.0;
+        User(String id, String name, String phone) { this.id = id; this.name = name; this.phone = phone; }
+    }
+
+    static final class Rider extends User {
+        final String paymentMethod;
+        Rider(String id, String name, String phone, String paymentMethod) {
+            super(id, name, phone); this.paymentMethod = paymentMethod;
+        }
+        Ride requestRide(RideService service, Location pickup, Location dropoff) {
+            return service.requestRide(this, pickup, dropoff);
+        }
+    }
+
+    enum DriverStatus { AVAILABLE, RESERVED, ON_TRIP }
+
+    static final class Driver extends User {
+        final Vehicle vehicle; // composition: owned by this driver profile
+        Location currentLocation; // composition: has no meaning detached from the driver
+        DriverStatus status = DriverStatus.AVAILABLE;
+        Driver(String id, String name, String phone, Vehicle vehicle, Location location) {
+            super(id, name, phone); this.vehicle = vehicle; this.currentLocation = location;
+        }
+        /** Atomic (in a real system, CAS-guarded) check-and-set: AVAILABLE -&gt; RESERVED. */
+        boolean tryReserve() {
+            if (status == DriverStatus.AVAILABLE) { status = DriverStatus.RESERVED; return true; }
+            return false;
+        }
+        void release() { status = DriverStatus.AVAILABLE; }
+        void markOnTrip() { status = DriverStatus.ON_TRIP; }
+        void updateLocation(Location loc) { this.currentLocation = loc; }
+        void accept(RideService service, String rideId) { service.acceptRide(rideId, this); }
+        void reject(RideService service, String rideId) { service.rejectRide(rideId, this); }
+    }
+
+    // ---------- Ride: guarded state machine ----------
+
+    enum RideStatus { REQUESTED, MATCHED, ACCEPTED, ARRIVED, IN_PROGRESS, COMPLETED, CANCELLED, NO_DRIVER_FOUND }
+
+    static final class Ride {
+        final String id;
+        final Rider rider; // association — rider exists independently of the ride
+        final Location pickup, dropoff;
+        Driver driver; // association — set once matched
+        RideStatus status = RideStatus.REQUESTED;
+        Money fare;
+        final long requestedAt = System.currentTimeMillis();
+
+        private static final Map&lt;RideStatus, Set&lt;RideStatus&gt;&gt; ALLOWED = new HashMap&lt;&gt;();
+        static {
+            ALLOWED.put(RideStatus.REQUESTED, EnumSet.of(RideStatus.MATCHED, RideStatus.NO_DRIVER_FOUND, RideStatus.CANCELLED));
+            ALLOWED.put(RideStatus.MATCHED, EnumSet.of(RideStatus.ACCEPTED, RideStatus.REQUESTED, RideStatus.CANCELLED));
+            ALLOWED.put(RideStatus.ACCEPTED, EnumSet.of(RideStatus.ARRIVED, RideStatus.CANCELLED));
+            ALLOWED.put(RideStatus.ARRIVED, EnumSet.of(RideStatus.IN_PROGRESS, RideStatus.CANCELLED));
+            ALLOWED.put(RideStatus.IN_PROGRESS, EnumSet.of(RideStatus.COMPLETED));
+            ALLOWED.put(RideStatus.COMPLETED, EnumSet.noneOf(RideStatus.class));
+            ALLOWED.put(RideStatus.CANCELLED, EnumSet.noneOf(RideStatus.class));
+            ALLOWED.put(RideStatus.NO_DRIVER_FOUND, EnumSet.noneOf(RideStatus.class));
+        }
+
+        Ride(String id, Rider rider, Location pickup, Location dropoff) {
+            this.id = id; this.rider = rider; this.pickup = pickup; this.dropoff = dropoff;
+        }
+
+        /** Guarded transition — throws if the target state isn&#x27;t reachable from the current one. */
+        void transitionTo(RideStatus next, Driver withDriver) {
+            if (!ALLOWED.get(status).contains(next)) {
+                throw new IllegalStateException(&quot;Illegal ride transition: &quot; + status + &quot; -&gt; &quot; + next);
+            }
+            status = next;
+            if (withDriver != null) driver = withDriver;
+        }
+    }
+
+    // ---------- GeoIndex ----------
+
+    /** Spatial lookup of drivers via a coarse lat/lng grid. Ranking is left to MatchingStrategy. */
+    static final class GeoIndex {
+        private static final double GRID_DEG = 0.05; // ~5km buckets
+        private final Map&lt;String, Set&lt;Driver&gt;&gt; buckets = new HashMap&lt;&gt;();
+        private final Map&lt;String, String&gt; driverBucket = new HashMap&lt;&gt;();
+
+        private String bucketKey(Location loc) {
+            long gx = Math.round(loc.lat / GRID_DEG);
+            long gy = Math.round(loc.lng / GRID_DEG);
+            return gx + &quot;:&quot; + gy;
+        }
+
+        void register(Driver driver) { update(driver, driver.currentLocation); }
+
+        void update(Driver driver, Location loc) {
+            String old = driverBucket.get(driver.id);
+            if (old != null) buckets.getOrDefault(old, Collections.emptySet()).remove(driver);
+            String k = bucketKey(loc);
+            buckets.computeIfAbsent(k, x -&gt; new HashSet&lt;&gt;()).add(driver);
+            driverBucket.put(driver.id, k);
+            driver.updateLocation(loc);
+        }
+
+        /** Scans the 3x3 neighborhood of grid cells and filters by real distance. */
+        List&lt;Driver&gt; findNearby(Location loc, double radiusKm) {
+            long gx = Math.round(loc.lat / GRID_DEG);
+            long gy = Math.round(loc.lng / GRID_DEG);
+            List&lt;Driver&gt; result = new ArrayList&lt;&gt;();
+            for (long dx = -1; dx &lt;= 1; dx++) {
+                for (long dy = -1; dy &lt;= 1; dy++) {
+                    Set&lt;Driver&gt; cell = buckets.get((gx + dx) + &quot;:&quot; + (gy + dy));
+                    if (cell == null) continue;
+                    for (Driver d : cell) {
+                        if (d.currentLocation.distanceTo(loc) &lt;= radiusKm) result.add(d);
+                    }
+                }
+            }
+            return result;
+        }
+    }
+
+    // ---------- Strategies ----------
+
+    interface MatchingStrategy {
+        Optional&lt;Driver&gt; match(Ride ride, List&lt;Driver&gt; candidates);
+    }
+
+    static final class NearestDriverStrategy implements MatchingStrategy {
+        public Optional&lt;Driver&gt; match(Ride ride, List&lt;Driver&gt; candidates) {
+            return candidates.stream()
+                    .filter(d -&gt; d.status == DriverStatus.AVAILABLE)
+                    .min(Comparator.comparingDouble(d -&gt; d.currentLocation.distanceTo(ride.pickup)));
+        }
+    }
+
+    interface FareStrategy {
+        Money calculate(Ride ride);
+    }
+
+    static final class DistanceTimeFareStrategy implements FareStrategy {
+        private static final double BASE = 2.50, PER_KM = 1.25, PER_MIN = 0.20, AVG_SPEED_KMH = 30.0;
+        public Money calculate(Ride ride) {
+            double distanceKm = ride.pickup.distanceTo(ride.dropoff);
+            double minutes = (distanceKm / AVG_SPEED_KMH) * 60.0;
+            return Money.of(BASE + PER_KM * distanceKm + PER_MIN * minutes);
+        }
+    }
+
+    /** Decorator: multiplies any wrapped FareStrategy&#x27;s result during high demand. Not a rival Strategy. */
+    static final class SurgeFareDecorator implements FareStrategy {
+        private final FareStrategy wrapped;
+        private final double multiplier;
+        SurgeFareDecorator(FareStrategy wrapped, double multiplier) { this.wrapped = wrapped; this.multiplier = multiplier; }
+        public Money calculate(Ride ride) { return wrapped.calculate(ride).times(multiplier); }
+    }
+
+    // ---------- Observer ----------
+
+    static final class NotificationService {
+        void onRideStatusChanged(Ride ride) {
+            System.out.println(&quot;[notify] ride &quot; + ride.id + &quot; -&gt; &quot; + ride.status
+                    + (ride.driver != null ? &quot; (driver &quot; + ride.driver.name + &quot;)&quot; : &quot;&quot;));
+        }
+    }
+
+    // ---------- RideService (facade) ----------
+
+    static final class RideService {
+        private static final double DEFAULT_RADIUS_KM = 5.0;
+        private final GeoIndex geoIndex;
+        private final MatchingStrategy matchingStrategy;
+        private final FareStrategy fareStrategy;
+        private final NotificationService notificationService;
+        private final Map&lt;String, Ride&gt; rides = new HashMap&lt;&gt;();
+        private int counter = 0;
+
+        RideService(GeoIndex geoIndex, MatchingStrategy matchingStrategy, FareStrategy fareStrategy,
+                    NotificationService notificationService) {
+            this.geoIndex = geoIndex; this.matchingStrategy = matchingStrategy;
+            this.fareStrategy = fareStrategy; this.notificationService = notificationService;
+        }
+
+        Ride requestRide(Rider rider, Location pickup, Location dropoff) {
+            Ride ride = new Ride(&quot;R-&quot; + (++counter), rider, pickup, dropoff);
+            rides.put(ride.id, ride);
+            attemptMatch(ride, Collections.emptySet());
+            return ride;
+        }
+
+        /** Core matching loop: rank candidates, reserve atomically, retry on lost race. */
+        private void attemptMatch(Ride ride, Set&lt;String&gt; excludedDriverIds) {
+            List&lt;Driver&gt; candidates = geoIndex.findNearby(ride.pickup, DEFAULT_RADIUS_KM);
+            candidates.removeIf(d -&gt; excludedDriverIds.contains(d.id));
+            while (!candidates.isEmpty()) {
+                Optional&lt;Driver&gt; chosen = matchingStrategy.match(ride, candidates);
+                if (chosen.isEmpty()) break;
+                Driver driver = chosen.get();
+                if (driver.tryReserve()) { // atomic CAS: AVAILABLE -&gt; RESERVED
+                    ride.transitionTo(RideStatus.MATCHED, driver);
+                    notificationService.onRideStatusChanged(ride);
+                    return;
+                }
+                candidates.remove(driver); // someone else grabbed it first, retry
+            }
+            ride.transitionTo(RideStatus.NO_DRIVER_FOUND, null);
+            notificationService.onRideStatusChanged(ride);
+        }
+
+        void acceptRide(String rideId, Driver driver) {
+            Ride ride = rides.get(rideId);
+            if (ride.driver != driver) throw new IllegalStateException(&quot;Driver mismatch for ride &quot; + rideId);
+            ride.transitionTo(RideStatus.ACCEPTED, driver);
+            notificationService.onRideStatusChanged(ride);
+        }
+
+        /** Rejection releases the driver and re-triggers matching, excluding the driver who just rejected. */
+        void rejectRide(String rideId, Driver driver) {
+            Ride ride = rides.get(rideId);
+            driver.release();
+            ride.transitionTo(RideStatus.REQUESTED, null);
+            ride.driver = null;
+            attemptMatch(ride, Set.of(driver.id));
+        }
+
+        void arriveAtPickup(String rideId) {
+            Ride ride = rides.get(rideId);
+            ride.transitionTo(RideStatus.ARRIVED, null);
+        }
+
+        void startRide(String rideId) {
+            Ride ride = rides.get(rideId);
+            ride.transitionTo(RideStatus.IN_PROGRESS, null); // ARRIVED -&gt; IN_PROGRESS
+            ride.driver.markOnTrip();
+            notificationService.onRideStatusChanged(ride);
+        }
+
+        Ride completeRide(String rideId) {
+            Ride ride = rides.get(rideId);
+            ride.transitionTo(RideStatus.COMPLETED, null); // throws if not currently IN_PROGRESS
+            Money fare = fareStrategy.calculate(ride); // may itself be a decorator chain
+            ride.fare = fare;
+            System.out.println(&quot;[payment] charged &quot; + fare + &quot; to &quot; + ride.rider.name);
+            ride.driver.release(); // RESERVED/ON_TRIP -&gt; AVAILABLE
+            notificationService.onRideStatusChanged(ride);
+            return ride;
+        }
+
+        void cancelRide(String rideId, String cancelledBy) {
+            Ride ride = rides.get(rideId);
+            if (ride.driver != null) ride.driver.release();
+            ride.transitionTo(RideStatus.CANCELLED, null);
+            System.out.println(&quot;[cancel] ride &quot; + rideId + &quot; cancelled by &quot; + cancelledBy);
+            notificationService.onRideStatusChanged(ride);
+        }
+    }
+
+    // ---------- Demo ----------
+
+    public static void main(String[] args) {
+        GeoIndex geoIndex = new GeoIndex();
+        MatchingStrategy matching = new NearestDriverStrategy();
+        FareStrategy fare = new SurgeFareDecorator(new DistanceTimeFareStrategy(), 1.5); // 1.5x surge active
+        NotificationService notifications = new NotificationService();
+        RideService rideService = new RideService(geoIndex, matching, fare, notifications);
+
+        Driver d1 = new Driver(&quot;d1&quot;, &quot;Sam&quot;, &quot;555-1&quot;, new Vehicle(&quot;Toyota&quot;, &quot;Camry&quot;, &quot;ABC-123&quot;, &quot;Sedan&quot;), new Location(37.77, -122.42));
+        Driver d2 = new Driver(&quot;d2&quot;, &quot;Jamie&quot;, &quot;555-2&quot;, new Vehicle(&quot;Honda&quot;, &quot;Civic&quot;, &quot;XYZ-987&quot;, &quot;Sedan&quot;), new Location(37.80, -122.41));
+        geoIndex.register(d1);
+        geoIndex.register(d2);
+
+        Rider rider = new Rider(&quot;r1&quot;, &quot;Priya&quot;, &quot;555-9&quot;, &quot;card-ending-4242&quot;);
+        Ride ride = rider.requestRide(rideService, new Location(37.775, -122.418), new Location(37.79, -122.40));
+        System.out.println(&quot;After match: status=&quot; + ride.status + &quot; driver=&quot; + (ride.driver != null ? ride.driver.name : &quot;none&quot;));
+
+        ride.driver.accept(rideService, ride.id);
+        rideService.arriveAtPickup(ride.id);
+        rideService.startRide(ride.id);
+        Ride completed = rideService.completeRide(ride.id);
+        System.out.println(&quot;Final status=&quot; + completed.status + &quot; fare=&quot; + completed.fare);
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Ride-Sharing Service (Uber/Lyft) — full LLD implementation with demo.
+// Single-file C++ translation of the Mermaid class diagram in section J.
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+#include &lt;unordered_map&gt;
+#include &lt;unordered_set&gt;
+#include &lt;set&gt;
+#include &lt;memory&gt;
+#include &lt;optional&gt;
+#include &lt;algorithm&gt;
+#include &lt;cmath&gt;
+#include &lt;sstream&gt;
+#include &lt;stdexcept&gt;
+
+// ---------- Value objects ----------
+struct Money {
+    long long cents = 0;
+    static Money of(double dollars) { return Money{ (long long)std::llround(dollars * 100) }; }
+    Money times(double factor) const { return Money{ (long long)std::llround(cents * factor) }; }
+    std::string str() const {
+        std::ostringstream os;
+        os &lt;&lt; &quot;$&quot; &lt;&lt; (cents / 100) &lt;&lt; &quot;.&quot; &lt;&lt; (cents % 100 &lt; 10 ? &quot;0&quot; : &quot;&quot;) &lt;&lt; (cents % 100);
+        return os.str();
+    }
+};
+
+// Immutable geo point. Distance math lives here; storage/indexing is GeoIndex&#x27;s job.
+struct Location {
+    double lat, lng;
+    double distanceTo(const Location&amp; o) const {
+        const double R = 6371.0;
+        double dLat = (o.lat - lat) * M_PI / 180.0;
+        double dLng = (o.lng - lng) * M_PI / 180.0;
+        double a = std::sin(dLat / 2) * std::sin(dLat / 2)
+                 + std::cos(lat * M_PI / 180.0) * std::cos(o.lat * M_PI / 180.0)
+                 * std::sin(dLng / 2) * std::sin(dLng / 2);
+        return R * 2 * std::atan2(std::sqrt(a), std::sqrt(1 - a));
+    }
+};
+
+struct Vehicle {
+    std::string make, model, plate, type;
+};
+
+// ---------- Identity hierarchy ----------
+struct User {
+    std::string id, name, phone;
+    double rating = 5.0;
+    User(std::string id, std::string name, std::string phone) : id(std::move(id)), name(std::move(name)), phone(std::move(phone)) {}
+    virtual ~User() = default;
+};
+
+class RideService; // fwd decl
+struct Ride;
+
+struct Rider : public User {
+    std::string paymentMethod;
+    Rider(std::string id, std::string name, std::string phone, std::string pm)
+        : User(std::move(id), std::move(name), std::move(phone)), paymentMethod(std::move(pm)) {}
+    // `self` is this Rider&#x27;s own shared_ptr, passed in by the caller (C++ has no shared_from_this
+    // without inheriting enable_shared_from_this) — kept simple for this single-file demo.
+    std::shared_ptr&lt;Ride&gt; requestRide(RideService&amp; service, std::shared_ptr&lt;Rider&gt; self,
+                                       const Location&amp; pickup, const Location&amp; dropoff);
+};
+
+enum class DriverStatus { AVAILABLE, RESERVED, ON_TRIP };
+
+struct Driver : public User {
+    Vehicle vehicle;              // composition: owned by this driver profile
+    Location currentLocation;     // composition: has no meaning detached from the driver
+    DriverStatus status = DriverStatus::AVAILABLE;
+    Driver(std::string id, std::string name, std::string phone, Vehicle v, Location loc)
+        : User(std::move(id), std::move(name), std::move(phone)), vehicle(std::move(v)), currentLocation(loc) {}
+
+    // Atomic (in a real system, CAS-guarded) check-and-set: AVAILABLE -&gt; RESERVED.
+    bool tryReserve() {
+        if (status == DriverStatus::AVAILABLE) { status = DriverStatus::RESERVED; return true; }
+        return false;
+    }
+    void release() { status = DriverStatus::AVAILABLE; }
+    void markOnTrip() { status = DriverStatus::ON_TRIP; }
+    void updateLocation(const Location&amp; loc) { currentLocation = loc; }
+    void accept(RideService&amp; service, const std::string&amp; rideId, std::shared_ptr&lt;Driver&gt; self);
+    void reject(RideService&amp; service, const std::string&amp; rideId, std::shared_ptr&lt;Driver&gt; self);
+};
+
+// ---------- Ride: guarded state machine ----------
+enum class RideStatus { REQUESTED, MATCHED, ACCEPTED, ARRIVED, IN_PROGRESS, COMPLETED, CANCELLED, NO_DRIVER_FOUND };
+
+std::string toString(RideStatus s) {
+    switch (s) {
+        case RideStatus::REQUESTED: return &quot;REQUESTED&quot;;
+        case RideStatus::MATCHED: return &quot;MATCHED&quot;;
+        case RideStatus::ACCEPTED: return &quot;ACCEPTED&quot;;
+        case RideStatus::ARRIVED: return &quot;ARRIVED&quot;;
+        case RideStatus::IN_PROGRESS: return &quot;IN_PROGRESS&quot;;
+        case RideStatus::COMPLETED: return &quot;COMPLETED&quot;;
+        case RideStatus::CANCELLED: return &quot;CANCELLED&quot;;
+        case RideStatus::NO_DRIVER_FOUND: return &quot;NO_DRIVER_FOUND&quot;;
+    }
+    return &quot;?&quot;;
+}
+
+struct Ride {
+    std::string id;
+    std::shared_ptr&lt;Rider&gt; rider; // association — rider exists independently of the ride
+    Location pickup, dropoff;
+    std::shared_ptr&lt;Driver&gt; driver; // association — set once matched
+    RideStatus status = RideStatus::REQUESTED;
+    std::optional&lt;Money&gt; fare;
+
+    Ride(std::string id, std::shared_ptr&lt;Rider&gt; rider, Location pickup, Location dropoff)
+        : id(std::move(id)), rider(std::move(rider)), pickup(pickup), dropoff(dropoff) {}
+
+    static bool allowed(RideStatus from, RideStatus to) {
+        switch (from) {
+            case RideStatus::REQUESTED: return to == RideStatus::MATCHED || to == RideStatus::NO_DRIVER_FOUND || to == RideStatus::CANCELLED;
+            case RideStatus::MATCHED: return to == RideStatus::ACCEPTED || to == RideStatus::REQUESTED || to == RideStatus::CANCELLED;
+            case RideStatus::ACCEPTED: return to == RideStatus::ARRIVED || to == RideStatus::CANCELLED;
+            case RideStatus::ARRIVED: return to == RideStatus::IN_PROGRESS || to == RideStatus::CANCELLED;
+            case RideStatus::IN_PROGRESS: return to == RideStatus::COMPLETED;
+            default: return false; // COMPLETED / CANCELLED / NO_DRIVER_FOUND are terminal
+        }
+    }
+
+    // Guarded transition — throws if the target state isn&#x27;t reachable from the current one.
+    void transitionTo(RideStatus next, std::shared_ptr&lt;Driver&gt; withDriver) {
+        if (!allowed(status, next)) throw std::logic_error(&quot;Illegal ride transition: &quot; + toString(status) + &quot; -&gt; &quot; + toString(next));
+        status = next;
+        if (withDriver) driver = withDriver;
+    }
+};
+
+// ---------- GeoIndex ----------
+// Spatial lookup of drivers via a coarse lat/lng grid. Ranking is left to MatchingStrategy.
+class GeoIndex {
+    static constexpr double GRID_DEG = 0.05; // ~5km buckets
+    std::unordered_map&lt;std::string, std::vector&lt;std::shared_ptr&lt;Driver&gt;&gt;&gt; buckets;
+    std::unordered_map&lt;std::string, std::string&gt; driverBucket;
+
+    std::string bucketKey(const Location&amp; loc) const {
+        long gx = std::lround(loc.lat / GRID_DEG);
+        long gy = std::lround(loc.lng / GRID_DEG);
+        return std::to_string(gx) + &quot;:&quot; + std::to_string(gy);
+    }
+
+public:
+    void registerDriver(std::shared_ptr&lt;Driver&gt; driver) { update(driver, driver-&gt;currentLocation); }
+
+    void update(std::shared_ptr&lt;Driver&gt; driver, const Location&amp; loc) {
+        auto it = driverBucket.find(driver-&gt;id);
+        if (it != driverBucket.end()) {
+            auto&amp; vec = buckets[it-&gt;second];
+            vec.erase(std::remove_if(vec.begin(), vec.end(), [&amp;](auto&amp; d){ return d-&gt;id == driver-&gt;id; }), vec.end());
+        }
+        std::string k = bucketKey(loc);
+        buckets[k].push_back(driver);
+        driverBucket[driver-&gt;id] = k;
+        driver-&gt;updateLocation(loc);
+    }
+
+    // Scans the 3x3 neighborhood of grid cells and filters by real distance.
+    std::vector&lt;std::shared_ptr&lt;Driver&gt;&gt; findNearby(const Location&amp; loc, double radiusKm) const {
+        long gx = std::lround(loc.lat / GRID_DEG);
+        long gy = std::lround(loc.lng / GRID_DEG);
+        std::vector&lt;std::shared_ptr&lt;Driver&gt;&gt; result;
+        for (long dx = -1; dx &lt;= 1; dx++) {
+            for (long dy = -1; dy &lt;= 1; dy++) {
+                auto it = buckets.find(std::to_string(gx + dx) + &quot;:&quot; + std::to_string(gy + dy));
+                if (it == buckets.end()) continue;
+                for (auto&amp; d : it-&gt;second) {
+                    if (d-&gt;currentLocation.distanceTo(loc) &lt;= radiusKm) result.push_back(d);
+                }
+            }
+        }
+        return result;
+    }
+};
+
+// ---------- Strategies ----------
+class MatchingStrategy {
+public:
+    virtual ~MatchingStrategy() = default;
+    virtual std::optional&lt;std::shared_ptr&lt;Driver&gt;&gt; match(const Ride&amp; ride, std::vector&lt;std::shared_ptr&lt;Driver&gt;&gt;&amp; candidates) = 0;
+};
+
+class NearestDriverStrategy : public MatchingStrategy {
+public:
+    std::optional&lt;std::shared_ptr&lt;Driver&gt;&gt; match(const Ride&amp; ride, std::vector&lt;std::shared_ptr&lt;Driver&gt;&gt;&amp; candidates) override {
+        std::shared_ptr&lt;Driver&gt; best;
+        double bestDist = 1e18;
+        for (auto&amp; d : candidates) {
+            if (d-&gt;status != DriverStatus::AVAILABLE) continue;
+            double dist = d-&gt;currentLocation.distanceTo(ride.pickup);
+            if (dist &lt; bestDist) { bestDist = dist; best = d; }
+        }
+        if (!best) return std::nullopt;
+        return best;
+    }
+};
+
+class FareStrategy {
+public:
+    virtual ~FareStrategy() = default;
+    virtual Money calculate(const Ride&amp; ride) = 0;
+};
+
+class DistanceTimeFareStrategy : public FareStrategy {
+    static constexpr double BASE = 2.50, PER_KM = 1.25, PER_MIN = 0.20, AVG_SPEED_KMH = 30.0;
+public:
+    Money calculate(const Ride&amp; ride) override {
+        double distanceKm = ride.pickup.distanceTo(ride.dropoff);
+        double minutes = (distanceKm / AVG_SPEED_KMH) * 60.0;
+        return Money::of(BASE + PER_KM * distanceKm + PER_MIN * minutes);
+    }
+};
+
+// Decorator: multiplies any wrapped FareStrategy&#x27;s result during high demand. Not a rival Strategy.
+class SurgeFareDecorator : public FareStrategy {
+    std::shared_ptr&lt;FareStrategy&gt; wrapped;
+    double multiplier;
+public:
+    SurgeFareDecorator(std::shared_ptr&lt;FareStrategy&gt; w, double m) : wrapped(std::move(w)), multiplier(m) {}
+    Money calculate(const Ride&amp; ride) override { return wrapped-&gt;calculate(ride).times(multiplier); }
+};
+
+// ---------- Observer ----------
+class NotificationService {
+public:
+    void onRideStatusChanged(const Ride&amp; ride) {
+        std::cout &lt;&lt; &quot;[notify] ride &quot; &lt;&lt; ride.id &lt;&lt; &quot; -&gt; &quot; &lt;&lt; toString(ride.status)
+                  &lt;&lt; (ride.driver ? (&quot; (driver &quot; + ride.driver-&gt;name + &quot;)&quot;) : &quot;&quot;) &lt;&lt; &quot;\n&quot;;
+    }
+};
+
+// ---------- RideService (facade) ----------
+class RideService {
+    static constexpr double DEFAULT_RADIUS_KM = 5.0;
+    GeoIndex&amp; geoIndex;
+    MatchingStrategy&amp; matchingStrategy;
+    FareStrategy&amp; fareStrategy;
+    NotificationService&amp; notificationService;
+    std::unordered_map&lt;std::string, std::shared_ptr&lt;Ride&gt;&gt; rides;
+    int counter = 0;
+
+    void attemptMatch(std::shared_ptr&lt;Ride&gt; ride, const std::unordered_set&lt;std::string&gt;&amp; excludedDriverIds) {
+        auto candidates = geoIndex.findNearby(ride-&gt;pickup, DEFAULT_RADIUS_KM);
+        candidates.erase(std::remove_if(candidates.begin(), candidates.end(),
+            [&amp;](auto&amp; d){ return excludedDriverIds.count(d-&gt;id) &gt; 0; }), candidates.end());
+        while (!candidates.empty()) {
+            auto chosen = matchingStrategy.match(*ride, candidates);
+            if (!chosen.has_value()) break;
+            auto driver = chosen.value();
+            if (driver-&gt;tryReserve()) { // atomic CAS: AVAILABLE -&gt; RESERVED
+                ride-&gt;transitionTo(RideStatus::MATCHED, driver);
+                notificationService.onRideStatusChanged(*ride);
+                return;
+            }
+            candidates.erase(std::remove(candidates.begin(), candidates.end(), driver), candidates.end());
+        }
+        ride-&gt;transitionTo(RideStatus::NO_DRIVER_FOUND, nullptr);
+        notificationService.onRideStatusChanged(*ride);
+    }
+
+public:
+    RideService(GeoIndex&amp; g, MatchingStrategy&amp; m, FareStrategy&amp; f, NotificationService&amp; n)
+        : geoIndex(g), matchingStrategy(m), fareStrategy(f), notificationService(n) {}
+
+    std::shared_ptr&lt;Ride&gt; requestRide(std::shared_ptr&lt;Rider&gt; rider, const Location&amp; pickup, const Location&amp; dropoff) {
+        auto ride = std::make_shared&lt;Ride&gt;(&quot;R-&quot; + std::to_string(++counter), rider, pickup, dropoff);
+        rides[ride-&gt;id] = ride;
+        attemptMatch(ride, {});
+        return ride;
+    }
+
+    void acceptRide(const std::string&amp; rideId, std::shared_ptr&lt;Driver&gt; driver) {
+        auto ride = rides[rideId];
+        if (ride-&gt;driver != driver) throw std::logic_error(&quot;Driver mismatch for ride &quot; + rideId);
+        ride-&gt;transitionTo(RideStatus::ACCEPTED, driver);
+        notificationService.onRideStatusChanged(*ride);
+    }
+
+    // Rejection releases the driver and re-triggers matching, excluding the driver who just rejected.
+    void rejectRide(const std::string&amp; rideId, std::shared_ptr&lt;Driver&gt; driver) {
+        auto ride = rides[rideId];
+        driver-&gt;release();
+        ride-&gt;transitionTo(RideStatus::REQUESTED, nullptr);
+        ride-&gt;driver = nullptr;
+        attemptMatch(ride, {driver-&gt;id});
+    }
+
+    void arriveAtPickup(const std::string&amp; rideId) {
+        rides[rideId]-&gt;transitionTo(RideStatus::ARRIVED, nullptr);
+    }
+
+    void startRide(const std::string&amp; rideId) {
+        auto ride = rides[rideId];
+        ride-&gt;transitionTo(RideStatus::IN_PROGRESS, nullptr); // ARRIVED -&gt; IN_PROGRESS
+        ride-&gt;driver-&gt;markOnTrip();
+        notificationService.onRideStatusChanged(*ride);
+    }
+
+    std::shared_ptr&lt;Ride&gt; completeRide(const std::string&amp; rideId) {
+        auto ride = rides[rideId];
+        ride-&gt;transitionTo(RideStatus::COMPLETED, nullptr); // throws if not currently IN_PROGRESS
+        Money fare = fareStrategy.calculate(*ride); // may itself be a decorator chain
+        ride-&gt;fare = fare;
+        std::cout &lt;&lt; &quot;[payment] charged &quot; &lt;&lt; fare.str() &lt;&lt; &quot; to &quot; &lt;&lt; ride-&gt;rider-&gt;name &lt;&lt; &quot;\n&quot;;
+        ride-&gt;driver-&gt;release(); // RESERVED/ON_TRIP -&gt; AVAILABLE
+        notificationService.onRideStatusChanged(*ride);
+        return ride;
+    }
+
+    void cancelRide(const std::string&amp; rideId, const std::string&amp; cancelledBy) {
+        auto ride = rides[rideId];
+        if (ride-&gt;driver) ride-&gt;driver-&gt;release();
+        ride-&gt;transitionTo(RideStatus::CANCELLED, nullptr);
+        std::cout &lt;&lt; &quot;[cancel] ride &quot; &lt;&lt; rideId &lt;&lt; &quot; cancelled by &quot; &lt;&lt; cancelledBy &lt;&lt; &quot;\n&quot;;
+        notificationService.onRideStatusChanged(*ride);
+    }
+};
+
+std::shared_ptr&lt;Ride&gt; Rider::requestRide(RideService&amp; service, std::shared_ptr&lt;Rider&gt; self,
+                                          const Location&amp; pickup, const Location&amp; dropoff) {
+    return service.requestRide(self, pickup, dropoff);
+}
+
+void Driver::accept(RideService&amp; service, const std::string&amp; rideId, std::shared_ptr&lt;Driver&gt; self) {
+    service.acceptRide(rideId, self);
+}
+void Driver::reject(RideService&amp; service, const std::string&amp; rideId, std::shared_ptr&lt;Driver&gt; self) {
+    service.rejectRide(rideId, self);
+}
+
+// ---------- Demo ----------
+int main() {
+    GeoIndex geoIndex;
+    NearestDriverStrategy matching;
+    auto baseFarePtr = std::make_shared&lt;DistanceTimeFareStrategy&gt;();
+    SurgeFareDecorator surgeFare(baseFarePtr, 1.5); // 1.5x surge active
+    NotificationService notifications;
+    RideService rideService(geoIndex, matching, surgeFare, notifications);
+
+    auto d1 = std::make_shared&lt;Driver&gt;(&quot;d1&quot;, &quot;Sam&quot;, &quot;555-1&quot;, Vehicle{&quot;Toyota&quot;, &quot;Camry&quot;, &quot;ABC-123&quot;, &quot;Sedan&quot;}, Location{37.77, -122.42});
+    auto d2 = std::make_shared&lt;Driver&gt;(&quot;d2&quot;, &quot;Jamie&quot;, &quot;555-2&quot;, Vehicle{&quot;Honda&quot;, &quot;Civic&quot;, &quot;XYZ-987&quot;, &quot;Sedan&quot;}, Location{37.80, -122.41});
+    geoIndex.registerDriver(d1);
+    geoIndex.registerDriver(d2);
+
+    auto rider = std::make_shared&lt;Rider&gt;(&quot;r1&quot;, &quot;Priya&quot;, &quot;555-9&quot;, &quot;card-ending-4242&quot;);
+    auto ride = rider-&gt;requestRide(rideService, rider, Location{37.775, -122.418}, Location{37.79, -122.40});
+    std::cout &lt;&lt; &quot;After match: status=&quot; &lt;&lt; toString(ride-&gt;status)
+              &lt;&lt; &quot; driver=&quot; &lt;&lt; (ride-&gt;driver ? ride-&gt;driver-&gt;name : &quot;none&quot;) &lt;&lt; &quot;\n&quot;;
+
+    ride-&gt;driver-&gt;accept(rideService, ride-&gt;id, ride-&gt;driver);
+    rideService.arriveAtPickup(ride-&gt;id);
+    rideService.startRide(ride-&gt;id);
+    auto completed = rideService.completeRide(ride-&gt;id);
+    std::cout &lt;&lt; &quot;Final status=&quot; &lt;&lt; toString(completed-&gt;status) &lt;&lt; &quot; fare=&quot; &lt;&lt; completed-&gt;fare-&gt;str() &lt;&lt; &quot;\n&quot;;
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">// Ride-Sharing Service (Uber/Lyft) — full LLD implementation with demo.
+// Single-file Node/JS translation of the Mermaid class diagram in section J.
+&#x27;use strict&#x27;;
+
+// ---------- Value objects ----------
+class Money {
+  constructor(cents) { this.cents = cents; }
+  static of(dollars) { return new Money(Math.round(dollars * 100)); }
+  times(factor) { return new Money(Math.round(this.cents * factor)); }
+  toString() { return `$${Math.floor(this.cents / 100)}.${String(this.cents % 100).padStart(2, &#x27;0&#x27;)}`; }
+}
+
+// Immutable geo point. Distance math lives here; storage/indexing is GeoIndex&#x27;s job.
+class Location {
+  constructor(lat, lng) { this.lat = lat; this.lng = lng; }
+  distanceTo(o) { // haversine great-circle distance in km
+    const R = 6371.0;
+    const dLat = (o.lat - this.lat) * Math.PI / 180;
+    const dLng = (o.lng - this.lng) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(this.lat * Math.PI / 180) * Math.cos(o.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+}
+
+class Vehicle {
+  constructor(make, model, plate, type) { this.make = make; this.model = model; this.plate = plate; this.type = type; }
+}
+
+// ---------- Identity hierarchy ----------
+class User {
+  constructor(id, name, phone) { this.id = id; this.name = name; this.phone = phone; this.rating = 5.0; }
+}
+
+class Rider extends User {
+  constructor(id, name, phone, paymentMethod) { super(id, name, phone); this.paymentMethod = paymentMethod; }
+  requestRide(rideService, pickup, dropoff) { return rideService.requestRide(this, pickup, dropoff); }
+}
+
+const DriverStatus = Object.freeze({ AVAILABLE: &#x27;AVAILABLE&#x27;, RESERVED: &#x27;RESERVED&#x27;, ON_TRIP: &#x27;ON_TRIP&#x27; });
+
+class Driver extends User {
+  constructor(id, name, phone, vehicle, location) {
+    super(id, name, phone);
+    this.vehicle = vehicle;            // composition: owned by this driver profile
+    this.currentLocation = location;   // composition: has no meaning detached from the driver
+    this.status = DriverStatus.AVAILABLE;
+  }
+  // Atomic (in a real system, CAS-guarded) check-and-set: AVAILABLE -&gt; RESERVED.
+  tryReserve() {
+    if (this.status === DriverStatus.AVAILABLE) { this.status = DriverStatus.RESERVED; return true; }
+    return false;
+  }
+  release() { this.status = DriverStatus.AVAILABLE; }
+  markOnTrip() { this.status = DriverStatus.ON_TRIP; }
+  updateLocation(loc) { this.currentLocation = loc; }
+  accept(rideService, rideId) { rideService.acceptRide(rideId, this); }
+  reject(rideService, rideId) { rideService.rejectRide(rideId, this); }
+}
+
+// ---------- Ride: guarded state machine ----------
+const RideStatus = Object.freeze({
+  REQUESTED: &#x27;REQUESTED&#x27;, MATCHED: &#x27;MATCHED&#x27;, ACCEPTED: &#x27;ACCEPTED&#x27;, ARRIVED: &#x27;ARRIVED&#x27;,
+  IN_PROGRESS: &#x27;IN_PROGRESS&#x27;, COMPLETED: &#x27;COMPLETED&#x27;, CANCELLED: &#x27;CANCELLED&#x27;, NO_DRIVER_FOUND: &#x27;NO_DRIVER_FOUND&#x27;,
+});
+
+const ALLOWED_TRANSITIONS = {
+  [RideStatus.REQUESTED]: new Set([RideStatus.MATCHED, RideStatus.NO_DRIVER_FOUND, RideStatus.CANCELLED]),
+  [RideStatus.MATCHED]: new Set([RideStatus.ACCEPTED, RideStatus.REQUESTED, RideStatus.CANCELLED]),
+  [RideStatus.ACCEPTED]: new Set([RideStatus.ARRIVED, RideStatus.CANCELLED]),
+  [RideStatus.ARRIVED]: new Set([RideStatus.IN_PROGRESS, RideStatus.CANCELLED]),
+  [RideStatus.IN_PROGRESS]: new Set([RideStatus.COMPLETED]),
+  [RideStatus.COMPLETED]: new Set(),
+  [RideStatus.CANCELLED]: new Set(),
+  [RideStatus.NO_DRIVER_FOUND]: new Set(),
+};
+
+class Ride {
+  constructor(id, rider, pickup, dropoff) {
+    this.id = id;
+    this.rider = rider;       // association — rider exists independently of the ride
+    this.pickup = pickup;
+    this.dropoff = dropoff;
+    this.driver = null;       // association — set once matched
+    this.status = RideStatus.REQUESTED;
+    this.fare = null;
+    this.requestedAt = Date.now();
+  }
+
+  // Guarded transition — throws if the target state isn&#x27;t reachable from the current one.
+  transitionTo(next, withDriver) {
+    if (!ALLOWED_TRANSITIONS[this.status].has(next)) {
+      throw new Error(`Illegal ride transition: ${this.status} -&gt; ${next}`);
+    }
+    this.status = next;
+    if (withDriver) this.driver = withDriver;
+  }
+}
+
+// ---------- GeoIndex ----------
+// Spatial lookup of drivers via a coarse lat/lng grid. Ranking is left to MatchingStrategy.
+class GeoIndex {
+  constructor() {
+    this.GRID_DEG = 0.05; // ~5km buckets
+    this.buckets = new Map();
+    this.driverBucket = new Map();
+  }
+  _bucketKey(loc) {
+    const gx = Math.round(loc.lat / this.GRID_DEG);
+    const gy = Math.round(loc.lng / this.GRID_DEG);
+    return `${gx}:${gy}`;
+  }
+  register(driver) { this.update(driver, driver.currentLocation); }
+  update(driver, loc) {
+    const old = this.driverBucket.get(driver.id);
+    if (old &amp;&amp; this.buckets.has(old)) {
+      this.buckets.set(old, this.buckets.get(old).filter((d) =&gt; d.id !== driver.id));
+    }
+    const k = this._bucketKey(loc);
+    if (!this.buckets.has(k)) this.buckets.set(k, []);
+    this.buckets.get(k).push(driver);
+    this.driverBucket.set(driver.id, k);
+    driver.updateLocation(loc);
+  }
+  // Scans the 3x3 neighborhood of grid cells and filters by real distance.
+  findNearby(loc, radiusKm) {
+    const gx = Math.round(loc.lat / this.GRID_DEG);
+    const gy = Math.round(loc.lng / this.GRID_DEG);
+    const result = [];
+    for (let dx = -1; dx &lt;= 1; dx++) {
+      for (let dy = -1; dy &lt;= 1; dy++) {
+        const cell = this.buckets.get(`${gx + dx}:${gy + dy}`);
+        if (!cell) continue;
+        for (const d of cell) {
+          if (d.currentLocation.distanceTo(loc) &lt;= radiusKm) result.push(d);
+        }
+      }
+    }
+    return result;
+  }
+}
+
+// ---------- Strategies ----------
+class MatchingStrategy {
+  match(ride, candidates) { throw new Error(&#x27;not implemented&#x27;); } // eslint-disable-line no-unused-vars
+}
+
+class NearestDriverStrategy extends MatchingStrategy {
+  match(ride, candidates) {
+    let best = null, bestDist = Infinity;
+    for (const d of candidates) {
+      if (d.status !== DriverStatus.AVAILABLE) continue;
+      const dist = d.currentLocation.distanceTo(ride.pickup);
+      if (dist &lt; bestDist) { bestDist = dist; best = d; }
+    }
+    return best;
+  }
+}
+
+class FareStrategy {
+  calculate(ride) { throw new Error(&#x27;not implemented&#x27;); } // eslint-disable-line no-unused-vars
+}
+
+class DistanceTimeFareStrategy extends FareStrategy {
+  calculate(ride) {
+    const BASE = 2.50, PER_KM = 1.25, PER_MIN = 0.20, AVG_SPEED_KMH = 30.0;
+    const distanceKm = ride.pickup.distanceTo(ride.dropoff);
+    const minutes = (distanceKm / AVG_SPEED_KMH) * 60.0;
+    return Money.of(BASE + PER_KM * distanceKm + PER_MIN * minutes);
+  }
+}
+
+// Decorator: multiplies any wrapped FareStrategy&#x27;s result during high demand. Not a rival Strategy.
+class SurgeFareDecorator extends FareStrategy {
+  constructor(wrapped, multiplier) { super(); this.wrapped = wrapped; this.multiplier = multiplier; }
+  calculate(ride) { return this.wrapped.calculate(ride).times(this.multiplier); }
+}
+
+// ---------- Observer ----------
+class NotificationService {
+  onRideStatusChanged(ride) {
+    console.log(`[notify] ride ${ride.id} -&gt; ${ride.status}${ride.driver ? ` (driver ${ride.driver.name})` : &#x27;&#x27;}`);
+  }
+}
+
+// ---------- RideService (facade) ----------
+class RideService {
+  constructor(geoIndex, matchingStrategy, fareStrategy, notificationService) {
+    this.DEFAULT_RADIUS_KM = 5.0;
+    this.geoIndex = geoIndex;
+    this.matchingStrategy = matchingStrategy;
+    this.fareStrategy = fareStrategy;
+    this.notificationService = notificationService;
+    this.rides = new Map();
+    this.counter = 0;
+  }
+
+  requestRide(rider, pickup, dropoff) {
+    const ride = new Ride(`R-${++this.counter}`, rider, pickup, dropoff);
+    this.rides.set(ride.id, ride);
+    this._attemptMatch(ride, new Set());
+    return ride;
+  }
+
+  // Core matching loop: rank candidates, reserve atomically, retry on lost race.
+  _attemptMatch(ride, excludedDriverIds) {
+    let candidates = this.geoIndex.findNearby(ride.pickup, this.DEFAULT_RADIUS_KM)
+      .filter((d) =&gt; !excludedDriverIds.has(d.id));
+    while (candidates.length &gt; 0) {
+      const driver = this.matchingStrategy.match(ride, candidates);
+      if (!driver) break;
+      if (driver.tryReserve()) { // atomic CAS: AVAILABLE -&gt; RESERVED
+        ride.transitionTo(RideStatus.MATCHED, driver);
+        this.notificationService.onRideStatusChanged(ride);
+        return;
+      }
+      candidates = candidates.filter((d) =&gt; d.id !== driver.id); // someone else grabbed it first, retry
+    }
+    ride.transitionTo(RideStatus.NO_DRIVER_FOUND, null);
+    this.notificationService.onRideStatusChanged(ride);
+  }
+
+  acceptRide(rideId, driver) {
+    const ride = this.rides.get(rideId);
+    if (ride.driver !== driver) throw new Error(`Driver mismatch for ride ${rideId}`);
+    ride.transitionTo(RideStatus.ACCEPTED, driver);
+    this.notificationService.onRideStatusChanged(ride);
+  }
+
+  // Rejection releases the driver and re-triggers matching, excluding the driver who just rejected.
+  rejectRide(rideId, driver) {
+    const ride = this.rides.get(rideId);
+    driver.release();
+    ride.transitionTo(RideStatus.REQUESTED, null);
+    ride.driver = null;
+    this._attemptMatch(ride, new Set([driver.id]));
+  }
+
+  arriveAtPickup(rideId) { this.rides.get(rideId).transitionTo(RideStatus.ARRIVED, null); }
+
+  startRide(rideId) {
+    const ride = this.rides.get(rideId);
+    ride.transitionTo(RideStatus.IN_PROGRESS, null); // ARRIVED -&gt; IN_PROGRESS
+    ride.driver.markOnTrip();
+    this.notificationService.onRideStatusChanged(ride);
+  }
+
+  completeRide(rideId) {
+    const ride = this.rides.get(rideId);
+    ride.transitionTo(RideStatus.COMPLETED, null); // throws if not currently IN_PROGRESS
+    const fare = this.fareStrategy.calculate(ride); // may itself be a decorator chain
+    ride.fare = fare;
+    console.log(`[payment] charged ${fare.toString()} to ${ride.rider.name}`);
+    ride.driver.release(); // RESERVED/ON_TRIP -&gt; AVAILABLE
+    this.notificationService.onRideStatusChanged(ride);
+    return ride;
+  }
+
+  cancelRide(rideId, cancelledBy) {
+    const ride = this.rides.get(rideId);
+    if (ride.driver) ride.driver.release();
+    ride.transitionTo(RideStatus.CANCELLED, null);
+    console.log(`[cancel] ride ${rideId} cancelled by ${cancelledBy}`);
+    this.notificationService.onRideStatusChanged(ride);
+  }
+}
+
+// ---------- Demo ----------
+function main() {
+  const geoIndex = new GeoIndex();
+  const matching = new NearestDriverStrategy();
+  const fare = new SurgeFareDecorator(new DistanceTimeFareStrategy(), 1.5); // 1.5x surge active
+  const notifications = new NotificationService();
+  const rideService = new RideService(geoIndex, matching, fare, notifications);
+
+  const d1 = new Driver(&#x27;d1&#x27;, &#x27;Sam&#x27;, &#x27;555-1&#x27;, new Vehicle(&#x27;Toyota&#x27;, &#x27;Camry&#x27;, &#x27;ABC-123&#x27;, &#x27;Sedan&#x27;), new Location(37.77, -122.42));
+  const d2 = new Driver(&#x27;d2&#x27;, &#x27;Jamie&#x27;, &#x27;555-2&#x27;, new Vehicle(&#x27;Honda&#x27;, &#x27;Civic&#x27;, &#x27;XYZ-987&#x27;, &#x27;Sedan&#x27;), new Location(37.80, -122.41));
+  geoIndex.register(d1);
+  geoIndex.register(d2);
+
+  const rider = new Rider(&#x27;r1&#x27;, &#x27;Priya&#x27;, &#x27;555-9&#x27;, &#x27;card-ending-4242&#x27;);
+  const ride = rider.requestRide(rideService, new Location(37.775, -122.418), new Location(37.79, -122.40));
+  console.log(`After match: status=${ride.status} driver=${ride.driver ? ride.driver.name : &#x27;none&#x27;}`);
+
+  ride.driver.accept(rideService, ride.id);
+  rideService.arriveAtPickup(ride.id);
+  rideService.startRide(ride.id);
+  const completed = rideService.completeRide(ride.id);
+  console.log(`Final status=${completed.status} fare=${completed.fare.toString()}`);
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  Money, Location, Vehicle, User, Rider, Driver, DriverStatus, Ride, RideStatus,
+  GeoIndex, MatchingStrategy, NearestDriverStrategy, FareStrategy, DistanceTimeFareStrategy,
+  SurgeFareDecorator, NotificationService, RideService,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Ride-Sharing Service (Uber/Lyft) — full LLD implementation with demo.
+// Single-file TypeScript translation of the Mermaid class diagram in section J.
+
+// ---------- Value objects ----------
+class Money {
+  private constructor(public readonly cents: number) {}
+  static of(dollars: number): Money { return new Money(Math.round(dollars * 100)); }
+  times(factor: number): Money { return new Money(Math.round(this.cents * factor)); }
+  toString(): string { return `$${Math.floor(this.cents / 100)}.${String(this.cents % 100).padStart(2, &#x27;0&#x27;)}`; }
+}
+
+// Immutable geo point. Distance math lives here; storage/indexing is GeoIndex&#x27;s job.
+class Location {
+  constructor(public readonly lat: number, public readonly lng: number) {}
+  distanceTo(o: Location): number { // haversine great-circle distance in km
+    const R = 6371.0;
+    const dLat = (o.lat - this.lat) * Math.PI / 180;
+    const dLng = (o.lng - this.lng) * Math.PI / 180;
+    const a = Math.sin(dLat / 2) ** 2
+      + Math.cos(this.lat * Math.PI / 180) * Math.cos(o.lat * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }
+}
+
+class Vehicle {
+  constructor(
+    public readonly make: string, public readonly model: string,
+    public readonly plate: string, public readonly type: string,
+  ) {}
+}
+
+// ---------- Identity hierarchy ----------
+abstract class User {
+  rating = 5.0;
+  constructor(public readonly id: string, public readonly name: string, public readonly phone: string) {}
+}
+
+class Rider extends User {
+  constructor(id: string, name: string, phone: string, public readonly paymentMethod: string) {
+    super(id, name, phone);
+  }
+  requestRide(rideService: RideService, pickup: Location, dropoff: Location): Ride {
+    return rideService.requestRide(this, pickup, dropoff);
+  }
+}
+
+enum DriverStatus { AVAILABLE = &#x27;AVAILABLE&#x27;, RESERVED = &#x27;RESERVED&#x27;, ON_TRIP = &#x27;ON_TRIP&#x27; }
+
+class Driver extends User {
+  status: DriverStatus = DriverStatus.AVAILABLE;
+  constructor(
+    id: string, name: string, phone: string,
+    public readonly vehicle: Vehicle,       // composition: owned by this driver profile
+    public currentLocation: Location,       // composition: has no meaning detached from the driver
+  ) { super(id, name, phone); }
+
+  // Atomic (in a real system, CAS-guarded) check-and-set: AVAILABLE -&gt; RESERVED.
+  tryReserve(): boolean {
+    if (this.status === DriverStatus.AVAILABLE) { this.status = DriverStatus.RESERVED; return true; }
+    return false;
+  }
+  release(): void { this.status = DriverStatus.AVAILABLE; }
+  markOnTrip(): void { this.status = DriverStatus.ON_TRIP; }
+  updateLocation(loc: Location): void { this.currentLocation = loc; }
+  accept(rideService: RideService, rideId: string): void { rideService.acceptRide(rideId, this); }
+  reject(rideService: RideService, rideId: string): void { rideService.rejectRide(rideId, this); }
+}
+
+// ---------- Ride: guarded state machine ----------
+enum RideStatus {
+  REQUESTED = &#x27;REQUESTED&#x27;, MATCHED = &#x27;MATCHED&#x27;, ACCEPTED = &#x27;ACCEPTED&#x27;, ARRIVED = &#x27;ARRIVED&#x27;,
+  IN_PROGRESS = &#x27;IN_PROGRESS&#x27;, COMPLETED = &#x27;COMPLETED&#x27;, CANCELLED = &#x27;CANCELLED&#x27;, NO_DRIVER_FOUND = &#x27;NO_DRIVER_FOUND&#x27;,
+}
+
+const ALLOWED_TRANSITIONS: Record&lt;RideStatus, Set&lt;RideStatus&gt;&gt; = {
+  [RideStatus.REQUESTED]: new Set([RideStatus.MATCHED, RideStatus.NO_DRIVER_FOUND, RideStatus.CANCELLED]),
+  [RideStatus.MATCHED]: new Set([RideStatus.ACCEPTED, RideStatus.REQUESTED, RideStatus.CANCELLED]),
+  [RideStatus.ACCEPTED]: new Set([RideStatus.ARRIVED, RideStatus.CANCELLED]),
+  [RideStatus.ARRIVED]: new Set([RideStatus.IN_PROGRESS, RideStatus.CANCELLED]),
+  [RideStatus.IN_PROGRESS]: new Set([RideStatus.COMPLETED]),
+  [RideStatus.COMPLETED]: new Set(),
+  [RideStatus.CANCELLED]: new Set(),
+  [RideStatus.NO_DRIVER_FOUND]: new Set(),
+};
+
+class Ride {
+  driver: Driver | null = null;   // association — set once matched
+  status: RideStatus = RideStatus.REQUESTED;
+  fare: Money | null = null;
+  readonly requestedAt: number = Date.now();
+
+  constructor(
+    public readonly id: string,
+    public readonly rider: Rider,   // association — rider exists independently of the ride
+    public readonly pickup: Location,
+    public readonly dropoff: Location,
+  ) {}
+
+  // Guarded transition — throws if the target state isn&#x27;t reachable from the current one.
+  transitionTo(next: RideStatus, withDriver: Driver | null): void {
+    if (!ALLOWED_TRANSITIONS[this.status].has(next)) {
+      throw new Error(`Illegal ride transition: ${this.status} -&gt; ${next}`);
+    }
+    this.status = next;
+    if (withDriver) this.driver = withDriver;
+  }
+}
+
+// ---------- GeoIndex ----------
+// Spatial lookup of drivers via a coarse lat/lng grid. Ranking is left to MatchingStrategy.
+class GeoIndex {
+  private readonly GRID_DEG = 0.05; // ~5km buckets
+  private readonly buckets = new Map&lt;string, Driver[]&gt;();
+  private readonly driverBucket = new Map&lt;string, string&gt;();
+
+  private bucketKey(loc: Location): string {
+    const gx = Math.round(loc.lat / this.GRID_DEG);
+    const gy = Math.round(loc.lng / this.GRID_DEG);
+    return `${gx}:${gy}`;
+  }
+
+  register(driver: Driver): void { this.update(driver, driver.currentLocation); }
+
+  update(driver: Driver, loc: Location): void {
+    const old = this.driverBucket.get(driver.id);
+    if (old &amp;&amp; this.buckets.has(old)) {
+      this.buckets.set(old, this.buckets.get(old)!.filter((d) =&gt; d.id !== driver.id));
+    }
+    const k = this.bucketKey(loc);
+    if (!this.buckets.has(k)) this.buckets.set(k, []);
+    this.buckets.get(k)!.push(driver);
+    this.driverBucket.set(driver.id, k);
+    driver.updateLocation(loc);
+  }
+
+  // Scans the 3x3 neighborhood of grid cells and filters by real distance.
+  findNearby(loc: Location, radiusKm: number): Driver[] {
+    const gx = Math.round(loc.lat / this.GRID_DEG);
+    const gy = Math.round(loc.lng / this.GRID_DEG);
+    const result: Driver[] = [];
+    for (let dx = -1; dx &lt;= 1; dx++) {
+      for (let dy = -1; dy &lt;= 1; dy++) {
+        const cell = this.buckets.get(`${gx + dx}:${gy + dy}`);
+        if (!cell) continue;
+        for (const d of cell) {
+          if (d.currentLocation.distanceTo(loc) &lt;= radiusKm) result.push(d);
+        }
+      }
+    }
+    return result;
+  }
+}
+
+// ---------- Strategies ----------
+interface MatchingStrategy {
+  match(ride: Ride, candidates: Driver[]): Driver | null;
+}
+
+class NearestDriverStrategy implements MatchingStrategy {
+  match(ride: Ride, candidates: Driver[]): Driver | null {
+    let best: Driver | null = null;
+    let bestDist = Infinity;
+    for (const d of candidates) {
+      if (d.status !== DriverStatus.AVAILABLE) continue;
+      const dist = d.currentLocation.distanceTo(ride.pickup);
+      if (dist &lt; bestDist) { bestDist = dist; best = d; }
+    }
+    return best;
+  }
+}
+
+interface FareStrategy {
+  calculate(ride: Ride): Money;
+}
+
+class DistanceTimeFareStrategy implements FareStrategy {
+  calculate(ride: Ride): Money {
+    const BASE = 2.50, PER_KM = 1.25, PER_MIN = 0.20, AVG_SPEED_KMH = 30.0;
+    const distanceKm = ride.pickup.distanceTo(ride.dropoff);
+    const minutes = (distanceKm / AVG_SPEED_KMH) * 60.0;
+    return Money.of(BASE + PER_KM * distanceKm + PER_MIN * minutes);
+  }
+}
+
+// Decorator: multiplies any wrapped FareStrategy&#x27;s result during high demand. Not a rival Strategy.
+class SurgeFareDecorator implements FareStrategy {
+  constructor(private readonly wrapped: FareStrategy, private readonly multiplier: number) {}
+  calculate(ride: Ride): Money { return this.wrapped.calculate(ride).times(this.multiplier); }
+}
+
+// ---------- Observer ----------
+class NotificationService {
+  onRideStatusChanged(ride: Ride): void {
+    console.log(`[notify] ride ${ride.id} -&gt; ${ride.status}${ride.driver ? ` (driver ${ride.driver.name})` : &#x27;&#x27;}`);
+  }
+}
+
+// ---------- RideService (facade) ----------
+class RideService {
+  private readonly DEFAULT_RADIUS_KM = 5.0;
+  private readonly rides = new Map&lt;string, Ride&gt;();
+  private counter = 0;
+
+  constructor(
+    private readonly geoIndex: GeoIndex,
+    private readonly matchingStrategy: MatchingStrategy,
+    private readonly fareStrategy: FareStrategy,
+    private readonly notificationService: NotificationService,
+  ) {}
+
+  requestRide(rider: Rider, pickup: Location, dropoff: Location): Ride {
+    const ride = new Ride(`R-${++this.counter}`, rider, pickup, dropoff);
+    this.rides.set(ride.id, ride);
+    this.attemptMatch(ride, new Set());
+    return ride;
+  }
+
+  // Core matching loop: rank candidates, reserve atomically, retry on lost race.
+  private attemptMatch(ride: Ride, excludedDriverIds: Set&lt;string&gt;): void {
+    let candidates = this.geoIndex.findNearby(ride.pickup, this.DEFAULT_RADIUS_KM)
+      .filter((d) =&gt; !excludedDriverIds.has(d.id));
+    while (candidates.length &gt; 0) {
+      const driver = this.matchingStrategy.match(ride, candidates);
+      if (!driver) break;
+      if (driver.tryReserve()) { // atomic CAS: AVAILABLE -&gt; RESERVED
+        ride.transitionTo(RideStatus.MATCHED, driver);
+        this.notificationService.onRideStatusChanged(ride);
+        return;
+      }
+      candidates = candidates.filter((d) =&gt; d.id !== driver.id); // someone else grabbed it first, retry
+    }
+    ride.transitionTo(RideStatus.NO_DRIVER_FOUND, null);
+    this.notificationService.onRideStatusChanged(ride);
+  }
+
+  acceptRide(rideId: string, driver: Driver): void {
+    const ride = this.rides.get(rideId)!;
+    if (ride.driver !== driver) throw new Error(`Driver mismatch for ride ${rideId}`);
+    ride.transitionTo(RideStatus.ACCEPTED, driver);
+    this.notificationService.onRideStatusChanged(ride);
+  }
+
+  // Rejection releases the driver and re-triggers matching, excluding the driver who just rejected.
+  rejectRide(rideId: string, driver: Driver): void {
+    const ride = this.rides.get(rideId)!;
+    driver.release();
+    ride.transitionTo(RideStatus.REQUESTED, null);
+    ride.driver = null;
+    this.attemptMatch(ride, new Set([driver.id]));
+  }
+
+  arriveAtPickup(rideId: string): void { this.rides.get(rideId)!.transitionTo(RideStatus.ARRIVED, null); }
+
+  startRide(rideId: string): void {
+    const ride = this.rides.get(rideId)!;
+    ride.transitionTo(RideStatus.IN_PROGRESS, null); // ARRIVED -&gt; IN_PROGRESS
+    ride.driver!.markOnTrip();
+    this.notificationService.onRideStatusChanged(ride);
+  }
+
+  completeRide(rideId: string): Ride {
+    const ride = this.rides.get(rideId)!;
+    ride.transitionTo(RideStatus.COMPLETED, null); // throws if not currently IN_PROGRESS
+    const fare = this.fareStrategy.calculate(ride); // may itself be a decorator chain
+    ride.fare = fare;
+    console.log(`[payment] charged ${fare.toString()} to ${ride.rider.name}`);
+    ride.driver!.release(); // RESERVED/ON_TRIP -&gt; AVAILABLE
+    this.notificationService.onRideStatusChanged(ride);
+    return ride;
+  }
+
+  cancelRide(rideId: string, cancelledBy: string): void {
+    const ride = this.rides.get(rideId)!;
+    if (ride.driver) ride.driver.release();
+    ride.transitionTo(RideStatus.CANCELLED, null);
+    console.log(`[cancel] ride ${rideId} cancelled by ${cancelledBy}`);
+    this.notificationService.onRideStatusChanged(ride);
+  }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const geoIndex = new GeoIndex();
+  const matching = new NearestDriverStrategy();
+  const fare = new SurgeFareDecorator(new DistanceTimeFareStrategy(), 1.5); // 1.5x surge active
+  const notifications = new NotificationService();
+  const rideService = new RideService(geoIndex, matching, fare, notifications);
+
+  const d1 = new Driver(&#x27;d1&#x27;, &#x27;Sam&#x27;, &#x27;555-1&#x27;, new Vehicle(&#x27;Toyota&#x27;, &#x27;Camry&#x27;, &#x27;ABC-123&#x27;, &#x27;Sedan&#x27;), new Location(37.77, -122.42));
+  const d2 = new Driver(&#x27;d2&#x27;, &#x27;Jamie&#x27;, &#x27;555-2&#x27;, new Vehicle(&#x27;Honda&#x27;, &#x27;Civic&#x27;, &#x27;XYZ-987&#x27;, &#x27;Sedan&#x27;), new Location(37.80, -122.41));
+  geoIndex.register(d1);
+  geoIndex.register(d2);
+
+  const rider = new Rider(&#x27;r1&#x27;, &#x27;Priya&#x27;, &#x27;555-9&#x27;, &#x27;card-ending-4242&#x27;);
+  const ride = rider.requestRide(rideService, new Location(37.775, -122.418), new Location(37.79, -122.40));
+  console.log(`After match: status=${ride.status} driver=${ride.driver ? ride.driver.name : &#x27;none&#x27;}`);
+
+  ride.driver!.accept(rideService, ride.id);
+  rideService.arriveAtPickup(ride.id);
+  rideService.startRide(ride.id);
+  const completed = rideService.completeRide(ride.id);
+  console.log(`Final status=${completed.status} fare=${completed.fare!.toString()}`);
+}
+
+main();
+
+export {
+  Money, Location, Vehicle, User, Rider, Driver, DriverStatus, Ride, RideStatus,
+  GeoIndex, MatchingStrategy, NearestDriverStrategy, FareStrategy, DistanceTimeFareStrategy,
+  SurgeFareDecorator, NotificationService, RideService,
+};
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p4.html">&larr; 4. Splitwise (Expense Sharing)</a><a class="prevnext-link next" href="p6.html">6. Logging Framework &rarr;</a></div>
 </div>
 </main>
 

@@ -61,7 +61,8 @@
 <a href="#p7-y">Y. Scaling Boundary</a><a href="#p7-z">Z. Failure Scenarios</a><a href="#p7-aa">AA. Bad Designs</a>
 <a href="#p7-ab">AB. Trade-Offs</a><a href="#p7-ac">AC. Interviewer Evaluation</a><a href="#p7-ad">AD. Simulation</a>
 <a href="#p7-ae">AE. Source Comparison</a><a href="#p7-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p7">Jump to section:</label><select id="jump-p7" class="jump-select" data-jump-select><option value="p7-a">A. Realistic Interview Prompt</option><option value="p7-b">B. Difficulty</option><option value="p7-c">C. What This Problem Tests</option><option value="p7-d">D. Requirements</option><option value="p7-e">E. Clarifying Questions</option><option value="p7-f">F. Assumptions</option><option value="p7-g">G. Actors</option><option value="p7-h">H. Core Domain Entities</option><option value="p7-i">I. Class Relationships</option><option value="p7-j">J. Class Diagram</option><option value="p7-k">K. Responsibility Mapping</option><option value="p7-l">L. SOLID Analysis</option><option value="p7-m">M. Design Patterns</option><option value="p7-n">N. What Is Likely to Change?</option><option value="p7-o">O. Design Evolution</option><option value="p7-p">P. API / Interface Design</option><option value="p7-q">Q. Pseudocode — Critical Logic</option><option value="p7-r">R. End-to-End Use Case</option><option value="p7-s">S. Data Structures</option><option value="p7-t">T. Complexity Analysis</option><option value="p7-u">U. Testing Strategy</option><option value="p7-v">V. Interviewer Follow-Ups</option><option value="p7-w">W. Concurrency</option><option value="p7-x">X. Persistence</option><option value="p7-y">Y. Scaling Boundary</option><option value="p7-z">Z. Failure Scenarios</option><option value="p7-aa">AA. Common Bad Designs</option><option value="p7-ab">AB. Design Trade-Offs</option><option value="p7-ac">AC. Interviewer Evaluation</option><option value="p7-ad">AD. Interview Simulation</option><option value="p7-ae">AE. Online Solution Comparison</option><option value="p7-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p7-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p7">Jump to section:</label><select id="jump-p7" class="jump-select" data-jump-select><option value="p7-a">A. Realistic Interview Prompt</option><option value="p7-b">B. Difficulty</option><option value="p7-c">C. What This Problem Tests</option><option value="p7-d">D. Requirements</option><option value="p7-e">E. Clarifying Questions</option><option value="p7-f">F. Assumptions</option><option value="p7-g">G. Actors</option><option value="p7-h">H. Core Domain Entities</option><option value="p7-i">I. Class Relationships</option><option value="p7-j">J. Class Diagram</option><option value="p7-k">K. Responsibility Mapping</option><option value="p7-l">L. SOLID Analysis</option><option value="p7-m">M. Design Patterns</option><option value="p7-n">N. What Is Likely to Change?</option><option value="p7-o">O. Design Evolution</option><option value="p7-p">P. API / Interface Design</option><option value="p7-q">Q. Pseudocode — Critical Logic</option><option value="p7-r">R. End-to-End Use Case</option><option value="p7-s">S. Data Structures</option><option value="p7-t">T. Complexity Analysis</option><option value="p7-u">U. Testing Strategy</option><option value="p7-v">V. Interviewer Follow-Ups</option><option value="p7-w">W. Concurrency</option><option value="p7-x">X. Persistence</option><option value="p7-y">Y. Scaling Boundary</option><option value="p7-z">Z. Failure Scenarios</option><option value="p7-aa">AA. Common Bad Designs</option><option value="p7-ab">AB. Design Trade-Offs</option><option value="p7-ac">AC. Interviewer Evaluation</option><option value="p7-ad">AD. Interview Simulation</option><option value="p7-ae">AE. Online Solution Comparison</option><option value="p7-af">AF. Interview Cheat Sheet</option><option value="p7-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p7-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a notification system that can send a message to a user through multiple channels — email, SMS, push. It should respect user preferences, avoid spamming any one user, and retry failed deliveries."</div>
@@ -551,7 +552,1179 @@ Retry succeeds → notification marked DELIVERED
 <tr><td><strong>Top follow-ups</strong></td><td>New channel addition, cross-channel rate cap, idempotent retries, single-channel outage isolation, flash-sale-scale burst</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Bridge over-engineering; reinvented rate limiting; missing idempotency key; synchronous dispatch on the trigger path</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't build a full distributed message broker live — name Problem 10's Pub-Sub design as the scale-up answer</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p6.html">&larr; 6. Logging Framework</a><a class="prevnext-link next" href="p8.html">8. Coffee Vending Machine &rarr;</a></div>
+</table>
+
+<h3 id="p7-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">// Notification System -- full LLD implementation with demo.
+// Single-file Java translation of the Mermaid class diagram in section J.
+import java.util.*;
+
+public class p7 {
+
+    enum Category { TRANSACTIONAL, PROMOTIONAL, SECURITY_ALERT }
+    enum ChannelType { EMAIL, SMS, PUSH }
+    enum Status { PENDING, SENT, FAILED, DEAD_LETTERED }
+
+    // ---------- Notification (data record) ----------
+    static final class Notification {
+        final String id;
+        final String userId;
+        final Category category;
+        final String templateId;
+        final Map&lt;String, Object&gt; params;
+        final List&lt;ChannelType&gt; channels;
+        final String idempotencyKey;
+        Status status = Status.PENDING;
+        // Retry context: populated by NotificationService just before a scheduleRetry() call
+        // so RetryScheduler can re-attempt delivery on exactly the medium that failed.
+        ChannelType retryChannel;
+        RenderedContent retryContent;
+        String retryRecipient;
+
+        Notification(String id, String userId, Category category, String templateId,
+                      Map&lt;String, Object&gt; params, List&lt;ChannelType&gt; channels, String idempotencyKey) {
+            this.id = id; this.userId = userId; this.category = category; this.templateId = templateId;
+            this.params = params; this.channels = channels; this.idempotencyKey = idempotencyKey;
+        }
+    }
+
+    /** Content once rendered from a template -- has no lifecycle of its own. */
+    static final class RenderedContent {
+        final String subject;
+        final String body;
+        RenderedContent(String subject, String body) { this.subject = subject; this.body = body; }
+        public String toString() { return (subject != null ? &quot;[&quot; + subject + &quot;] &quot; : &quot;&quot;) + body; }
+    }
+
+    static final class DeliveryResult {
+        final boolean failed;
+        final String error;
+        static DeliveryResult ok() { return new DeliveryResult(false, null); }
+        static DeliveryResult fail(String error) { return new DeliveryResult(true, error); }
+        private DeliveryResult(boolean failed, String error) { this.failed = failed; this.error = error; }
+    }
+
+    // ---------- NotificationTemplate ----------
+    /** Content pattern per category+channel; substitutes {{placeholders}} with params at render time. */
+    static final class NotificationTemplate {
+        final String id;
+        final Map&lt;ChannelType, String&gt; subjectPatterns = new HashMap&lt;&gt;(); // optional, e.g. email only
+        final Map&lt;ChannelType, String&gt; bodyPatterns = new HashMap&lt;&gt;();
+
+        NotificationTemplate(String id) { this.id = id; }
+
+        NotificationTemplate withBody(ChannelType channel, String pattern) {
+            bodyPatterns.put(channel, pattern);
+            return this;
+        }
+        NotificationTemplate withSubject(ChannelType channel, String pattern) {
+            subjectPatterns.put(channel, pattern);
+            return this;
+        }
+
+        RenderedContent render(ChannelType channel, Map&lt;String, Object&gt; params) {
+            String bodyPattern = bodyPatterns.get(channel);
+            if (bodyPattern == null) throw new IllegalStateException(&quot;No template body for channel &quot; + channel);
+            String subjectPattern = subjectPatterns.get(channel);
+            return new RenderedContent(substitute(subjectPattern, params), substitute(bodyPattern, params));
+        }
+
+        private String substitute(String pattern, Map&lt;String, Object&gt; params) {
+            if (pattern == null) return null;
+            String out = pattern;
+            for (Map.Entry&lt;String, Object&gt; e : params.entrySet()) {
+                out = out.replace(&quot;{{&quot; + e.getKey() + &quot;}}&quot;, String.valueOf(e.getValue()));
+            }
+            return out;
+        }
+    }
+
+    // ---------- UserPreference ----------
+    /** Per-user opt-in/opt-out. Default is allowed unless explicitly opted out. */
+    static final class UserPreference {
+        // key: userId|channel|category -&gt; enabled
+        private final Map&lt;String, Boolean&gt; overrides = new HashMap&lt;&gt;();
+
+        private String key(String userId, ChannelType channel, Category category) {
+            return userId + &quot;|&quot; + channel + &quot;|&quot; + category;
+        }
+
+        void setPreference(String userId, ChannelType channel, Category category, boolean enabled) {
+            overrides.put(key(userId, channel, category), enabled);
+        }
+
+        boolean isAllowed(String userId, ChannelType channel, Category category) {
+            return overrides.getOrDefault(key(userId, channel, category), true); // opt-out model
+        }
+    }
+
+    // ---------- RateLimiter (reused from Problem 3) ----------
+    /** Fixed-window limiter: caps sends per key within a rolling window. */
+    static final class RateLimiter {
+        private final int maxPerWindow;
+        private final long windowMillis;
+        private final Map&lt;String, Deque&lt;Long&gt;&gt; history = new HashMap&lt;&gt;();
+
+        RateLimiter(int maxPerWindow, long windowMillis) {
+            this.maxPerWindow = maxPerWindow; this.windowMillis = windowMillis;
+        }
+
+        boolean tryAcquire(String key) {
+            long now = System.currentTimeMillis();
+            Deque&lt;Long&gt; timestamps = history.computeIfAbsent(key, k -&gt; new ArrayDeque&lt;&gt;());
+            while (!timestamps.isEmpty() &amp;&amp; now - timestamps.peekFirst() &gt; windowMillis) timestamps.pollFirst();
+            if (timestamps.size() &gt;= maxPerWindow) return false;
+            timestamps.addLast(now);
+            return true;
+        }
+    }
+
+    // ---------- NotificationChannel (Strategy interface) ----------
+    interface NotificationChannel {
+        DeliveryResult send(RenderedContent content, String recipientAddress);
+    }
+
+    static final class EmailChannel implements NotificationChannel {
+        public DeliveryResult send(RenderedContent content, String recipientAddress) {
+            System.out.println(&quot;  [EMAIL -&gt; &quot; + recipientAddress + &quot;] &quot; + content);
+            return DeliveryResult.ok();
+        }
+    }
+
+    /** Simulates a transient network failure: fails once per recipient, then succeeds. */
+    static final class SMSChannel implements NotificationChannel {
+        private final Set&lt;String&gt; failedOnce = new HashSet&lt;&gt;();
+        public DeliveryResult send(RenderedContent content, String recipientAddress) {
+            if (failedOnce.add(recipientAddress)) {
+                System.out.println(&quot;  [SMS -&gt; &quot; + recipientAddress + &quot;] transient failure&quot;);
+                return DeliveryResult.fail(&quot;carrier timeout&quot;);
+            }
+            System.out.println(&quot;  [SMS -&gt; &quot; + recipientAddress + &quot;] &quot; + content);
+            return DeliveryResult.ok();
+        }
+    }
+
+    /** Simulates a permanently broken provider, to demonstrate dead-lettering. */
+    static final class PushChannel implements NotificationChannel {
+        public DeliveryResult send(RenderedContent content, String recipientAddress) {
+            System.out.println(&quot;  [PUSH -&gt; &quot; + recipientAddress + &quot;] provider unavailable&quot;);
+            return DeliveryResult.fail(&quot;device token invalid&quot;);
+        }
+    }
+
+    // ---------- DeadLetterQueue ----------
+    static final class DeadLetterQueue {
+        private final List&lt;String&gt; entries = new ArrayList&lt;&gt;();
+        void record(Notification notification, String error) {
+            entries.add(notification.id + &quot; (&quot; + notification.retryChannel + &quot;): &quot; + error);
+            notification.status = Status.DEAD_LETTERED;
+        }
+        List&lt;String&gt; entries() { return entries; }
+    }
+
+    // ---------- RetryScheduler ----------
+    /** Re-attempts failed sends with backoff, up to MAX_ATTEMPTS, then dead-letters. */
+    static final class RetryScheduler {
+        private static final int MAX_ATTEMPTS = 3;
+        private final Map&lt;ChannelType, NotificationChannel&gt; channels;
+        private final DeadLetterQueue deadLetterQueue;
+
+        RetryScheduler(Map&lt;ChannelType, NotificationChannel&gt; channels, DeadLetterQueue deadLetterQueue) {
+            this.channels = channels; this.deadLetterQueue = deadLetterQueue;
+        }
+
+        /** In production this enqueues a delayed timer job; here we simulate the delay synchronously for the demo. */
+        void scheduleRetry(Notification notification, int attempt) {
+            long delayMs = backoff(attempt);
+            System.out.println(&quot;  retry scheduled for &quot; + notification.id + &quot; attempt=&quot; + attempt + &quot; delay=&quot; + delayMs + &quot;ms&quot;);
+            onRetryDue(notification, attempt);
+        }
+
+        private void onRetryDue(Notification notification, int attempt) {
+            NotificationChannel channel = channels.get(notification.retryChannel);
+            DeliveryResult result = channel.send(notification.retryContent, notification.retryRecipient);
+            if (result.failed) {
+                if (attempt &gt;= MAX_ATTEMPTS) {
+                    deadLetterQueue.record(notification, result.error);
+                } else {
+                    scheduleRetry(notification, attempt + 1);
+                }
+            } else {
+                notification.status = Status.SENT;
+            }
+        }
+
+        private long backoff(int attempt) { return 100L * (1L &lt;&lt; attempt); } // exponential backoff
+    }
+
+    // ---------- NotificationService (facade) ----------
+    static final class NotificationService {
+        private final Map&lt;String, NotificationTemplate&gt; templates;
+        private final UserPreference userPreference;
+        private final RateLimiter rateLimiter;
+        private final Map&lt;ChannelType, NotificationChannel&gt; channels;
+        private final RetryScheduler retryScheduler;
+        private final Set&lt;String&gt; dedupeCache = new HashSet&lt;&gt;();
+        private int counter = 0;
+
+        NotificationService(Map&lt;String, NotificationTemplate&gt; templates, UserPreference userPreference,
+                             RateLimiter rateLimiter, Map&lt;ChannelType, NotificationChannel&gt; channels,
+                             RetryScheduler retryScheduler) {
+            this.templates = templates; this.userPreference = userPreference; this.rateLimiter = rateLimiter;
+            this.channels = channels; this.retryScheduler = retryScheduler;
+        }
+
+        Notification notify(String userId, Category category, String templateId,
+                             Map&lt;String, Object&gt; params, List&lt;ChannelType&gt; requestedChannels, String idempotencyKey) {
+            Notification notification = new Notification(&quot;N&quot; + (++counter), userId, category, templateId,
+                    params, requestedChannels, idempotencyKey);
+
+            if (dedupeCache.contains(idempotencyKey)) { // idempotent replay guard
+                System.out.println(&quot;Skipping duplicate notify() for idemKey=&quot; + idempotencyKey);
+                return notification;
+            }
+
+            NotificationTemplate template = templates.get(templateId);
+            for (ChannelType channel : requestedChannels) {
+                if (!userPreference.isAllowed(userId, channel, category)) {
+                    System.out.println(&quot;  &quot; + channel + &quot; skipped: user opted out for &quot; + category);
+                    continue;
+                }
+                if (!rateLimiter.tryAcquire(userId + &quot;|&quot; + channel)) {
+                    System.out.println(&quot;  &quot; + channel + &quot; skipped: rate limit exceeded&quot;);
+                    continue;
+                }
+                RenderedContent content = template.render(channel, params);
+                String recipient = resolveAddress(userId, channel);
+                DeliveryResult result = channels.get(channel).send(content, recipient);
+                if (result.failed) {
+                    notification.status = Status.FAILED;
+                    notification.retryChannel = channel;
+                    notification.retryContent = content;
+                    notification.retryRecipient = recipient;
+                    retryScheduler.scheduleRetry(notification, 1);
+                } else if (notification.status != Status.SENT) {
+                    notification.status = Status.SENT;
+                }
+            }
+            dedupeCache.add(idempotencyKey);
+            return notification;
+        }
+
+        private String resolveAddress(String userId, ChannelType channel) {
+            switch (channel) {
+                case EMAIL: return userId + &quot;@example.com&quot;;
+                case SMS: return &quot;+1-555-&quot; + userId;
+                case PUSH: return &quot;device-token-&quot; + userId;
+                default: throw new IllegalArgumentException(&quot;Unknown channel: &quot; + channel);
+            }
+        }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) {
+        NotificationTemplate welcome = new NotificationTemplate(&quot;welcome&quot;)
+                .withSubject(ChannelType.EMAIL, &quot;Welcome, {{name}}!&quot;)
+                .withBody(ChannelType.EMAIL, &quot;Hi {{name}}, thanks for joining.&quot;)
+                .withBody(ChannelType.SMS, &quot;Hi {{name}}, welcome aboard!&quot;)
+                .withBody(ChannelType.PUSH, &quot;Welcome, {{name}}!&quot;);
+        Map&lt;String, NotificationTemplate&gt; templates = new HashMap&lt;&gt;();
+        templates.put(&quot;welcome&quot;, welcome);
+
+        UserPreference preferences = new UserPreference();
+
+        RateLimiter rateLimiter = new RateLimiter(5, 24L * 60 * 60 * 1000); // 5 per day per (user, channel)
+
+        Map&lt;ChannelType, NotificationChannel&gt; channels = new HashMap&lt;&gt;();
+        channels.put(ChannelType.EMAIL, new EmailChannel());
+        channels.put(ChannelType.SMS, new SMSChannel());
+        channels.put(ChannelType.PUSH, new PushChannel());
+
+        DeadLetterQueue dlq = new DeadLetterQueue();
+        RetryScheduler retryScheduler = new RetryScheduler(channels, dlq);
+
+        NotificationService service = new NotificationService(templates, preferences, rateLimiter, channels, retryScheduler);
+
+        Map&lt;String, Object&gt; params = new HashMap&lt;&gt;();
+        params.put(&quot;name&quot;, &quot;Alice&quot;);
+
+        System.out.println(&quot;First notify (SMS will fail once then retry-succeed; PUSH will exhaust retries -&gt; DLQ):&quot;);
+        service.notify(&quot;u1&quot;, Category.TRANSACTIONAL, &quot;welcome&quot;, params,
+                List.of(ChannelType.EMAIL, ChannelType.SMS, ChannelType.PUSH), &quot;idem-1&quot;);
+
+        System.out.println(&quot;\nReplaying same idempotencyKey (should be skipped):&quot;);
+        service.notify(&quot;u1&quot;, Category.TRANSACTIONAL, &quot;welcome&quot;, params,
+                List.of(ChannelType.EMAIL, ChannelType.SMS, ChannelType.PUSH), &quot;idem-1&quot;);
+
+        System.out.println(&quot;\nOpting out u2 from SMS/PROMOTIONAL, then attempting anyway:&quot;);
+        preferences.setPreference(&quot;u2&quot;, ChannelType.SMS, Category.PROMOTIONAL, false);
+        service.notify(&quot;u2&quot;, Category.PROMOTIONAL, &quot;welcome&quot;, params, List.of(ChannelType.SMS), &quot;idem-2&quot;);
+
+        System.out.println(&quot;\nDead letter queue entries: &quot; + dlq.entries());
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Notification System -- full class-diagram implementation, single-threaded.
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+#include &lt;map&gt;
+#include &lt;unordered_map&gt;
+#include &lt;unordered_set&gt;
+#include &lt;deque&gt;
+#include &lt;memory&gt;
+#include &lt;chrono&gt;
+#include &lt;stdexcept&gt;
+
+enum class Category { TRANSACTIONAL, PROMOTIONAL, SECURITY_ALERT };
+enum class ChannelType { EMAIL, SMS, PUSH };
+enum class Status { PENDING, SENT, FAILED, DEAD_LETTERED };
+
+std::string toString(ChannelType c) {
+    switch (c) { case ChannelType::EMAIL: return &quot;EMAIL&quot;; case ChannelType::SMS: return &quot;SMS&quot;; default: return &quot;PUSH&quot;; }
+}
+std::string toString(Category c) {
+    switch (c) { case Category::TRANSACTIONAL: return &quot;TRANSACTIONAL&quot;; case Category::PROMOTIONAL: return &quot;PROMOTIONAL&quot;; default: return &quot;SECURITY_ALERT&quot;; }
+}
+
+// ---------- RenderedContent / DeliveryResult ----------
+struct RenderedContent {
+    std::string subject; // may be empty
+    std::string body;
+    std::string toString() const { return (subject.empty() ? &quot;&quot; : &quot;[&quot; + subject + &quot;] &quot;) + body; }
+};
+
+struct DeliveryResult {
+    bool failed;
+    std::string error;
+    static DeliveryResult ok() { return {false, &quot;&quot;}; }
+    static DeliveryResult fail(const std::string&amp; e) { return {true, e}; }
+};
+
+// ---------- Notification ----------
+struct Notification {
+    std::string id, userId, templateId, idempotencyKey;
+    Category category;
+    std::vector&lt;ChannelType&gt; channels;
+    std::map&lt;std::string, std::string&gt; params;
+    Status status = Status::PENDING;
+    // Retry context, populated right before scheduleRetry().
+    ChannelType retryChannel = ChannelType::EMAIL;
+    RenderedContent retryContent;
+    std::string retryRecipient;
+};
+
+// ---------- NotificationTemplate ----------
+class NotificationTemplate {
+public:
+    std::string id;
+    explicit NotificationTemplate(std::string id_) : id(std::move(id_)) {}
+
+    NotificationTemplate&amp; withBody(ChannelType c, const std::string&amp; pattern) { bodyPatterns_[c] = pattern; return *this; }
+    NotificationTemplate&amp; withSubject(ChannelType c, const std::string&amp; pattern) { subjectPatterns_[c] = pattern; return *this; }
+
+    RenderedContent render(ChannelType channel, const std::map&lt;std::string, std::string&gt;&amp; params) const {
+        auto bit = bodyPatterns_.find(channel);
+        if (bit == bodyPatterns_.end()) throw std::runtime_error(&quot;No template body for channel&quot;);
+        RenderedContent rc;
+        rc.body = substitute(bit-&gt;second, params);
+        auto sit = subjectPatterns_.find(channel);
+        if (sit != subjectPatterns_.end()) rc.subject = substitute(sit-&gt;second, params);
+        return rc;
+    }
+private:
+    std::map&lt;ChannelType, std::string&gt; bodyPatterns_, subjectPatterns_;
+    static std::string substitute(std::string pattern, const std::map&lt;std::string, std::string&gt;&amp; params) {
+        for (auto&amp; kv : params) {
+            std::string token = &quot;{{&quot; + kv.first + &quot;}}&quot;;
+            size_t pos;
+            while ((pos = pattern.find(token)) != std::string::npos) pattern.replace(pos, token.size(), kv.second);
+        }
+        return pattern;
+    }
+};
+
+// ---------- UserPreference ----------
+class UserPreference {
+public:
+    void setPreference(const std::string&amp; userId, ChannelType channel, Category category, bool enabled) {
+        overrides_[key(userId, channel, category)] = enabled;
+    }
+    bool isAllowed(const std::string&amp; userId, ChannelType channel, Category category) const {
+        auto it = overrides_.find(key(userId, channel, category));
+        return it == overrides_.end() ? true : it-&gt;second; // opt-out model: default allowed
+    }
+private:
+    std::map&lt;std::string, bool&gt; overrides_;
+    static std::string key(const std::string&amp; userId, ChannelType c, Category cat) {
+        return userId + &quot;|&quot; + toString(c) + &quot;|&quot; + toString(cat);
+    }
+};
+
+// ---------- RateLimiter ----------
+class RateLimiter {
+public:
+    RateLimiter(int maxPerWindow, long long windowMs) : maxPerWindow_(maxPerWindow), windowMs_(windowMs) {}
+    bool tryAcquire(const std::string&amp; key) {
+        long long now = nowMs();
+        auto&amp; q = history_[key];
+        while (!q.empty() &amp;&amp; now - q.front() &gt; windowMs_) q.pop_front();
+        if ((int)q.size() &gt;= maxPerWindow_) return false;
+        q.push_back(now);
+        return true;
+    }
+private:
+    int maxPerWindow_;
+    long long windowMs_;
+    std::unordered_map&lt;std::string, std::deque&lt;long long&gt;&gt; history_;
+    static long long nowMs() {
+        return std::chrono::duration_cast&lt;std::chrono::milliseconds&gt;(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+    }
+};
+
+// ---------- NotificationChannel (Strategy interface) ----------
+struct NotificationChannel {
+    virtual ~NotificationChannel() = default;
+    virtual DeliveryResult send(const RenderedContent&amp; content, const std::string&amp; recipient) = 0;
+};
+
+struct EmailChannel : NotificationChannel {
+    DeliveryResult send(const RenderedContent&amp; content, const std::string&amp; recipient) override {
+        std::cout &lt;&lt; &quot;  [EMAIL -&gt; &quot; &lt;&lt; recipient &lt;&lt; &quot;] &quot; &lt;&lt; content.toString() &lt;&lt; &quot;\n&quot;;
+        return DeliveryResult::ok();
+    }
+};
+
+// Fails once per recipient (simulated transient failure), then succeeds.
+struct SMSChannel : NotificationChannel {
+    std::unordered_set&lt;std::string&gt; failedOnce;
+    DeliveryResult send(const RenderedContent&amp; content, const std::string&amp; recipient) override {
+        if (failedOnce.insert(recipient).second) {
+            std::cout &lt;&lt; &quot;  [SMS -&gt; &quot; &lt;&lt; recipient &lt;&lt; &quot;] transient failure\n&quot;;
+            return DeliveryResult::fail(&quot;carrier timeout&quot;);
+        }
+        std::cout &lt;&lt; &quot;  [SMS -&gt; &quot; &lt;&lt; recipient &lt;&lt; &quot;] &quot; &lt;&lt; content.toString() &lt;&lt; &quot;\n&quot;;
+        return DeliveryResult::ok();
+    }
+};
+
+// Permanently broken provider, to demonstrate dead-lettering.
+struct PushChannel : NotificationChannel {
+    DeliveryResult send(const RenderedContent&amp;, const std::string&amp; recipient) override {
+        std::cout &lt;&lt; &quot;  [PUSH -&gt; &quot; &lt;&lt; recipient &lt;&lt; &quot;] provider unavailable\n&quot;;
+        return DeliveryResult::fail(&quot;device token invalid&quot;);
+    }
+};
+
+// ---------- DeadLetterQueue ----------
+class DeadLetterQueue {
+public:
+    void record(Notification&amp; n, const std::string&amp; error) {
+        entries_.push_back(n.id + &quot; (&quot; + toString(n.retryChannel) + &quot;): &quot; + error);
+        n.status = Status::DEAD_LETTERED;
+    }
+    const std::vector&lt;std::string&gt;&amp; entries() const { return entries_; }
+private:
+    std::vector&lt;std::string&gt; entries_;
+};
+
+// ---------- RetryScheduler ----------
+class RetryScheduler {
+public:
+    RetryScheduler(std::map&lt;ChannelType, std::shared_ptr&lt;NotificationChannel&gt;&gt; channels,
+                    std::shared_ptr&lt;DeadLetterQueue&gt; dlq)
+        : channels_(std::move(channels)), deadLetterQueue_(std::move(dlq)) {}
+
+    // Simulates a delayed timer job synchronously for this single-threaded demo.
+    void scheduleRetry(Notification&amp; n, int attempt) {
+        long long delayMs = backoff(attempt);
+        std::cout &lt;&lt; &quot;  retry scheduled for &quot; &lt;&lt; n.id &lt;&lt; &quot; attempt=&quot; &lt;&lt; attempt &lt;&lt; &quot; delay=&quot; &lt;&lt; delayMs &lt;&lt; &quot;ms\n&quot;;
+        onRetryDue(n, attempt);
+    }
+private:
+    static const int MAX_ATTEMPTS = 3;
+    std::map&lt;ChannelType, std::shared_ptr&lt;NotificationChannel&gt;&gt; channels_;
+    std::shared_ptr&lt;DeadLetterQueue&gt; deadLetterQueue_;
+
+    void onRetryDue(Notification&amp; n, int attempt) {
+        auto result = channels_[n.retryChannel]-&gt;send(n.retryContent, n.retryRecipient);
+        if (result.failed) {
+            if (attempt &gt;= MAX_ATTEMPTS) deadLetterQueue_-&gt;record(n, result.error);
+            else scheduleRetry(n, attempt + 1);
+        } else {
+            n.status = Status::SENT;
+        }
+    }
+    long long backoff(int attempt) { return 100LL * (1LL &lt;&lt; attempt); }
+};
+
+// ---------- NotificationService (facade) ----------
+class NotificationService {
+public:
+    NotificationService(std::map&lt;std::string, NotificationTemplate&gt; templates, std::shared_ptr&lt;UserPreference&gt; pref,
+                         std::shared_ptr&lt;RateLimiter&gt; rateLimiter, std::map&lt;ChannelType, std::shared_ptr&lt;NotificationChannel&gt;&gt; channels,
+                         std::shared_ptr&lt;RetryScheduler&gt; retryScheduler)
+        : templates_(std::move(templates)), userPreference_(std::move(pref)), rateLimiter_(std::move(rateLimiter)),
+          channels_(std::move(channels)), retryScheduler_(std::move(retryScheduler)) {}
+
+    Notification notify(const std::string&amp; userId, Category category, const std::string&amp; templateId,
+                         std::map&lt;std::string, std::string&gt; params, std::vector&lt;ChannelType&gt; requestedChannels,
+                         const std::string&amp; idempotencyKey) {
+        Notification n;
+        n.id = &quot;N&quot; + std::to_string(++counter_);
+        n.userId = userId; n.category = category; n.templateId = templateId;
+        n.params = params; n.channels = requestedChannels; n.idempotencyKey = idempotencyKey;
+
+        if (dedupeCache_.count(idempotencyKey)) {
+            std::cout &lt;&lt; &quot;Skipping duplicate notify() for idemKey=&quot; &lt;&lt; idempotencyKey &lt;&lt; &quot;\n&quot;;
+            return n;
+        }
+
+        const NotificationTemplate&amp; tmpl = templates_.at(templateId);
+        for (ChannelType channel : requestedChannels) {
+            if (!userPreference_-&gt;isAllowed(userId, channel, category)) {
+                std::cout &lt;&lt; &quot;  &quot; &lt;&lt; toString(channel) &lt;&lt; &quot; skipped: user opted out for &quot; &lt;&lt; toString(category) &lt;&lt; &quot;\n&quot;;
+                continue;
+            }
+            if (!rateLimiter_-&gt;tryAcquire(userId + &quot;|&quot; + toString(channel))) {
+                std::cout &lt;&lt; &quot;  &quot; &lt;&lt; toString(channel) &lt;&lt; &quot; skipped: rate limit exceeded\n&quot;;
+                continue;
+            }
+            RenderedContent content = tmpl.render(channel, params);
+            std::string recipient = resolveAddress(userId, channel);
+            DeliveryResult result = channels_[channel]-&gt;send(content, recipient);
+            if (result.failed) {
+                n.status = Status::FAILED;
+                n.retryChannel = channel; n.retryContent = content; n.retryRecipient = recipient;
+                retryScheduler_-&gt;scheduleRetry(n, 1);
+            } else if (n.status != Status::SENT) {
+                n.status = Status::SENT;
+            }
+        }
+        dedupeCache_.insert(idempotencyKey);
+        return n;
+    }
+
+private:
+    std::map&lt;std::string, NotificationTemplate&gt; templates_;
+    std::shared_ptr&lt;UserPreference&gt; userPreference_;
+    std::shared_ptr&lt;RateLimiter&gt; rateLimiter_;
+    std::map&lt;ChannelType, std::shared_ptr&lt;NotificationChannel&gt;&gt; channels_;
+    std::shared_ptr&lt;RetryScheduler&gt; retryScheduler_;
+    std::unordered_set&lt;std::string&gt; dedupeCache_;
+    int counter_ = 0;
+
+    std::string resolveAddress(const std::string&amp; userId, ChannelType channel) {
+        switch (channel) {
+            case ChannelType::EMAIL: return userId + &quot;@example.com&quot;;
+            case ChannelType::SMS: return &quot;+1-555-&quot; + userId;
+            default: return &quot;device-token-&quot; + userId;
+        }
+    }
+};
+
+int main() {
+    NotificationTemplate welcome(&quot;welcome&quot;);
+    welcome.withSubject(ChannelType::EMAIL, &quot;Welcome, {{name}}!&quot;)
+           .withBody(ChannelType::EMAIL, &quot;Hi {{name}}, thanks for joining.&quot;)
+           .withBody(ChannelType::SMS, &quot;Hi {{name}}, welcome aboard!&quot;)
+           .withBody(ChannelType::PUSH, &quot;Welcome, {{name}}!&quot;);
+    std::map&lt;std::string, NotificationTemplate&gt; templates;
+    templates.emplace(&quot;welcome&quot;, welcome);
+
+    auto preferences = std::make_shared&lt;UserPreference&gt;();
+    auto rateLimiter = std::make_shared&lt;RateLimiter&gt;(5, 24LL * 60 * 60 * 1000);
+
+    std::map&lt;ChannelType, std::shared_ptr&lt;NotificationChannel&gt;&gt; channels;
+    channels[ChannelType::EMAIL] = std::make_shared&lt;EmailChannel&gt;();
+    channels[ChannelType::SMS] = std::make_shared&lt;SMSChannel&gt;();
+    channels[ChannelType::PUSH] = std::make_shared&lt;PushChannel&gt;();
+
+    auto dlq = std::make_shared&lt;DeadLetterQueue&gt;();
+    auto retryScheduler = std::make_shared&lt;RetryScheduler&gt;(channels, dlq);
+
+    NotificationService service(templates, preferences, rateLimiter, channels, retryScheduler);
+
+    std::map&lt;std::string, std::string&gt; params = { {&quot;name&quot;, &quot;Alice&quot;} };
+
+    std::cout &lt;&lt; &quot;First notify (SMS fails once then retry-succeeds; PUSH exhausts retries -&gt; DLQ):\n&quot;;
+    service.notify(&quot;u1&quot;, Category::TRANSACTIONAL, &quot;welcome&quot;, params,
+                    {ChannelType::EMAIL, ChannelType::SMS, ChannelType::PUSH}, &quot;idem-1&quot;);
+
+    std::cout &lt;&lt; &quot;\nReplaying same idempotencyKey (should be skipped):\n&quot;;
+    service.notify(&quot;u1&quot;, Category::TRANSACTIONAL, &quot;welcome&quot;, params,
+                    {ChannelType::EMAIL, ChannelType::SMS, ChannelType::PUSH}, &quot;idem-1&quot;);
+
+    std::cout &lt;&lt; &quot;\nOpting out u2 from SMS/PROMOTIONAL, then attempting anyway:\n&quot;;
+    preferences-&gt;setPreference(&quot;u2&quot;, ChannelType::SMS, Category::PROMOTIONAL, false);
+    service.notify(&quot;u2&quot;, Category::PROMOTIONAL, &quot;welcome&quot;, params, {ChannelType::SMS}, &quot;idem-2&quot;);
+
+    std::cout &lt;&lt; &quot;\nDead letter queue entries: &quot;;
+    for (auto&amp; e : dlq-&gt;entries()) std::cout &lt;&lt; e &lt;&lt; &quot; | &quot;;
+    std::cout &lt;&lt; &quot;\n&quot;;
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">// Notification System -- full class-diagram implementation, single-threaded.
+// Node-style, plain classes, CommonJS.
+
+const Category = { TRANSACTIONAL: &#x27;TRANSACTIONAL&#x27;, PROMOTIONAL: &#x27;PROMOTIONAL&#x27;, SECURITY_ALERT: &#x27;SECURITY_ALERT&#x27; };
+const ChannelType = { EMAIL: &#x27;EMAIL&#x27;, SMS: &#x27;SMS&#x27;, PUSH: &#x27;PUSH&#x27; };
+const Status = { PENDING: &#x27;PENDING&#x27;, SENT: &#x27;SENT&#x27;, FAILED: &#x27;FAILED&#x27;, DEAD_LETTERED: &#x27;DEAD_LETTERED&#x27; };
+
+// ---------- Notification (data record) ----------
+class Notification {
+  constructor(id, userId, category, templateId, params, channels, idempotencyKey) {
+    this.id = id;
+    this.userId = userId;
+    this.category = category;
+    this.templateId = templateId;
+    this.params = params;
+    this.channels = channels;
+    this.idempotencyKey = idempotencyKey;
+    this.status = Status.PENDING;
+    // Retry context, populated by NotificationService right before scheduleRetry().
+    this.retryChannel = null;
+    this.retryContent = null;
+    this.retryRecipient = null;
+  }
+}
+
+class RenderedContent {
+  constructor(subject, body) { this.subject = subject; this.body = body; }
+  toString() { return (this.subject ? `[${this.subject}] ` : &#x27;&#x27;) + this.body; }
+}
+
+class DeliveryResult {
+  constructor(failed, error) { this.failed = failed; this.error = error; }
+  static ok() { return new DeliveryResult(false, null); }
+  static fail(error) { return new DeliveryResult(true, error); }
+}
+
+// ---------- NotificationTemplate ----------
+class NotificationTemplate {
+  constructor(id) {
+    this.id = id;
+    this.subjectPatterns = new Map();
+    this.bodyPatterns = new Map();
+  }
+  withBody(channel, pattern) { this.bodyPatterns.set(channel, pattern); return this; }
+  withSubject(channel, pattern) { this.subjectPatterns.set(channel, pattern); return this; }
+
+  render(channel, params) {
+    const bodyPattern = this.bodyPatterns.get(channel);
+    if (!bodyPattern) throw new Error(`No template body for channel ${channel}`);
+    const subjectPattern = this.subjectPatterns.get(channel);
+    return new RenderedContent(
+      subjectPattern ? this._substitute(subjectPattern, params) : null,
+      this._substitute(bodyPattern, params)
+    );
+  }
+  _substitute(pattern, params) {
+    let out = pattern;
+    for (const [k, v] of Object.entries(params)) out = out.split(`{{${k}}}`).join(String(v));
+    return out;
+  }
+}
+
+// ---------- UserPreference ----------
+class UserPreference {
+  constructor() { this.overrides = new Map(); }
+  _key(userId, channel, category) { return `${userId}|${channel}|${category}`; }
+  setPreference(userId, channel, category, enabled) {
+    this.overrides.set(this._key(userId, channel, category), enabled);
+  }
+  isAllowed(userId, channel, category) {
+    const key = this._key(userId, channel, category);
+    return this.overrides.has(key) ? this.overrides.get(key) : true; // opt-out model: default allowed
+  }
+}
+
+// ---------- RateLimiter (reused from Problem 3) ----------
+class RateLimiter {
+  constructor(maxPerWindow, windowMillis) {
+    this.maxPerWindow = maxPerWindow;
+    this.windowMillis = windowMillis;
+    this.history = new Map();
+  }
+  tryAcquire(key) {
+    const now = Date.now();
+    if (!this.history.has(key)) this.history.set(key, []);
+    const timestamps = this.history.get(key);
+    while (timestamps.length &amp;&amp; now - timestamps[0] &gt; this.windowMillis) timestamps.shift();
+    if (timestamps.length &gt;= this.maxPerWindow) return false;
+    timestamps.push(now);
+    return true;
+  }
+}
+
+// ---------- NotificationChannel (Strategy interface) ----------
+class NotificationChannel {
+  send(_content, _recipientAddress) { throw new Error(&#x27;send() not implemented&#x27;); }
+}
+
+class EmailChannel extends NotificationChannel {
+  send(content, recipientAddress) {
+    console.log(`  [EMAIL -&gt; ${recipientAddress}] ${content}`);
+    return DeliveryResult.ok();
+  }
+}
+
+// Simulates a transient failure: fails once per recipient, then succeeds.
+class SMSChannel extends NotificationChannel {
+  constructor() { super(); this.failedOnce = new Set(); }
+  send(content, recipientAddress) {
+    if (!this.failedOnce.has(recipientAddress)) {
+      this.failedOnce.add(recipientAddress);
+      console.log(`  [SMS -&gt; ${recipientAddress}] transient failure`);
+      return DeliveryResult.fail(&#x27;carrier timeout&#x27;);
+    }
+    console.log(`  [SMS -&gt; ${recipientAddress}] ${content}`);
+    return DeliveryResult.ok();
+  }
+}
+
+// Permanently broken provider, to demonstrate dead-lettering.
+class PushChannel extends NotificationChannel {
+  send(content, recipientAddress) {
+    console.log(`  [PUSH -&gt; ${recipientAddress}] provider unavailable`);
+    return DeliveryResult.fail(&#x27;device token invalid&#x27;);
+  }
+}
+
+// ---------- DeadLetterQueue ----------
+class DeadLetterQueue {
+  constructor() { this.entriesList = []; }
+  record(notification, error) {
+    this.entriesList.push(`${notification.id} (${notification.retryChannel}): ${error}`);
+    notification.status = Status.DEAD_LETTERED;
+  }
+  entries() { return this.entriesList; }
+}
+
+// ---------- RetryScheduler ----------
+class RetryScheduler {
+  static MAX_ATTEMPTS = 3;
+  constructor(channels, deadLetterQueue) {
+    this.channels = channels;
+    this.deadLetterQueue = deadLetterQueue;
+  }
+  // Simulates a delayed timer job synchronously for this demo (no real event loop needed).
+  scheduleRetry(notification, attempt) {
+    const delayMs = this._backoff(attempt);
+    console.log(`  retry scheduled for ${notification.id} attempt=${attempt} delay=${delayMs}ms`);
+    this._onRetryDue(notification, attempt);
+  }
+  _onRetryDue(notification, attempt) {
+    const channel = this.channels.get(notification.retryChannel);
+    const result = channel.send(notification.retryContent, notification.retryRecipient);
+    if (result.failed) {
+      if (attempt &gt;= RetryScheduler.MAX_ATTEMPTS) {
+        this.deadLetterQueue.record(notification, result.error);
+      } else {
+        this.scheduleRetry(notification, attempt + 1);
+      }
+    } else {
+      notification.status = Status.SENT;
+    }
+  }
+  _backoff(attempt) { return 100 * Math.pow(2, attempt); }
+}
+
+// ---------- NotificationService (facade) ----------
+class NotificationService {
+  constructor(templates, userPreference, rateLimiter, channels, retryScheduler) {
+    this.templates = templates;
+    this.userPreference = userPreference;
+    this.rateLimiter = rateLimiter;
+    this.channels = channels;
+    this.retryScheduler = retryScheduler;
+    this.dedupeCache = new Set();
+    this.counter = 0;
+  }
+
+  notify(userId, category, templateId, params, requestedChannels, idempotencyKey) {
+    const notification = new Notification(
+      `N${++this.counter}`, userId, category, templateId, params, requestedChannels, idempotencyKey
+    );
+
+    if (this.dedupeCache.has(idempotencyKey)) { // idempotent replay guard
+      console.log(`Skipping duplicate notify() for idemKey=${idempotencyKey}`);
+      return notification;
+    }
+
+    const template = this.templates.get(templateId);
+    for (const channel of requestedChannels) {
+      if (!this.userPreference.isAllowed(userId, channel, category)) {
+        console.log(`  ${channel} skipped: user opted out for ${category}`);
+        continue;
+      }
+      if (!this.rateLimiter.tryAcquire(`${userId}|${channel}`)) {
+        console.log(`  ${channel} skipped: rate limit exceeded`);
+        continue;
+      }
+      const content = template.render(channel, params);
+      const recipient = this._resolveAddress(userId, channel);
+      const result = this.channels.get(channel).send(content, recipient);
+      if (result.failed) {
+        notification.status = Status.FAILED;
+        notification.retryChannel = channel;
+        notification.retryContent = content;
+        notification.retryRecipient = recipient;
+        this.retryScheduler.scheduleRetry(notification, 1);
+      } else if (notification.status !== Status.SENT) {
+        notification.status = Status.SENT;
+      }
+    }
+    this.dedupeCache.add(idempotencyKey);
+    return notification;
+  }
+
+  _resolveAddress(userId, channel) {
+    switch (channel) {
+      case ChannelType.EMAIL: return `${userId}@example.com`;
+      case ChannelType.SMS: return `+1-555-${userId}`;
+      case ChannelType.PUSH: return `device-token-${userId}`;
+      default: throw new Error(`Unknown channel: ${channel}`);
+    }
+  }
+}
+
+// ---------- Demo ----------
+function main() {
+  const welcome = new NotificationTemplate(&#x27;welcome&#x27;)
+    .withSubject(ChannelType.EMAIL, &#x27;Welcome, {{name}}!&#x27;)
+    .withBody(ChannelType.EMAIL, &#x27;Hi {{name}}, thanks for joining.&#x27;)
+    .withBody(ChannelType.SMS, &#x27;Hi {{name}}, welcome aboard!&#x27;)
+    .withBody(ChannelType.PUSH, &#x27;Welcome, {{name}}!&#x27;);
+  const templates = new Map([[&#x27;welcome&#x27;, welcome]]);
+
+  const preferences = new UserPreference();
+  const rateLimiter = new RateLimiter(5, 24 * 60 * 60 * 1000); // 5 per day per (user, channel)
+
+  const channels = new Map([
+    [ChannelType.EMAIL, new EmailChannel()],
+    [ChannelType.SMS, new SMSChannel()],
+    [ChannelType.PUSH, new PushChannel()],
+  ]);
+
+  const dlq = new DeadLetterQueue();
+  const retryScheduler = new RetryScheduler(channels, dlq);
+
+  const service = new NotificationService(templates, preferences, rateLimiter, channels, retryScheduler);
+
+  const params = { name: &#x27;Alice&#x27; };
+
+  console.log(&#x27;First notify (SMS fails once then retry-succeeds; PUSH exhausts retries -&gt; DLQ):&#x27;);
+  service.notify(&#x27;u1&#x27;, Category.TRANSACTIONAL, &#x27;welcome&#x27;, params,
+    [ChannelType.EMAIL, ChannelType.SMS, ChannelType.PUSH], &#x27;idem-1&#x27;);
+
+  console.log(&#x27;\nReplaying same idempotencyKey (should be skipped):&#x27;);
+  service.notify(&#x27;u1&#x27;, Category.TRANSACTIONAL, &#x27;welcome&#x27;, params,
+    [ChannelType.EMAIL, ChannelType.SMS, ChannelType.PUSH], &#x27;idem-1&#x27;);
+
+  console.log(&#x27;\nOpting out u2 from SMS/PROMOTIONAL, then attempting anyway:&#x27;);
+  preferences.setPreference(&#x27;u2&#x27;, ChannelType.SMS, Category.PROMOTIONAL, false);
+  service.notify(&#x27;u2&#x27;, Category.PROMOTIONAL, &#x27;welcome&#x27;, params, [ChannelType.SMS], &#x27;idem-2&#x27;);
+
+  console.log(&#x27;\nDead letter queue entries:&#x27;, dlq.entries());
+}
+
+if (require.main === module) main();
+
+module.exports = {
+  Category, ChannelType, Status, Notification, RenderedContent, DeliveryResult,
+  NotificationTemplate, UserPreference, RateLimiter, NotificationChannel,
+  EmailChannel, SMSChannel, PushChannel, DeadLetterQueue, RetryScheduler, NotificationService,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Notification System -- full class-diagram implementation, single-threaded.
+// Note: the diagram&#x27;s `Notification` class is named `NotificationRecord` here because
+// TypeScript&#x27;s default lib set includes DOM, which declares a global `Notification` type;
+// this avoids that name collision while keeping identical fields/behavior.
+
+enum Category { TRANSACTIONAL = &#x27;TRANSACTIONAL&#x27;, PROMOTIONAL = &#x27;PROMOTIONAL&#x27;, SECURITY_ALERT = &#x27;SECURITY_ALERT&#x27; }
+enum ChannelType { EMAIL = &#x27;EMAIL&#x27;, SMS = &#x27;SMS&#x27;, PUSH = &#x27;PUSH&#x27; }
+enum Status { PENDING = &#x27;PENDING&#x27;, SENT = &#x27;SENT&#x27;, FAILED = &#x27;FAILED&#x27;, DEAD_LETTERED = &#x27;DEAD_LETTERED&#x27; }
+
+// ---------- NotificationRecord (data record) ----------
+class NotificationRecord {
+  status: Status = Status.PENDING;
+  // Retry context, populated by NotificationService right before scheduleRetry().
+  retryChannel: ChannelType | null = null;
+  retryContent: RenderedContent | null = null;
+  retryRecipient: string | null = null;
+
+  constructor(
+    public readonly id: string,
+    public readonly userId: string,
+    public readonly category: Category,
+    public readonly templateId: string,
+    public readonly params: Record&lt;string, unknown&gt;,
+    public readonly channels: ChannelType[],
+    public readonly idempotencyKey: string
+  ) {}
+}
+
+class RenderedContent {
+  constructor(public readonly subject: string | null, public readonly body: string) {}
+  toString(): string { return (this.subject ? `[${this.subject}] ` : &#x27;&#x27;) + this.body; }
+}
+
+class DeliveryResult {
+  private constructor(public readonly failed: boolean, public readonly error: string | null) {}
+  static ok(): DeliveryResult { return new DeliveryResult(false, null); }
+  static fail(error: string): DeliveryResult { return new DeliveryResult(true, error); }
+}
+
+// ---------- NotificationTemplate ----------
+class NotificationTemplate {
+  private readonly subjectPatterns = new Map&lt;ChannelType, string&gt;();
+  private readonly bodyPatterns = new Map&lt;ChannelType, string&gt;();
+
+  constructor(public readonly id: string) {}
+
+  withBody(channel: ChannelType, pattern: string): this { this.bodyPatterns.set(channel, pattern); return this; }
+  withSubject(channel: ChannelType, pattern: string): this { this.subjectPatterns.set(channel, pattern); return this; }
+
+  render(channel: ChannelType, params: Record&lt;string, unknown&gt;): RenderedContent {
+    const bodyPattern = this.bodyPatterns.get(channel);
+    if (!bodyPattern) throw new Error(`No template body for channel ${channel}`);
+    const subjectPattern = this.subjectPatterns.get(channel);
+    return new RenderedContent(
+      subjectPattern ? this.substitute(subjectPattern, params) : null,
+      this.substitute(bodyPattern, params)
+    );
+  }
+
+  private substitute(pattern: string, params: Record&lt;string, unknown&gt;): string {
+    let out = pattern;
+    for (const [k, v] of Object.entries(params)) out = out.split(`{{${k}}}`).join(String(v));
+    return out;
+  }
+}
+
+// ---------- UserPreference ----------
+class UserPreference {
+  private readonly overrides = new Map&lt;string, boolean&gt;();
+
+  private key(userId: string, channel: ChannelType, category: Category): string {
+    return `${userId}|${channel}|${category}`;
+  }
+
+  setPreference(userId: string, channel: ChannelType, category: Category, enabled: boolean): void {
+    this.overrides.set(this.key(userId, channel, category), enabled);
+  }
+
+  isAllowed(userId: string, channel: ChannelType, category: Category): boolean {
+    const k = this.key(userId, channel, category);
+    return this.overrides.has(k) ? this.overrides.get(k)! : true; // opt-out model: default allowed
+  }
+}
+
+// ---------- RateLimiter (reused from Problem 3) ----------
+class RateLimiter {
+  private readonly history = new Map&lt;string, number[]&gt;();
+
+  constructor(private readonly maxPerWindow: number, private readonly windowMillis: number) {}
+
+  tryAcquire(key: string): boolean {
+    const now = Date.now();
+    if (!this.history.has(key)) this.history.set(key, []);
+    const timestamps = this.history.get(key)!;
+    while (timestamps.length &amp;&amp; now - timestamps[0] &gt; this.windowMillis) timestamps.shift();
+    if (timestamps.length &gt;= this.maxPerWindow) return false;
+    timestamps.push(now);
+    return true;
+  }
+}
+
+// ---------- NotificationChannel (Strategy interface) ----------
+interface NotificationChannel {
+  send(content: RenderedContent, recipientAddress: string): DeliveryResult;
+}
+
+class EmailChannel implements NotificationChannel {
+  send(content: RenderedContent, recipientAddress: string): DeliveryResult {
+    console.log(`  [EMAIL -&gt; ${recipientAddress}] ${content}`);
+    return DeliveryResult.ok();
+  }
+}
+
+// Simulates a transient failure: fails once per recipient, then succeeds.
+class SMSChannel implements NotificationChannel {
+  private readonly failedOnce = new Set&lt;string&gt;();
+  send(content: RenderedContent, recipientAddress: string): DeliveryResult {
+    if (!this.failedOnce.has(recipientAddress)) {
+      this.failedOnce.add(recipientAddress);
+      console.log(`  [SMS -&gt; ${recipientAddress}] transient failure`);
+      return DeliveryResult.fail(&#x27;carrier timeout&#x27;);
+    }
+    console.log(`  [SMS -&gt; ${recipientAddress}] ${content}`);
+    return DeliveryResult.ok();
+  }
+}
+
+// Permanently broken provider, to demonstrate dead-lettering.
+class PushChannel implements NotificationChannel {
+  send(content: RenderedContent, recipientAddress: string): DeliveryResult {
+    console.log(`  [PUSH -&gt; ${recipientAddress}] provider unavailable`);
+    return DeliveryResult.fail(&#x27;device token invalid&#x27;);
+  }
+}
+
+// ---------- DeadLetterQueue ----------
+class DeadLetterQueue {
+  private readonly entriesList: string[] = [];
+  record(notification: NotificationRecord, error: string): void {
+    this.entriesList.push(`${notification.id} (${notification.retryChannel}): ${error}`);
+    notification.status = Status.DEAD_LETTERED;
+  }
+  entries(): string[] { return this.entriesList; }
+}
+
+// ---------- RetryScheduler ----------
+class RetryScheduler {
+  private static readonly MAX_ATTEMPTS = 3;
+
+  constructor(
+    private readonly channels: Map&lt;ChannelType, NotificationChannel&gt;,
+    private readonly deadLetterQueue: DeadLetterQueue
+  ) {}
+
+  // Simulates a delayed timer job synchronously for this demo (no real event loop needed).
+  scheduleRetry(notification: NotificationRecord, attempt: number): void {
+    const delayMs = this.backoff(attempt);
+    console.log(`  retry scheduled for ${notification.id} attempt=${attempt} delay=${delayMs}ms`);
+    this.onRetryDue(notification, attempt);
+  }
+
+  private onRetryDue(notification: NotificationRecord, attempt: number): void {
+    const channel = this.channels.get(notification.retryChannel!)!;
+    const result = channel.send(notification.retryContent!, notification.retryRecipient!);
+    if (result.failed) {
+      if (attempt &gt;= RetryScheduler.MAX_ATTEMPTS) {
+        this.deadLetterQueue.record(notification, result.error!);
+      } else {
+        this.scheduleRetry(notification, attempt + 1);
+      }
+    } else {
+      notification.status = Status.SENT;
+    }
+  }
+
+  private backoff(attempt: number): number { return 100 * Math.pow(2, attempt); }
+}
+
+// ---------- NotificationService (facade) ----------
+class NotificationService {
+  private readonly dedupeCache = new Set&lt;string&gt;();
+  private counter = 0;
+
+  constructor(
+    private readonly templates: Map&lt;string, NotificationTemplate&gt;,
+    private readonly userPreference: UserPreference,
+    private readonly rateLimiter: RateLimiter,
+    private readonly channels: Map&lt;ChannelType, NotificationChannel&gt;,
+    private readonly retryScheduler: RetryScheduler
+  ) {}
+
+  notify(
+    userId: string, category: Category, templateId: string, params: Record&lt;string, unknown&gt;,
+    requestedChannels: ChannelType[], idempotencyKey: string
+  ): NotificationRecord {
+    const notification = new NotificationRecord(
+      `N${++this.counter}`, userId, category, templateId, params, requestedChannels, idempotencyKey
+    );
+
+    if (this.dedupeCache.has(idempotencyKey)) { // idempotent replay guard
+      console.log(`Skipping duplicate notify() for idemKey=${idempotencyKey}`);
+      return notification;
+    }
+
+    const template = this.templates.get(templateId)!;
+    for (const channel of requestedChannels) {
+      if (!this.userPreference.isAllowed(userId, channel, category)) {
+        console.log(`  ${channel} skipped: user opted out for ${category}`);
+        continue;
+      }
+      if (!this.rateLimiter.tryAcquire(`${userId}|${channel}`)) {
+        console.log(`  ${channel} skipped: rate limit exceeded`);
+        continue;
+      }
+      const content = template.render(channel, params);
+      const recipient = this.resolveAddress(userId, channel);
+      const result = this.channels.get(channel)!.send(content, recipient);
+      if (result.failed) {
+        notification.status = Status.FAILED;
+        notification.retryChannel = channel;
+        notification.retryContent = content;
+        notification.retryRecipient = recipient;
+        this.retryScheduler.scheduleRetry(notification, 1);
+      } else if (notification.status !== Status.SENT) {
+        notification.status = Status.SENT;
+      }
+    }
+    this.dedupeCache.add(idempotencyKey);
+    return notification;
+  }
+
+  private resolveAddress(userId: string, channel: ChannelType): string {
+    switch (channel) {
+      case ChannelType.EMAIL: return `${userId}@example.com`;
+      case ChannelType.SMS: return `+1-555-${userId}`;
+      case ChannelType.PUSH: return `device-token-${userId}`;
+      default: throw new Error(`Unknown channel: ${channel}`);
+    }
+  }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const welcome = new NotificationTemplate(&#x27;welcome&#x27;)
+    .withSubject(ChannelType.EMAIL, &#x27;Welcome, {{name}}!&#x27;)
+    .withBody(ChannelType.EMAIL, &#x27;Hi {{name}}, thanks for joining.&#x27;)
+    .withBody(ChannelType.SMS, &#x27;Hi {{name}}, welcome aboard!&#x27;)
+    .withBody(ChannelType.PUSH, &#x27;Welcome, {{name}}!&#x27;);
+  const templates = new Map&lt;string, NotificationTemplate&gt;([[&#x27;welcome&#x27;, welcome]]);
+
+  const preferences = new UserPreference();
+  const rateLimiter = new RateLimiter(5, 24 * 60 * 60 * 1000); // 5 per day per (user, channel)
+
+  const channels = new Map&lt;ChannelType, NotificationChannel&gt;([
+    [ChannelType.EMAIL, new EmailChannel()],
+    [ChannelType.SMS, new SMSChannel()],
+    [ChannelType.PUSH, new PushChannel()],
+  ]);
+
+  const dlq = new DeadLetterQueue();
+  const retryScheduler = new RetryScheduler(channels, dlq);
+
+  const service = new NotificationService(templates, preferences, rateLimiter, channels, retryScheduler);
+
+  const params = { name: &#x27;Alice&#x27; };
+
+  console.log(&#x27;First notify (SMS fails once then retry-succeeds; PUSH exhausts retries -&gt; DLQ):&#x27;);
+  service.notify(&#x27;u1&#x27;, Category.TRANSACTIONAL, &#x27;welcome&#x27;, params,
+    [ChannelType.EMAIL, ChannelType.SMS, ChannelType.PUSH], &#x27;idem-1&#x27;);
+
+  console.log(&#x27;\nReplaying same idempotencyKey (should be skipped):&#x27;);
+  service.notify(&#x27;u1&#x27;, Category.TRANSACTIONAL, &#x27;welcome&#x27;, params,
+    [ChannelType.EMAIL, ChannelType.SMS, ChannelType.PUSH], &#x27;idem-1&#x27;);
+
+  console.log(&#x27;\nOpting out u2 from SMS/PROMOTIONAL, then attempting anyway:&#x27;);
+  preferences.setPreference(&#x27;u2&#x27;, ChannelType.SMS, Category.PROMOTIONAL, false);
+  service.notify(&#x27;u2&#x27;, Category.PROMOTIONAL, &#x27;welcome&#x27;, params, [ChannelType.SMS], &#x27;idem-2&#x27;);
+
+  console.log(&#x27;\nDead letter queue entries:&#x27;, dlq.entries());
+}
+
+main();
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p6.html">&larr; 6. Logging Framework</a><a class="prevnext-link next" href="p8.html">8. Coffee Vending Machine &rarr;</a></div>
 </div>
 </main>
 

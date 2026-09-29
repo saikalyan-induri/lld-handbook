@@ -61,7 +61,8 @@
 <a href="#p15-y">Y. Scaling Boundary</a><a href="#p15-z">Z. Failure Scenarios</a><a href="#p15-aa">AA. Bad Designs</a>
 <a href="#p15-ab">AB. Trade-Offs</a><a href="#p15-ac">AC. Interviewer Evaluation</a><a href="#p15-ad">AD. Simulation</a>
 <a href="#p15-ae">AE. Source Comparison</a><a href="#p15-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p15">Jump to section:</label><select id="jump-p15" class="jump-select" data-jump-select><option value="p15-a">A. Realistic Interview Prompt</option><option value="p15-b">B. Difficulty</option><option value="p15-c">C. What This Problem Tests</option><option value="p15-d">D. Requirements</option><option value="p15-e">E. Clarifying Questions</option><option value="p15-f">F. Assumptions</option><option value="p15-g">G. Actors</option><option value="p15-h">H. Core Domain Entities</option><option value="p15-i">I. Class Relationships</option><option value="p15-j">J. Class Diagram</option><option value="p15-k">K. Responsibility Mapping</option><option value="p15-l">L. SOLID Analysis</option><option value="p15-m">M. Design Patterns</option><option value="p15-n">N. What Is Likely to Change?</option><option value="p15-o">O. Design Evolution</option><option value="p15-p">P. API / Interface Design</option><option value="p15-q">Q. Pseudocode — Critical Logic</option><option value="p15-r">R. End-to-End Use Case</option><option value="p15-s">S. Data Structures</option><option value="p15-t">T. Complexity Analysis</option><option value="p15-u">U. Testing Strategy</option><option value="p15-v">V. Interviewer Follow-Ups</option><option value="p15-w">W. Concurrency</option><option value="p15-x">X. Persistence</option><option value="p15-y">Y. Scaling Boundary</option><option value="p15-z">Z. Failure Scenarios</option><option value="p15-aa">AA. Common Bad Designs</option><option value="p15-ab">AB. Design Trade-Offs</option><option value="p15-ac">AC. Interviewer Evaluation</option><option value="p15-ad">AD. Interview Simulation</option><option value="p15-ae">AE. Online Solution Comparison</option><option value="p15-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p15-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p15">Jump to section:</label><select id="jump-p15" class="jump-select" data-jump-select><option value="p15-a">A. Realistic Interview Prompt</option><option value="p15-b">B. Difficulty</option><option value="p15-c">C. What This Problem Tests</option><option value="p15-d">D. Requirements</option><option value="p15-e">E. Clarifying Questions</option><option value="p15-f">F. Assumptions</option><option value="p15-g">G. Actors</option><option value="p15-h">H. Core Domain Entities</option><option value="p15-i">I. Class Relationships</option><option value="p15-j">J. Class Diagram</option><option value="p15-k">K. Responsibility Mapping</option><option value="p15-l">L. SOLID Analysis</option><option value="p15-m">M. Design Patterns</option><option value="p15-n">N. What Is Likely to Change?</option><option value="p15-o">O. Design Evolution</option><option value="p15-p">P. API / Interface Design</option><option value="p15-q">Q. Pseudocode — Critical Logic</option><option value="p15-r">R. End-to-End Use Case</option><option value="p15-s">S. Data Structures</option><option value="p15-t">T. Complexity Analysis</option><option value="p15-u">U. Testing Strategy</option><option value="p15-v">V. Interviewer Follow-Ups</option><option value="p15-w">W. Concurrency</option><option value="p15-x">X. Persistence</option><option value="p15-y">Y. Scaling Boundary</option><option value="p15-z">Z. Failure Scenarios</option><option value="p15-aa">AA. Common Bad Designs</option><option value="p15-ab">AB. Design Trade-Offs</option><option value="p15-ac">AC. Interviewer Evaluation</option><option value="p15-ad">AD. Interview Simulation</option><option value="p15-ae">AE. Online Solution Comparison</option><option value="p15-af">AF. Interview Cheat Sheet</option><option value="p15-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p15-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a library management system. Members can search the catalog, check out and return items, place holds on items that are currently unavailable, and are charged a fine for overdue returns."</div>
@@ -519,7 +520,955 @@ memberB.checkout(barcode) within the hold window → status → CHECKED_OUT, Loa
 <tr><td><strong>Top follow-ups</strong></td><td>New item categories, priority holds, lost-item lifecycle</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Merged Book/BookItem entity; god-object Library class; hardcoded fine constants; no hold expiry</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design multi-branch/inter-library federation unless asked</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p14.html">&larr; 14. ATM Machine</a><a class="prevnext-link next" href="p16.html">16. Hotel Reservation System &rarr;</a></div>
+</table>
+
+<h3 id="p15-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">// Library Management System - full LLD implementation (single-file demo).
+// No &quot;Concurrency&quot; badge -&gt; single-threaded; the &quot;two members racing the last copy&quot;
+// requirement is satisfied by checkout() being one atomic status-check-and-flip step
+// against a single BookItem, not by explicit locking primitives.
+//
+// Design notes:
+// - Book (title metadata) vs. BookItem (physical copy) is the central modeling
+//   decision: metadata is shared/immutable across copies, status is per-copy and
+//   constantly changing.
+// - Observer for holds: BookItem.returnItem() notifies the title&#x27;s HoldQueue, which
+//   pops the next Hold in FIFO order and hands the copy to that member - decoupling
+//   &quot;a copy became available&quot; from &quot;who reacts to that&quot;.
+// - Strategy for fines: FineStrategy.calculateFine(loan) isolates rate changes from
+//   Loan/Library&#x27;s record-keeping code.
+import java.util.*;
+
+public class p15 {
+
+    enum ItemStatus { AVAILABLE, CHECKED_OUT, ON_HOLD, LOST }
+    enum Category { FICTION, NON_FICTION, REFERENCE }
+    enum MembershipType { REGULAR, PREMIUM }
+
+    // ---------- Book (title-level metadata) ----------
+    static class Book {
+        final String isbn, title, author;
+        final Category category;
+        Book(String isbn, String title, String author, Category category) {
+            this.isbn = isbn; this.title = title; this.author = author; this.category = category;
+        }
+    }
+
+    // ---------- BookItem (one physical, lendable copy) ----------
+    static class BookItem {
+        final String barcode;
+        final Book book;
+        ItemStatus status = ItemStatus.AVAILABLE;
+        Date dueDate;
+        final Library library; // back-reference used to reach the right HoldQueue on return
+
+        BookItem(String barcode, Book book, Library library) {
+            this.barcode = barcode; this.book = book; this.library = library;
+        }
+
+        // Marks the copy checked out; Library owns creating/recording the Loan itself.
+        void checkout(Date dueDate) {
+            this.status = ItemStatus.CHECKED_OUT;
+            this.dueDate = dueDate;
+        }
+
+        // Flips back to available, then defers to the title&#x27;s HoldQueue (Observer) to
+        // decide whether this copy should instead go straight to the next waiting member.
+        void returnItem() {
+            this.status = ItemStatus.AVAILABLE;
+            this.dueDate = null;
+            HoldQueue queue = library.holdQueueFor(book);
+            if (queue != null &amp;&amp; queue.hasWaiting()) {
+                Hold nextHold = queue.popNext();
+                this.status = ItemStatus.ON_HOLD; // reserved, not generally available
+                queue.notifyNext(this, nextHold);
+            }
+        }
+    }
+
+    // ---------- Member ----------
+    static class Member {
+        final String id;
+        final MembershipType membershipType;
+        final List&lt;Loan&gt; activeLoans = new ArrayList&lt;&gt;();
+        final List&lt;Hold&gt; activeHolds = new ArrayList&lt;&gt;();
+        Member(String id, MembershipType membershipType) { this.id = id; this.membershipType = membershipType; }
+    }
+
+    // ---------- Loan (one active checkout record) ----------
+    static class Loan {
+        final Member member;
+        final BookItem bookItem;
+        final Date checkoutDate;
+        final Date dueDate;
+        boolean returned = false;
+
+        Loan(Member member, BookItem bookItem, Date checkoutDate, Date dueDate) {
+            this.member = member; this.bookItem = bookItem; this.checkoutDate = checkoutDate; this.dueDate = dueDate;
+        }
+
+        boolean isOverdue(Date asOf) { return !returned &amp;&amp; asOf.after(dueDate); }
+    }
+
+    // ---------- Hold (one member&#x27;s place in a title&#x27;s wait queue) ----------
+    static class Hold {
+        final Member member;
+        final Book book;
+        final long timestamp;
+        Hold(Member member, Book book, long timestamp) { this.member = member; this.book = book; this.timestamp = timestamp; }
+    }
+
+    // ---------- HoldQueue (FIFO wait list + Observer subject for availability) ----------
+    static class HoldQueue {
+        private final Deque&lt;Hold&gt; queue = new ArrayDeque&lt;&gt;();
+
+        void addHold(Hold hold) { queue.addLast(hold); }
+        boolean hasWaiting() { return !queue.isEmpty(); }
+        Hold popNext() { return queue.pollFirst(); }
+        int waitingCount() { return queue.size(); }
+
+        // The &quot;reaction&quot; side of the Observer relationship: BookItem triggers this,
+        // HoldQueue decides who gets notified. A real system would email/page the
+        // member here; we just print, and record it as satisfied.
+        void notifyNext(BookItem item, Hold hold) {
+            hold.member.activeHolds.remove(hold);
+            System.out.println(&quot;  Notifying &quot; + hold.member.id + &quot;: your hold on \&quot;&quot; + item.book.title + &quot;\&quot; is ready (barcode &quot; + item.barcode + &quot;)&quot;);
+        }
+    }
+
+    // ---------- FineStrategy (interface, Strategy) ----------
+    interface FineStrategy {
+        double calculateFine(Loan loan, Date asOf);
+    }
+
+    // Rate depends on both member type and item category - isolated here so a rate
+    // change never touches Loan or Library.
+    static class StandardFineStrategy implements FineStrategy {
+        public double calculateFine(Loan loan, Date asOf) {
+            if (!loan.isOverdue(asOf)) return 0.0;
+            long overdueDays = (asOf.getTime() - loan.dueDate.getTime()) / (1000L * 60 * 60 * 24) + 1;
+            double perDay = loan.bookItem.book.category == Category.REFERENCE ? 1.0 : 0.25;
+            if (loan.member.membershipType == MembershipType.PREMIUM) perDay *= 0.5; // premium discount
+            return overdueDays * perDay;
+        }
+    }
+
+    // ---------- Catalog (search index over Book entries) ----------
+    static class Catalog {
+        private final List&lt;Book&gt; books = new ArrayList&lt;&gt;();
+        void addBook(Book book) { books.add(book); }
+
+        List&lt;Book&gt; search(String query) {
+            String q = query.toLowerCase();
+            List&lt;Book&gt; results = new ArrayList&lt;&gt;();
+            for (Book b : books) {
+                if (b.title.toLowerCase().contains(q) || b.author.toLowerCase().contains(q)
+                        || b.category.name().toLowerCase().contains(q)) {
+                    results.add(b);
+                }
+            }
+            return results;
+        }
+    }
+
+    // ---------- Library (facade) ----------
+    static class Library {
+        final Catalog catalog = new Catalog();
+        final Map&lt;String, BookItem&gt; itemsByBarcode = new HashMap&lt;&gt;();
+        final Map&lt;String, Loan&gt; activeLoanByBarcode = new HashMap&lt;&gt;();
+        final Map&lt;String, HoldQueue&gt; holdQueuesByIsbn = new HashMap&lt;&gt;();
+        final FineStrategy fineStrategy;
+        private static final long LOAN_PERIOD_MILLIS = 14L * 24 * 60 * 60 * 1000; // 14 days, flat for demo
+
+        Library(FineStrategy fineStrategy) { this.fineStrategy = fineStrategy; }
+
+        void addBookItem(BookItem item) { itemsByBarcode.put(item.barcode, item); }
+
+        HoldQueue holdQueueFor(Book book) { return holdQueuesByIsbn.get(book.isbn); }
+
+        List&lt;Book&gt; search(String query) { return catalog.search(query); }
+
+        // Single atomic status-check-and-flip against one BookItem - this is exactly
+        // what stops two members both succeeding against what they each believe is
+        // &quot;the last copy&quot;.
+        Loan checkout(Member member, String barcode) {
+            BookItem item = itemsByBarcode.get(barcode);
+            if (item == null) throw new IllegalArgumentException(&quot;No such item: &quot; + barcode);
+            if (item.status != ItemStatus.AVAILABLE) return null; // reject: not free to check out
+
+            Date due = new Date(System.currentTimeMillis() + LOAN_PERIOD_MILLIS);
+            item.checkout(due);
+            Loan loan = new Loan(member, item, new Date(), due);
+            member.activeLoans.add(loan);
+            activeLoanByBarcode.put(barcode, loan);
+            return loan;
+        }
+
+        void returnItem(String barcode) {
+            BookItem item = itemsByBarcode.get(barcode);
+            if (item == null) throw new IllegalArgumentException(&quot;No such item: &quot; + barcode);
+            Loan loan = activeLoanByBarcode.remove(barcode);
+            if (loan != null) {
+                loan.returned = true;
+                loan.member.activeLoans.remove(loan);
+            }
+            item.returnItem(); // triggers the HoldQueue Observer hook internally
+        }
+
+        double calculateFine(Loan loan) { return fineStrategy.calculateFine(loan, new Date()); }
+
+        // Places a hold only when no copy is free; otherwise the member should just checkout.
+        void placeHold(Member member, Book book) {
+            HoldQueue queue = holdQueuesByIsbn.computeIfAbsent(book.isbn, k -&gt; new HoldQueue());
+            Hold hold = new Hold(member, book, System.currentTimeMillis());
+            queue.addHold(hold);
+            member.activeHolds.add(hold);
+        }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) throws InterruptedException {
+        Library library = new Library(new StandardFineStrategy());
+
+        Book book = new Book(&quot;978-1&quot;, &quot;The Pragmatic Programmer&quot;, &quot;Hunt &amp; Thomas&quot;, Category.NON_FICTION);
+        library.catalog.addBook(book);
+        BookItem copy1 = new BookItem(&quot;BC-1&quot;, book, library);
+        BookItem copy2 = new BookItem(&quot;BC-2&quot;, book, library);
+        library.addBookItem(copy1);
+        library.addBookItem(copy2);
+
+        System.out.println(&quot;Search &#x27;pragmatic&#x27;: &quot; + library.search(&quot;pragmatic&quot;).size() + &quot; result(s)&quot;);
+
+        Member alice = new Member(&quot;alice&quot;, MembershipType.REGULAR);
+        Member bob = new Member(&quot;bob&quot;, MembershipType.PREMIUM);
+        Member carol = new Member(&quot;carol&quot;, MembershipType.REGULAR);
+
+        Loan loan1 = library.checkout(alice, &quot;BC-1&quot;);
+        Loan loan2 = library.checkout(bob, &quot;BC-2&quot;);
+        System.out.println(&quot;Alice checked out BC-1: &quot; + (loan1 != null));
+        System.out.println(&quot;Bob checked out BC-2: &quot; + (loan2 != null));
+
+        // Both copies are gone now - Carol must queue for a hold instead of a 3rd checkout.
+        Loan failedLoan = library.checkout(carol, &quot;BC-1&quot;);
+        System.out.println(&quot;Carol tries BC-1 while checked out: &quot; + (failedLoan == null ? &quot;rejected as expected&quot; : &quot;unexpectedly succeeded&quot;));
+        library.placeHold(carol, book);
+        System.out.println(&quot;Carol placed a hold; queue size: &quot; + library.holdQueueFor(book).waitingCount());
+
+        // Alice returns her copy -&gt; Observer hook should notify Carol and reserve BC-1 for her.
+        library.returnItem(&quot;BC-1&quot;);
+        System.out.println(&quot;BC-1 status after return: &quot; + copy1.status);
+
+        // Simulate an overdue fine: backdate the due date on Bob&#x27;s loan and price it.
+        loan2.dueDate.setTime(System.currentTimeMillis() - (3L * 24 * 60 * 60 * 1000));
+        double fine = library.calculateFine(loan2);
+        System.out.println(&quot;Bob&#x27;s fine for 3 overdue days (premium discount applied): $&quot; + fine);
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Library Management System - full LLD implementation (single-file demo).
+// No &quot;Concurrency&quot; badge -&gt; single-threaded; the &quot;two members racing the last copy&quot;
+// requirement is satisfied by checkout() being one atomic status-check-and-flip step
+// against a single BookItem, not by explicit locking primitives.
+//
+// Design notes:
+// - Book (title metadata) vs. BookItem (physical copy) is the central modeling
+//   decision: metadata is shared/immutable across copies, status is per-copy.
+// - Observer for holds: BookItem::returnItem() notifies the title&#x27;s HoldQueue, which
+//   pops the next Hold in FIFO order and hands the copy to that member.
+// - Strategy for fines: FineStrategy::calculateFine(loan) isolates rate changes from
+//   Loan/Library&#x27;s record-keeping code.
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+#include &lt;deque&gt;
+#include &lt;unordered_map&gt;
+#include &lt;memory&gt;
+#include &lt;algorithm&gt;
+#include &lt;chrono&gt;
+#include &lt;stdexcept&gt;
+
+using namespace std;
+using Clock = chrono::system_clock;
+
+enum class ItemStatus { AVAILABLE, CHECKED_OUT, ON_HOLD, LOST };
+enum class Category { FICTION, NON_FICTION, REFERENCE };
+enum class MembershipType { REGULAR, PREMIUM };
+
+static string toString(ItemStatus s) {
+    switch (s) {
+        case ItemStatus::AVAILABLE: return &quot;AVAILABLE&quot;;
+        case ItemStatus::CHECKED_OUT: return &quot;CHECKED_OUT&quot;;
+        case ItemStatus::ON_HOLD: return &quot;ON_HOLD&quot;;
+        case ItemStatus::LOST: return &quot;LOST&quot;;
+    }
+    return &quot;?&quot;;
+}
+
+// ---------- Book (title-level metadata) ----------
+struct Book {
+    string isbn, title, author;
+    Category category;
+};
+
+class Library; // fwd decl
+
+// ---------- BookItem (one physical, lendable copy) ----------
+class BookItem {
+public:
+    string barcode;
+    Book* book;
+    ItemStatus status = ItemStatus::AVAILABLE;
+    Clock::time_point dueDate;
+    Library* library; // back-reference used to reach the right HoldQueue on return
+
+    BookItem(string barcode, Book* book, Library* library) : barcode(std::move(barcode)), book(book), library(library) {}
+
+    void checkout(Clock::time_point due) {
+        status = ItemStatus::CHECKED_OUT;
+        dueDate = due;
+    }
+
+    void returnItem(); // defined after Library, since it dispatches to Library&#x27;s HoldQueue
+};
+
+// ---------- Member ----------
+struct Loan;
+struct Hold;
+
+struct Member {
+    string id;
+    MembershipType membershipType;
+    vector&lt;Loan*&gt; activeLoans;
+    vector&lt;Hold*&gt; activeHolds;
+};
+
+// ---------- Loan (one active checkout record) ----------
+struct Loan {
+    Member* member;
+    BookItem* bookItem;
+    Clock::time_point checkoutDate;
+    Clock::time_point dueDate;
+    bool returned = false;
+
+    bool isOverdue(Clock::time_point asOf) const { return !returned &amp;&amp; asOf &gt; dueDate; }
+};
+
+// ---------- Hold (one member&#x27;s place in a title&#x27;s wait queue) ----------
+struct Hold {
+    Member* member;
+    Book* book;
+    long long timestamp;
+};
+
+// ---------- HoldQueue (FIFO wait list + Observer subject for availability) ----------
+class HoldQueue {
+    deque&lt;unique_ptr&lt;Hold&gt;&gt; queue;
+public:
+    void addHold(unique_ptr&lt;Hold&gt; hold) { queue.push_back(std::move(hold)); }
+    bool hasWaiting() const { return !queue.empty(); }
+    unique_ptr&lt;Hold&gt; popNext() {
+        auto h = std::move(queue.front());
+        queue.pop_front();
+        return h;
+    }
+    size_t waitingCount() const { return queue.size(); }
+
+    // BookItem triggers this; HoldQueue decides who gets notified.
+    void notifyNext(BookItem&amp; item, Hold&amp; hold) {
+        auto&amp; holds = hold.member-&gt;activeHolds;
+        holds.erase(remove(holds.begin(), holds.end(), &amp;hold), holds.end());
+        cout &lt;&lt; &quot;  Notifying &quot; &lt;&lt; hold.member-&gt;id &lt;&lt; &quot;: your hold on \&quot;&quot; &lt;&lt; item.book-&gt;title
+             &lt;&lt; &quot;\&quot; is ready (barcode &quot; &lt;&lt; item.barcode &lt;&lt; &quot;)\n&quot;;
+    }
+};
+
+// ---------- FineStrategy (interface, Strategy) ----------
+class FineStrategy {
+public:
+    virtual ~FineStrategy() = default;
+    virtual double calculateFine(const Loan&amp; loan, Clock::time_point asOf) = 0;
+};
+
+class StandardFineStrategy : public FineStrategy {
+public:
+    double calculateFine(const Loan&amp; loan, Clock::time_point asOf) override {
+        if (!loan.isOverdue(asOf)) return 0.0;
+        long long overdueDays = chrono::duration_cast&lt;chrono::hours&gt;(asOf - loan.dueDate).count() / 24 + 1;
+        double perDay = loan.bookItem-&gt;book-&gt;category == Category::REFERENCE ? 1.0 : 0.25;
+        if (loan.member-&gt;membershipType == MembershipType::PREMIUM) perDay *= 0.5; // premium discount
+        return overdueDays * perDay;
+    }
+};
+
+// ---------- Catalog (search index over Book entries) ----------
+class Catalog {
+    vector&lt;Book*&gt; books;
+public:
+    void addBook(Book* book) { books.push_back(book); }
+    vector&lt;Book*&gt; search(const string&amp; query) const {
+        string q = query;
+        transform(q.begin(), q.end(), q.begin(), ::tolower);
+        vector&lt;Book*&gt; results;
+        for (Book* b : books) {
+            string title = b-&gt;title, author = b-&gt;author;
+            transform(title.begin(), title.end(), title.begin(), ::tolower);
+            transform(author.begin(), author.end(), author.begin(), ::tolower);
+            if (title.find(q) != string::npos || author.find(q) != string::npos) results.push_back(b);
+        }
+        return results;
+    }
+};
+
+// ---------- Library (facade) ----------
+class Library {
+public:
+    Catalog catalog;
+    unordered_map&lt;string, BookItem*&gt; itemsByBarcode;
+    unordered_map&lt;string, Loan*&gt; activeLoanByBarcode;
+    unordered_map&lt;string, unique_ptr&lt;HoldQueue&gt;&gt; holdQueuesByIsbn;
+    unique_ptr&lt;FineStrategy&gt; fineStrategy;
+    vector&lt;unique_ptr&lt;Loan&gt;&gt; loanStorage; // owns Loan lifetimes
+
+    static constexpr int LOAN_PERIOD_DAYS = 14;
+
+    explicit Library(unique_ptr&lt;FineStrategy&gt; fineStrategy) : fineStrategy(std::move(fineStrategy)) {}
+
+    void addBookItem(BookItem* item) { itemsByBarcode[item-&gt;barcode] = item; }
+
+    HoldQueue* holdQueueFor(const Book&amp; book) {
+        auto it = holdQueuesByIsbn.find(book.isbn);
+        return it == holdQueuesByIsbn.end() ? nullptr : it-&gt;second.get();
+    }
+
+    vector&lt;Book*&gt; search(const string&amp; query) { return catalog.search(query); }
+
+    // Single atomic status-check-and-flip against one BookItem.
+    Loan* checkout(Member* member, const string&amp; barcode) {
+        auto it = itemsByBarcode.find(barcode);
+        if (it == itemsByBarcode.end()) throw invalid_argument(&quot;No such item: &quot; + barcode);
+        BookItem* item = it-&gt;second;
+        if (item-&gt;status != ItemStatus::AVAILABLE) return nullptr; // reject: not free to check out
+
+        auto due = Clock::now() + chrono::hours(24 * LOAN_PERIOD_DAYS);
+        item-&gt;checkout(due);
+        auto loan = make_unique&lt;Loan&gt;();
+        loan-&gt;member = member; loan-&gt;bookItem = item; loan-&gt;checkoutDate = Clock::now(); loan-&gt;dueDate = due;
+        Loan* raw = loan.get();
+        member-&gt;activeLoans.push_back(raw);
+        activeLoanByBarcode[barcode] = raw;
+        loanStorage.push_back(std::move(loan));
+        return raw;
+    }
+
+    void returnItem(const string&amp; barcode) {
+        auto it = itemsByBarcode.find(barcode);
+        if (it == itemsByBarcode.end()) throw invalid_argument(&quot;No such item: &quot; + barcode);
+        BookItem* item = it-&gt;second;
+        auto loanIt = activeLoanByBarcode.find(barcode);
+        if (loanIt != activeLoanByBarcode.end()) {
+            Loan* loan = loanIt-&gt;second;
+            loan-&gt;returned = true;
+            auto&amp; loans = loan-&gt;member-&gt;activeLoans;
+            loans.erase(remove(loans.begin(), loans.end(), loan), loans.end());
+            activeLoanByBarcode.erase(loanIt);
+        }
+        item-&gt;returnItem(); // triggers the HoldQueue Observer hook internally
+    }
+
+    double calculateFine(const Loan&amp; loan) { return fineStrategy-&gt;calculateFine(loan, Clock::now()); }
+
+    void placeHold(Member* member, Book* book) {
+        auto&amp; queue = holdQueuesByIsbn[book-&gt;isbn];
+        if (!queue) queue = make_unique&lt;HoldQueue&gt;();
+        auto hold = make_unique&lt;Hold&gt;();
+        hold-&gt;member = member; hold-&gt;book = book;
+        hold-&gt;timestamp = chrono::duration_cast&lt;chrono::milliseconds&gt;(Clock::now().time_since_epoch()).count();
+        member-&gt;activeHolds.push_back(hold.get());
+        queue-&gt;addHold(std::move(hold));
+    }
+};
+
+void BookItem::returnItem() {
+    status = ItemStatus::AVAILABLE;
+    HoldQueue* queue = library-&gt;holdQueueFor(*book);
+    if (queue != nullptr &amp;&amp; queue-&gt;hasWaiting()) {
+        unique_ptr&lt;Hold&gt; nextHold = queue-&gt;popNext();
+        status = ItemStatus::ON_HOLD; // reserved, not generally available
+        queue-&gt;notifyNext(*this, *nextHold);
+    }
+}
+
+// ---------- Demo ----------
+int main() {
+    Library library(make_unique&lt;StandardFineStrategy&gt;());
+
+    Book book{&quot;978-1&quot;, &quot;The Pragmatic Programmer&quot;, &quot;Hunt &amp; Thomas&quot;, Category::NON_FICTION};
+    library.catalog.addBook(&amp;book);
+    BookItem copy1(&quot;BC-1&quot;, &amp;book, &amp;library);
+    BookItem copy2(&quot;BC-2&quot;, &amp;book, &amp;library);
+    library.addBookItem(&amp;copy1);
+    library.addBookItem(&amp;copy2);
+
+    cout &lt;&lt; &quot;Search &#x27;pragmatic&#x27;: &quot; &lt;&lt; library.search(&quot;pragmatic&quot;).size() &lt;&lt; &quot; result(s)\n&quot;;
+
+    Member alice{&quot;alice&quot;, MembershipType::REGULAR, {}, {}};
+    Member bob{&quot;bob&quot;, MembershipType::PREMIUM, {}, {}};
+    Member carol{&quot;carol&quot;, MembershipType::REGULAR, {}, {}};
+
+    Loan* loan1 = library.checkout(&amp;alice, &quot;BC-1&quot;);
+    Loan* loan2 = library.checkout(&amp;bob, &quot;BC-2&quot;);
+    cout &lt;&lt; &quot;Alice checked out BC-1: &quot; &lt;&lt; (loan1 != nullptr ? &quot;true&quot; : &quot;false&quot;) &lt;&lt; &quot;\n&quot;;
+    cout &lt;&lt; &quot;Bob checked out BC-2: &quot; &lt;&lt; (loan2 != nullptr ? &quot;true&quot; : &quot;false&quot;) &lt;&lt; &quot;\n&quot;;
+
+    Loan* failedLoan = library.checkout(&amp;carol, &quot;BC-1&quot;);
+    cout &lt;&lt; &quot;Carol tries BC-1 while checked out: &quot; &lt;&lt; (failedLoan == nullptr ? &quot;rejected as expected&quot; : &quot;unexpectedly succeeded&quot;) &lt;&lt; &quot;\n&quot;;
+    library.placeHold(&amp;carol, &amp;book);
+    cout &lt;&lt; &quot;Carol placed a hold; queue size: &quot; &lt;&lt; library.holdQueueFor(book)-&gt;waitingCount() &lt;&lt; &quot;\n&quot;;
+
+    library.returnItem(&quot;BC-1&quot;);
+    cout &lt;&lt; &quot;BC-1 status after return: &quot; &lt;&lt; toString(copy1.status) &lt;&lt; &quot;\n&quot;;
+
+    // Simulate an overdue fine: backdate Bob&#x27;s due date and price it.
+    loan2-&gt;dueDate = Clock::now() - chrono::hours(24 * 3);
+    double fine = library.calculateFine(*loan2);
+    cout &lt;&lt; &quot;Bob&#x27;s fine for 3 overdue days (premium discount applied): $&quot; &lt;&lt; fine &lt;&lt; &quot;\n&quot;;
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">// Library Management System - full LLD implementation (single-file demo, Node/CommonJS).
+// No &quot;Concurrency&quot; badge -&gt; single-threaded; the &quot;two members racing the last copy&quot;
+// requirement is satisfied by checkout() being one atomic status-check-and-flip step
+// against a single BookItem, not by explicit locking primitives.
+//
+// Design notes:
+// - Book (title metadata) vs. BookItem (physical copy) is the central modeling
+//   decision: metadata is shared/immutable across copies, status is per-copy.
+// - Observer for holds: BookItem.returnItem() notifies the title&#x27;s HoldQueue, which
+//   pops the next Hold in FIFO order and hands the copy to that member.
+// - Strategy for fines: FineStrategy.calculateFine(loan) isolates rate changes from
+//   Loan/Library&#x27;s record-keeping code.
+
+const ItemStatus = Object.freeze({ AVAILABLE: &#x27;AVAILABLE&#x27;, CHECKED_OUT: &#x27;CHECKED_OUT&#x27;, ON_HOLD: &#x27;ON_HOLD&#x27;, LOST: &#x27;LOST&#x27; });
+const Category = Object.freeze({ FICTION: &#x27;FICTION&#x27;, NON_FICTION: &#x27;NON_FICTION&#x27;, REFERENCE: &#x27;REFERENCE&#x27; });
+const MembershipType = Object.freeze({ REGULAR: &#x27;REGULAR&#x27;, PREMIUM: &#x27;PREMIUM&#x27; });
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// ---------- Book (title-level metadata) ----------
+class Book {
+  constructor(isbn, title, author, category) {
+    this.isbn = isbn; this.title = title; this.author = author; this.category = category;
+  }
+}
+
+// ---------- BookItem (one physical, lendable copy) ----------
+class BookItem {
+  constructor(barcode, book, library) {
+    this.barcode = barcode;
+    this.book = book;
+    this.library = library; // back-reference used to reach the right HoldQueue on return
+    this.status = ItemStatus.AVAILABLE;
+    this.dueDate = null;
+  }
+
+  checkout(dueDate) {
+    this.status = ItemStatus.CHECKED_OUT;
+    this.dueDate = dueDate;
+  }
+
+  // Flips back to available, then defers to the title&#x27;s HoldQueue (Observer) to decide
+  // whether this copy should instead go straight to the next waiting member.
+  returnItem() {
+    this.status = ItemStatus.AVAILABLE;
+    this.dueDate = null;
+    const queue = this.library.holdQueueFor(this.book);
+    if (queue != null &amp;&amp; queue.hasWaiting()) {
+      const nextHold = queue.popNext();
+      this.status = ItemStatus.ON_HOLD; // reserved, not generally available
+      queue.notifyNext(this, nextHold);
+    }
+  }
+}
+
+// ---------- Member ----------
+class Member {
+  constructor(id, membershipType) {
+    this.id = id;
+    this.membershipType = membershipType;
+    this.activeLoans = [];
+    this.activeHolds = [];
+  }
+}
+
+// ---------- Loan (one active checkout record) ----------
+class Loan {
+  constructor(member, bookItem, checkoutDate, dueDate) {
+    this.member = member;
+    this.bookItem = bookItem;
+    this.checkoutDate = checkoutDate;
+    this.dueDate = dueDate;
+    this.returned = false;
+  }
+  isOverdue(asOf) { return !this.returned &amp;&amp; asOf.getTime() &gt; this.dueDate.getTime(); }
+}
+
+// ---------- Hold (one member&#x27;s place in a title&#x27;s wait queue) ----------
+class Hold {
+  constructor(member, book, timestamp) { this.member = member; this.book = book; this.timestamp = timestamp; }
+}
+
+// ---------- HoldQueue (FIFO wait list + Observer subject for availability) ----------
+class HoldQueue {
+  constructor() { this.queue = []; }
+  addHold(hold) { this.queue.push(hold); }
+  hasWaiting() { return this.queue.length &gt; 0; }
+  popNext() { return this.queue.shift(); }
+  waitingCount() { return this.queue.length; }
+
+  // BookItem triggers this; HoldQueue decides who gets notified.
+  notifyNext(item, hold) {
+    hold.member.activeHolds = hold.member.activeHolds.filter((h) =&gt; h !== hold);
+    console.log(`  Notifying ${hold.member.id}: your hold on &quot;${item.book.title}&quot; is ready (barcode ${item.barcode})`);
+  }
+}
+
+// ---------- FineStrategy (interface, Strategy) ----------
+class FineStrategy {
+  calculateFine(_loan, _asOf) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class StandardFineStrategy extends FineStrategy {
+  calculateFine(loan, asOf) {
+    if (!loan.isOverdue(asOf)) return 0.0;
+    const overdueDays = Math.floor((asOf.getTime() - loan.dueDate.getTime()) / DAY_MS) + 1;
+    let perDay = loan.bookItem.book.category === Category.REFERENCE ? 1.0 : 0.25;
+    if (loan.member.membershipType === MembershipType.PREMIUM) perDay *= 0.5; // premium discount
+    return overdueDays * perDay;
+  }
+}
+
+// ---------- Catalog (search index over Book entries) ----------
+class Catalog {
+  constructor() { this.books = []; }
+  addBook(book) { this.books.push(book); }
+  search(query) {
+    const q = query.toLowerCase();
+    return this.books.filter((b) =&gt;
+      b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.category.toLowerCase().includes(q));
+  }
+}
+
+// ---------- Library (facade) ----------
+class Library {
+  constructor(fineStrategy) {
+    this.catalog = new Catalog();
+    this.itemsByBarcode = new Map();
+    this.activeLoanByBarcode = new Map();
+    this.holdQueuesByIsbn = new Map();
+    this.fineStrategy = fineStrategy;
+  }
+
+  static LOAN_PERIOD_MS = 14 * DAY_MS; // 14 days, flat for demo
+
+  addBookItem(item) { this.itemsByBarcode.set(item.barcode, item); }
+
+  holdQueueFor(book) { return this.holdQueuesByIsbn.get(book.isbn); }
+
+  search(query) { return this.catalog.search(query); }
+
+  // Single atomic status-check-and-flip against one BookItem - this is exactly what
+  // stops two members both succeeding against what they each believe is &quot;the last copy&quot;.
+  checkout(member, barcode) {
+    const item = this.itemsByBarcode.get(barcode);
+    if (!item) throw new Error(`No such item: ${barcode}`);
+    if (item.status !== ItemStatus.AVAILABLE) return null; // reject: not free to check out
+
+    const due = new Date(Date.now() + Library.LOAN_PERIOD_MS);
+    item.checkout(due);
+    const loan = new Loan(member, item, new Date(), due);
+    member.activeLoans.push(loan);
+    this.activeLoanByBarcode.set(barcode, loan);
+    return loan;
+  }
+
+  returnItem(barcode) {
+    const item = this.itemsByBarcode.get(barcode);
+    if (!item) throw new Error(`No such item: ${barcode}`);
+    const loan = this.activeLoanByBarcode.get(barcode);
+    if (loan) {
+      loan.returned = true;
+      loan.member.activeLoans = loan.member.activeLoans.filter((l) =&gt; l !== loan);
+      this.activeLoanByBarcode.delete(barcode);
+    }
+    item.returnItem(); // triggers the HoldQueue Observer hook internally
+  }
+
+  calculateFine(loan) { return this.fineStrategy.calculateFine(loan, new Date()); }
+
+  // Places a hold only when no copy is free; otherwise the member should just checkout.
+  placeHold(member, book) {
+    if (!this.holdQueuesByIsbn.has(book.isbn)) this.holdQueuesByIsbn.set(book.isbn, new HoldQueue());
+    const queue = this.holdQueuesByIsbn.get(book.isbn);
+    const hold = new Hold(member, book, Date.now());
+    queue.addHold(hold);
+    member.activeHolds.push(hold);
+  }
+}
+
+// ---------- Demo ----------
+function main() {
+  const library = new Library(new StandardFineStrategy());
+
+  const book = new Book(&#x27;978-1&#x27;, &#x27;The Pragmatic Programmer&#x27;, &#x27;Hunt &amp; Thomas&#x27;, Category.NON_FICTION);
+  library.catalog.addBook(book);
+  const copy1 = new BookItem(&#x27;BC-1&#x27;, book, library);
+  const copy2 = new BookItem(&#x27;BC-2&#x27;, book, library);
+  library.addBookItem(copy1);
+  library.addBookItem(copy2);
+
+  console.log(`Search &#x27;pragmatic&#x27;: ${library.search(&#x27;pragmatic&#x27;).length} result(s)`);
+
+  const alice = new Member(&#x27;alice&#x27;, MembershipType.REGULAR);
+  const bob = new Member(&#x27;bob&#x27;, MembershipType.PREMIUM);
+  const carol = new Member(&#x27;carol&#x27;, MembershipType.REGULAR);
+
+  const loan1 = library.checkout(alice, &#x27;BC-1&#x27;);
+  const loan2 = library.checkout(bob, &#x27;BC-2&#x27;);
+  console.log(&#x27;Alice checked out BC-1:&#x27;, loan1 !== null);
+  console.log(&#x27;Bob checked out BC-2:&#x27;, loan2 !== null);
+
+  const failedLoan = library.checkout(carol, &#x27;BC-1&#x27;);
+  console.log(&#x27;Carol tries BC-1 while checked out:&#x27;, failedLoan === null ? &#x27;rejected as expected&#x27; : &#x27;unexpectedly succeeded&#x27;);
+  library.placeHold(carol, book);
+  console.log(&#x27;Carol placed a hold; queue size:&#x27;, library.holdQueueFor(book).waitingCount());
+
+  library.returnItem(&#x27;BC-1&#x27;);
+  console.log(&#x27;BC-1 status after return:&#x27;, copy1.status);
+
+  // Simulate an overdue fine: backdate Bob&#x27;s due date and price it.
+  loan2.dueDate = new Date(Date.now() - 3 * DAY_MS);
+  const fine = library.calculateFine(loan2);
+  console.log(&#x27;Bob\&#x27;s fine for 3 overdue days (premium discount applied): $&#x27; + fine);
+}
+
+if (require.main === module) main();
+
+module.exports = {
+  ItemStatus, Category, MembershipType, Book, BookItem, Member, Loan, Hold, HoldQueue,
+  FineStrategy, StandardFineStrategy, Catalog, Library,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Library Management System - full LLD implementation (single-file demo).
+// No &quot;Concurrency&quot; badge -&gt; single-threaded; the &quot;two members racing the last copy&quot;
+// requirement is satisfied by checkout() being one atomic status-check-and-flip step
+// against a single BookItem, not by explicit locking primitives.
+//
+// Design notes:
+// - Book (title metadata) vs. BookItem (physical copy) is the central modeling
+//   decision: metadata is shared/immutable across copies, status is per-copy.
+// - Observer for holds: BookItem.returnItem() notifies the title&#x27;s HoldQueue, which
+//   pops the next Hold in FIFO order and hands the copy to that member.
+// - Strategy for fines: FineStrategy.calculateFine(loan) isolates rate changes from
+//   Loan/Library&#x27;s record-keeping code.
+
+enum ItemStatus { AVAILABLE = &#x27;AVAILABLE&#x27;, CHECKED_OUT = &#x27;CHECKED_OUT&#x27;, ON_HOLD = &#x27;ON_HOLD&#x27;, LOST = &#x27;LOST&#x27; }
+enum Category { FICTION = &#x27;FICTION&#x27;, NON_FICTION = &#x27;NON_FICTION&#x27;, REFERENCE = &#x27;REFERENCE&#x27; }
+enum MembershipType { REGULAR = &#x27;REGULAR&#x27;, PREMIUM = &#x27;PREMIUM&#x27; }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// ---------- Book (title-level metadata) ----------
+class Book {
+  constructor(public isbn: string, public title: string, public author: string, public category: Category) {}
+}
+
+// ---------- BookItem (one physical, lendable copy) ----------
+class BookItem {
+  status: ItemStatus = ItemStatus.AVAILABLE;
+  dueDate: Date | null = null;
+
+  constructor(public barcode: string, public book: Book, private library: Library) {}
+
+  checkout(dueDate: Date): void {
+    this.status = ItemStatus.CHECKED_OUT;
+    this.dueDate = dueDate;
+  }
+
+  // Flips back to available, then defers to the title&#x27;s HoldQueue (Observer) to decide
+  // whether this copy should instead go straight to the next waiting member.
+  returnItem(): void {
+    this.status = ItemStatus.AVAILABLE;
+    this.dueDate = null;
+    const queue = this.library.holdQueueFor(this.book);
+    if (queue != null &amp;&amp; queue.hasWaiting()) {
+      const nextHold = queue.popNext() as Hold;
+      this.status = ItemStatus.ON_HOLD; // reserved, not generally available
+      queue.notifyNext(this, nextHold);
+    }
+  }
+}
+
+// ---------- Member ----------
+class Member {
+  activeLoans: Loan[] = [];
+  activeHolds: Hold[] = [];
+  constructor(public id: string, public membershipType: MembershipType) {}
+}
+
+// ---------- Loan (one active checkout record) ----------
+class Loan {
+  returned = false;
+  constructor(public member: Member, public bookItem: BookItem, public checkoutDate: Date, public dueDate: Date) {}
+  isOverdue(asOf: Date): boolean { return !this.returned &amp;&amp; asOf.getTime() &gt; this.dueDate.getTime(); }
+}
+
+// ---------- Hold (one member&#x27;s place in a title&#x27;s wait queue) ----------
+class Hold {
+  constructor(public member: Member, public book: Book, public timestamp: number) {}
+}
+
+// ---------- HoldQueue (FIFO wait list + Observer subject for availability) ----------
+class HoldQueue {
+  private queue: Hold[] = [];
+  addHold(hold: Hold): void { this.queue.push(hold); }
+  hasWaiting(): boolean { return this.queue.length &gt; 0; }
+  popNext(): Hold | undefined { return this.queue.shift(); }
+  waitingCount(): number { return this.queue.length; }
+
+  // BookItem triggers this; HoldQueue decides who gets notified.
+  notifyNext(item: BookItem, hold: Hold): void {
+    hold.member.activeHolds = hold.member.activeHolds.filter((h) =&gt; h !== hold);
+    console.log(`  Notifying ${hold.member.id}: your hold on &quot;${item.book.title}&quot; is ready (barcode ${item.barcode})`);
+  }
+}
+
+// ---------- FineStrategy (interface, Strategy) ----------
+interface FineStrategy {
+  calculateFine(loan: Loan, asOf: Date): number;
+}
+
+class StandardFineStrategy implements FineStrategy {
+  calculateFine(loan: Loan, asOf: Date): number {
+    if (!loan.isOverdue(asOf)) return 0.0;
+    const overdueDays = Math.floor((asOf.getTime() - loan.dueDate.getTime()) / DAY_MS) + 1;
+    let perDay = loan.bookItem.book.category === Category.REFERENCE ? 1.0 : 0.25;
+    if (loan.member.membershipType === MembershipType.PREMIUM) perDay *= 0.5; // premium discount
+    return overdueDays * perDay;
+  }
+}
+
+// ---------- Catalog (search index over Book entries) ----------
+class Catalog {
+  private books: Book[] = [];
+  addBook(book: Book): void { this.books.push(book); }
+  search(query: string): Book[] {
+    const q = query.toLowerCase();
+    return this.books.filter((b) =&gt;
+      b.title.toLowerCase().includes(q) || b.author.toLowerCase().includes(q) || b.category.toLowerCase().includes(q));
+  }
+}
+
+// ---------- Library (facade) ----------
+class Library {
+  catalog = new Catalog();
+  private itemsByBarcode = new Map&lt;string, BookItem&gt;();
+  private activeLoanByBarcode = new Map&lt;string, Loan&gt;();
+  private holdQueuesByIsbn = new Map&lt;string, HoldQueue&gt;();
+  private static readonly LOAN_PERIOD_MS = 14 * DAY_MS; // 14 days, flat for demo
+
+  constructor(private fineStrategy: FineStrategy) {}
+
+  addBookItem(item: BookItem): void { this.itemsByBarcode.set(item.barcode, item); }
+
+  holdQueueFor(book: Book): HoldQueue | undefined { return this.holdQueuesByIsbn.get(book.isbn); }
+
+  search(query: string): Book[] { return this.catalog.search(query); }
+
+  // Single atomic status-check-and-flip against one BookItem - this is exactly what
+  // stops two members both succeeding against what they each believe is &quot;the last copy&quot;.
+  checkout(member: Member, barcode: string): Loan | null {
+    const item = this.itemsByBarcode.get(barcode);
+    if (!item) throw new Error(`No such item: ${barcode}`);
+    if (item.status !== ItemStatus.AVAILABLE) return null; // reject: not free to check out
+
+    const due = new Date(Date.now() + Library.LOAN_PERIOD_MS);
+    item.checkout(due);
+    const loan = new Loan(member, item, new Date(), due);
+    member.activeLoans.push(loan);
+    this.activeLoanByBarcode.set(barcode, loan);
+    return loan;
+  }
+
+  returnItem(barcode: string): void {
+    const item = this.itemsByBarcode.get(barcode);
+    if (!item) throw new Error(`No such item: ${barcode}`);
+    const loan = this.activeLoanByBarcode.get(barcode);
+    if (loan) {
+      loan.returned = true;
+      loan.member.activeLoans = loan.member.activeLoans.filter((l) =&gt; l !== loan);
+      this.activeLoanByBarcode.delete(barcode);
+    }
+    item.returnItem(); // triggers the HoldQueue Observer hook internally
+  }
+
+  calculateFine(loan: Loan): number { return this.fineStrategy.calculateFine(loan, new Date()); }
+
+  // Places a hold only when no copy is free; otherwise the member should just checkout.
+  placeHold(member: Member, book: Book): void {
+    if (!this.holdQueuesByIsbn.has(book.isbn)) this.holdQueuesByIsbn.set(book.isbn, new HoldQueue());
+    const queue = this.holdQueuesByIsbn.get(book.isbn) as HoldQueue;
+    const hold = new Hold(member, book, Date.now());
+    queue.addHold(hold);
+    member.activeHolds.push(hold);
+  }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const library = new Library(new StandardFineStrategy());
+
+  const book = new Book(&#x27;978-1&#x27;, &#x27;The Pragmatic Programmer&#x27;, &#x27;Hunt &amp; Thomas&#x27;, Category.NON_FICTION);
+  library.catalog.addBook(book);
+  const copy1 = new BookItem(&#x27;BC-1&#x27;, book, library);
+  const copy2 = new BookItem(&#x27;BC-2&#x27;, book, library);
+  library.addBookItem(copy1);
+  library.addBookItem(copy2);
+
+  console.log(`Search &#x27;pragmatic&#x27;: ${library.search(&#x27;pragmatic&#x27;).length} result(s)`);
+
+  const alice = new Member(&#x27;alice&#x27;, MembershipType.REGULAR);
+  const bob = new Member(&#x27;bob&#x27;, MembershipType.PREMIUM);
+  const carol = new Member(&#x27;carol&#x27;, MembershipType.REGULAR);
+
+  const loan1 = library.checkout(alice, &#x27;BC-1&#x27;);
+  const loan2 = library.checkout(bob, &#x27;BC-2&#x27;) as Loan;
+  console.log(&#x27;Alice checked out BC-1:&#x27;, loan1 !== null);
+  console.log(&#x27;Bob checked out BC-2:&#x27;, loan2 !== null);
+
+  const failedLoan = library.checkout(carol, &#x27;BC-1&#x27;);
+  console.log(&#x27;Carol tries BC-1 while checked out:&#x27;, failedLoan === null ? &#x27;rejected as expected&#x27; : &#x27;unexpectedly succeeded&#x27;);
+  library.placeHold(carol, book);
+  console.log(&#x27;Carol placed a hold; queue size:&#x27;, (library.holdQueueFor(book) as HoldQueue).waitingCount());
+
+  library.returnItem(&#x27;BC-1&#x27;);
+  console.log(&#x27;BC-1 status after return:&#x27;, copy1.status);
+
+  // Simulate an overdue fine: backdate Bob&#x27;s due date and price it.
+  loan2.dueDate = new Date(Date.now() - 3 * DAY_MS);
+  const fine = library.calculateFine(loan2);
+  console.log(`Bob&#x27;s fine for 3 overdue days (premium discount applied): $${fine}`);
+}
+
+main();
+
+export {
+  ItemStatus, Category, MembershipType, Book, BookItem, Member, Loan, Hold, HoldQueue,
+  FineStrategy, StandardFineStrategy, Catalog, Library,
+};
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p14.html">&larr; 14. ATM Machine</a><a class="prevnext-link next" href="p16.html">16. Hotel Reservation System &rarr;</a></div>
 </div>
 </main>
 

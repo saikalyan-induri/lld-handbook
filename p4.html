@@ -61,7 +61,8 @@
 <a href="#p4-y">Y. Scaling Boundary</a><a href="#p4-z">Z. Failure Scenarios</a><a href="#p4-aa">AA. Bad Designs</a>
 <a href="#p4-ab">AB. Trade-Offs</a><a href="#p4-ac">AC. Interviewer Evaluation</a><a href="#p4-ad">AD. Simulation</a>
 <a href="#p4-ae">AE. Source Comparison</a><a href="#p4-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p4">Jump to section:</label><select id="jump-p4" class="jump-select" data-jump-select><option value="p4-a">A. Realistic Interview Prompt</option><option value="p4-b">B. Difficulty</option><option value="p4-c">C. What This Problem Tests</option><option value="p4-d">D. Requirements</option><option value="p4-e">E. Clarifying Questions</option><option value="p4-f">F. Assumptions</option><option value="p4-g">G. Actors</option><option value="p4-h">H. Core Domain Entities</option><option value="p4-i">I. Class Relationships</option><option value="p4-j">J. Class Diagram</option><option value="p4-k">K. Responsibility Mapping</option><option value="p4-l">L. SOLID Analysis</option><option value="p4-m">M. Design Patterns</option><option value="p4-n">N. What Is Likely to Change?</option><option value="p4-o">O. Design Evolution</option><option value="p4-p">P. API / Interface Design</option><option value="p4-q">Q. Pseudocode — Critical Logic</option><option value="p4-r">R. End-to-End Use Case</option><option value="p4-s">S. Data Structures</option><option value="p4-t">T. Complexity Analysis</option><option value="p4-u">U. Testing Strategy</option><option value="p4-v">V. Interviewer Follow-Ups</option><option value="p4-w">W. Concurrency</option><option value="p4-x">X. Persistence</option><option value="p4-y">Y. Scaling Boundary</option><option value="p4-z">Z. Failure Scenarios</option><option value="p4-aa">AA. Common Bad Designs</option><option value="p4-ab">AB. Design Trade-Offs</option><option value="p4-ac">AC. Interviewer Evaluation</option><option value="p4-ad">AD. Interview Simulation</option><option value="p4-ae">AE. Online Solution Comparison</option><option value="p4-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p4-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p4">Jump to section:</label><select id="jump-p4" class="jump-select" data-jump-select><option value="p4-a">A. Realistic Interview Prompt</option><option value="p4-b">B. Difficulty</option><option value="p4-c">C. What This Problem Tests</option><option value="p4-d">D. Requirements</option><option value="p4-e">E. Clarifying Questions</option><option value="p4-f">F. Assumptions</option><option value="p4-g">G. Actors</option><option value="p4-h">H. Core Domain Entities</option><option value="p4-i">I. Class Relationships</option><option value="p4-j">J. Class Diagram</option><option value="p4-k">K. Responsibility Mapping</option><option value="p4-l">L. SOLID Analysis</option><option value="p4-m">M. Design Patterns</option><option value="p4-n">N. What Is Likely to Change?</option><option value="p4-o">O. Design Evolution</option><option value="p4-p">P. API / Interface Design</option><option value="p4-q">Q. Pseudocode — Critical Logic</option><option value="p4-r">R. End-to-End Use Case</option><option value="p4-s">S. Data Structures</option><option value="p4-t">T. Complexity Analysis</option><option value="p4-u">U. Testing Strategy</option><option value="p4-v">V. Interviewer Follow-Ups</option><option value="p4-w">W. Concurrency</option><option value="p4-x">X. Persistence</option><option value="p4-y">Y. Scaling Boundary</option><option value="p4-z">Z. Failure Scenarios</option><option value="p4-aa">AA. Common Bad Designs</option><option value="p4-ab">AB. Design Trade-Offs</option><option value="p4-ac">AC. Interviewer Evaluation</option><option value="p4-ad">AD. Interview Simulation</option><option value="p4-ae">AE. Online Solution Comparison</option><option value="p4-af">AF. Interview Cheat Sheet</option><option value="p4-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p4-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design an expense-sharing application like Splitwise. Users can form groups, add shared expenses with different splitting methods, see who owes whom, and settle up."</div>
@@ -559,7 +560,1017 @@ BalanceSheet.adjust(Bob, Alice, -$30)   // Bob's balance with Alice → $0
 <tr><td><strong>Top follow-ups</strong></td><td>Debt simplification, editable expenses, multi-currency, idempotent settlement, real-world scale</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Payment-as-Expense-subclass; no explicit ledger; global lock; ignoring the sum-to-zero invariant</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't build optimal (NP-hard) debt simplification — greedy is the expected interview answer</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p3.html">&larr; 3. Rate Limiter</a><a class="prevnext-link next" href="p5.html">5. Ride-Sharing Service (Uber/Lyft) &rarr;</a></div>
+</table>
+
+<h3 id="p4-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">// Splitwise (Expense Sharing) — full LLD implementation with demo.
+// Single-file Java translation of the Mermaid class diagram in section J.
+import java.util.*;
+
+public class p4 {
+
+    // ---------- Value objects ----------
+
+    /** Fixed-point money (cents) to avoid floating point drift in splits/settlements. */
+    static final class Money implements Comparable&lt;Money&gt; {
+        final long cents;
+        private Money(long cents) { this.cents = cents; }
+        static Money ofCents(long cents) { return new Money(cents); }
+        static Money of(double dollars) { return new Money(Math.round(dollars * 100)); }
+        static Money zero() { return new Money(0); }
+        Money plus(Money o) { return new Money(this.cents + o.cents); }
+        Money minus(Money o) { return new Money(this.cents - o.cents); }
+        Money negate() { return new Money(-this.cents); }
+        boolean isZero() { return cents == 0; }
+        public int compareTo(Money o) { return Long.compare(this.cents, o.cents); }
+        public String toString() { return String.format(&quot;$%.2f&quot;, cents / 100.0); }
+        public boolean equals(Object o) { return o instanceof Money &amp;&amp; ((Money) o).cents == cents; }
+        public int hashCode() { return Long.hashCode(cents); }
+    }
+
+    enum SplitType { EQUAL, EXACT, PERCENT }
+
+    // ---------- Core entities ----------
+
+    static final class User {
+        final String id, name, email;
+        User(String id, String name, String email) { this.id = id; this.name = name; this.email = email; }
+        public String toString() { return name; }
+    }
+
+    /** Aggregation: Group holds Users but does not own their lifecycle. */
+    static final class Group {
+        final String id;
+        final List&lt;User&gt; members = new ArrayList&lt;&gt;();
+        Group(String id) { this.id = id; }
+        void addMember(User u) { members.add(u); }
+    }
+
+    /** Pure data: how much one participant owes for one expense. No computation. */
+    static final class Split {
+        final User user;
+        final Money amount;
+        Split(User user, Money amount) { this.user = user; this.amount = amount; }
+    }
+
+    /** Immutable record of one shared-cost event. Composes its Splits. */
+    static final class Expense {
+        final String id;
+        final Money amount;
+        final User paidBy;
+        final List&lt;Split&gt; splits; // composition — splits have no meaning outside this expense
+        final String groupId; // nullable
+        final long timestamp;
+        Expense(String id, Money amount, User paidBy, List&lt;Split&gt; splits, String groupId) {
+            this.id = id; this.amount = amount; this.paidBy = paidBy;
+            this.splits = List.copyOf(splits); this.groupId = groupId;
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
+
+    /** Records a settle-up action. Sibling of Expense, not a subclass (see section I). */
+    static final class Payment {
+        final String id;
+        final User from, to;
+        final Money amount;
+        final long timestamp;
+        Payment(String id, User from, User to, Money amount) {
+            this.id = id; this.from = from; this.to = to; this.amount = amount;
+            this.timestamp = System.currentTimeMillis();
+        }
+    }
+
+    // ---------- SplitStrategy hierarchy ----------
+
+    interface SplitStrategy {
+        List&lt;Split&gt; compute(Money total, List&lt;User&gt; participants, Map&lt;String, Object&gt; params);
+    }
+
+    static final class EqualSplitStrategy implements SplitStrategy {
+        public List&lt;Split&gt; compute(Money total, List&lt;User&gt; participants, Map&lt;String, Object&gt; params) {
+            int n = participants.size();
+            long base = total.cents / n;
+            long remainder = total.cents % n; // distribute leftover cents deterministically
+            List&lt;Split&gt; splits = new ArrayList&lt;&gt;();
+            for (int i = 0; i &lt; n; i++) {
+                long cents = base + (i &lt; remainder ? 1 : 0);
+                splits.add(new Split(participants.get(i), Money.ofCents(cents)));
+            }
+            return splits;
+        }
+    }
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    static final class ExactSplitStrategy implements SplitStrategy {
+        public List&lt;Split&gt; compute(Money total, List&lt;User&gt; participants, Map&lt;String, Object&gt; params) {
+            Map&lt;String, Money&gt; amounts = (Map&lt;String, Money&gt;) params.get(&quot;amounts&quot;); // userId -&gt; exact amount
+            List&lt;Split&gt; splits = new ArrayList&lt;&gt;();
+            for (User u : participants) {
+                Money amt = amounts.get(u.id);
+                if (amt == null) throw new IllegalArgumentException(&quot;Missing exact amount for &quot; + u.id);
+                splits.add(new Split(u, amt));
+            }
+            return splits;
+        }
+    }
+
+    @SuppressWarnings(&quot;unchecked&quot;)
+    static final class PercentSplitStrategy implements SplitStrategy {
+        public List&lt;Split&gt; compute(Money total, List&lt;User&gt; participants, Map&lt;String, Object&gt; params) {
+            Map&lt;String, Double&gt; pct = (Map&lt;String, Double&gt;) params.get(&quot;percentages&quot;); // userId -&gt; % (sums to 100)
+            List&lt;Split&gt; splits = new ArrayList&lt;&gt;();
+            long allocated = 0;
+            for (int i = 0; i &lt; participants.size(); i++) {
+                User u = participants.get(i);
+                Double p = pct.get(u.id);
+                if (p == null) throw new IllegalArgumentException(&quot;Missing percentage for &quot; + u.id);
+                long cents = (i == participants.size() - 1)
+                        ? total.cents - allocated // last participant absorbs rounding remainder
+                        : Math.round(total.cents * (p / 100.0));
+                allocated += cents;
+                splits.add(new Split(u, Money.ofCents(cents)));
+            }
+            return splits;
+        }
+    }
+
+    // ---------- BalanceSheet ----------
+
+    /** Single source of truth for who-owes-whom. Stores one signed net cents value per unordered pair. */
+    static final class BalanceSheet {
+        // key: &quot;idA|idB&quot; with idA &lt; idB lexicographically; value &gt; 0 means idA owes idB.
+        private final Map&lt;String, Long&gt; pairwise = new HashMap&lt;&gt;();
+
+        private String key(User a, User b) {
+            return a.id.compareTo(b.id) &lt; 0 ? a.id + &quot;|&quot; + b.id : b.id + &quot;|&quot; + a.id;
+        }
+
+        /** a owes b `amount` more (amount may be negative to reduce/reverse). */
+        void adjust(User a, User b, Money amount) {
+            String k = key(a, b);
+            long signed = a.id.compareTo(b.id) &lt; 0 ? amount.cents : -amount.cents;
+            pairwise.merge(k, signed, Long::sum);
+        }
+
+        /** Positive =&gt; a owes b; negative =&gt; b owes a. */
+        Money getBalance(User a, User b) {
+            String k = key(a, b);
+            long stored = pairwise.getOrDefault(k, 0L);
+            long fromAPerspective = a.id.compareTo(b.id) &lt; 0 ? stored : -stored;
+            return Money.ofCents(fromAPerspective);
+        }
+    }
+
+    // ---------- Idempotent payment log ----------
+
+    static final class PaymentLog {
+        private final Map&lt;String, Payment&gt; byKey = new HashMap&lt;&gt;();
+        boolean seen(String idemKey) { return byKey.containsKey(idemKey); }
+        Payment get(String idemKey) { return byKey.get(idemKey); }
+        void record(String idemKey, Payment p) { byKey.put(idemKey, p); }
+    }
+
+    // ---------- ExpenseService (facade) ----------
+
+    static final class ExpenseService {
+        private final Map&lt;SplitType, SplitStrategy&gt; strategyFactory;
+        private final BalanceSheet balanceSheet = new BalanceSheet();
+        private final PaymentLog paymentLog = new PaymentLog();
+        private final List&lt;Expense&gt; expenses = new ArrayList&lt;&gt;();
+        private int expenseCounter = 0, paymentCounter = 0;
+
+        ExpenseService(Map&lt;SplitType, SplitStrategy&gt; strategyFactory) {
+            this.strategyFactory = strategyFactory;
+        }
+
+        Expense addExpense(Money total, User paidBy, List&lt;User&gt; participants,
+                            SplitType type, Map&lt;String, Object&gt; params, Group group) {
+            SplitStrategy strategy = strategyFactory.get(type);
+            List&lt;Split&gt; splits = strategy.compute(total, participants, params);
+
+            long sum = 0;
+            for (Split s : splits) sum += s.amount.cents;
+            if (sum != total.cents) throw new IllegalStateException(&quot;Split strategy produced mismatched total&quot;);
+
+            Expense expense = new Expense(&quot;EXP-&quot; + (++expenseCounter), total, paidBy, splits,
+                    group != null ? group.id : null);
+            for (Split s : splits) {
+                if (!s.user.id.equals(paidBy.id)) {
+                    balanceSheet.adjust(s.user, paidBy, s.amount); // s.user owes paidBy s.amount
+                }
+            }
+            expenses.add(expense);
+            return expense;
+        }
+
+        Payment settleUp(User from, User to, Money amount, String idempotencyKey) {
+            if (paymentLog.seen(idempotencyKey)) return paymentLog.get(idempotencyKey); // idempotent replay
+            balanceSheet.adjust(from, to, amount.negate()); // paying down reduces what `from` owes `to`
+            Payment payment = new Payment(&quot;PAY-&quot; + (++paymentCounter), from, to, amount);
+            paymentLog.record(idempotencyKey, payment);
+            return payment;
+        }
+
+        Money getBalance(User a, User b) { return balanceSheet.getBalance(a, b); }
+
+        /** net(u) = sum over others of (-balance(u, other)); positive =&gt; u is owed money overall. */
+        Map&lt;User, Money&gt; getNetBalances(Group group) {
+            Map&lt;User, Money&gt; net = new LinkedHashMap&lt;&gt;();
+            for (User u : group.members) {
+                long total = 0;
+                for (User other : group.members) {
+                    if (other == u) continue;
+                    total -= balanceSheet.getBalance(u, other).cents;
+                }
+                net.put(u, Money.ofCents(total));
+            }
+            return net;
+        }
+    }
+
+    // ---------- Demo ----------
+
+    public static void main(String[] args) {
+        User alice = new User(&quot;u1&quot;, &quot;Alice&quot;, &quot;alice@mail.com&quot;);
+        User bob = new User(&quot;u2&quot;, &quot;Bob&quot;, &quot;bob@mail.com&quot;);
+        User carol = new User(&quot;u3&quot;, &quot;Carol&quot;, &quot;carol@mail.com&quot;);
+
+        Group trip = new Group(&quot;g1&quot;);
+        trip.addMember(alice);
+        trip.addMember(bob);
+        trip.addMember(carol);
+
+        Map&lt;SplitType, SplitStrategy&gt; factory = new HashMap&lt;&gt;();
+        factory.put(SplitType.EQUAL, new EqualSplitStrategy());
+        factory.put(SplitType.EXACT, new ExactSplitStrategy());
+        factory.put(SplitType.PERCENT, new PercentSplitStrategy());
+        ExpenseService service = new ExpenseService(factory);
+
+        // Alice pays $100 for dinner, split equally among the three.
+        service.addExpense(Money.of(100.00), alice, List.of(alice, bob, carol),
+                SplitType.EQUAL, Map.of(), trip);
+
+        // Bob pays $60 for a cab, split by exact amounts.
+        Map&lt;String, Object&gt; exactParams = new HashMap&lt;&gt;();
+        exactParams.put(&quot;amounts&quot;, Map.of(&quot;u1&quot;, Money.of(20.00), &quot;u2&quot;, Money.of(20.00), &quot;u3&quot;, Money.of(20.00)));
+        service.addExpense(Money.of(60.00), bob, List.of(alice, bob, carol),
+                SplitType.EXACT, exactParams, trip);
+
+        System.out.println(&quot;Alice owes Bob: &quot; + service.getBalance(alice, bob));
+        System.out.println(&quot;Carol owes Alice: &quot; + service.getBalance(carol, alice));
+
+        // Carol settles part of her debt to Alice.
+        service.settleUp(carol, alice, Money.of(20.00), &quot;idem-1&quot;);
+        System.out.println(&quot;After settle, Carol owes Alice: &quot; + service.getBalance(carol, alice));
+
+        System.out.println(&quot;Net balances:&quot;);
+        service.getNetBalances(trip).forEach((u, m) -&gt; System.out.println(&quot;  &quot; + u + &quot;: &quot; + m));
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Splitwise (Expense Sharing) — full LLD implementation with demo.
+// Single-file C++ translation of the Mermaid class diagram in section J.
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+#include &lt;map&gt;
+#include &lt;unordered_map&gt;
+#include &lt;memory&gt;
+#include &lt;variant&gt;
+#include &lt;stdexcept&gt;
+#include &lt;cmath&gt;
+#include &lt;sstream&gt;
+
+// ---------- Money (fixed-point cents) ----------
+struct Money {
+    long long cents = 0;
+    static Money ofCents(long long c) { return Money{c}; }
+    static Money of(double dollars) { return Money{ (long long)std::llround(dollars * 100) }; }
+    static Money zero() { return Money{0}; }
+    Money plus(const Money&amp; o) const { return Money{cents + o.cents}; }
+    Money minus(const Money&amp; o) const { return Money{cents - o.cents}; }
+    Money negate() const { return Money{-cents}; }
+    bool isZero() const { return cents == 0; }
+    std::string str() const {
+        std::ostringstream os;
+        bool neg = cents &lt; 0;
+        long long c = neg ? -cents : cents;
+        os &lt;&lt; (neg ? &quot;-$&quot; : &quot;$&quot;) &lt;&lt; (c / 100) &lt;&lt; &quot;.&quot; &lt;&lt; (c % 100 &lt; 10 ? &quot;0&quot; : &quot;&quot;) &lt;&lt; (c % 100);
+        return os.str();
+    }
+};
+
+enum class SplitType { EQUAL, EXACT, PERCENT };
+
+// ---------- Core entities ----------
+struct User {
+    std::string id, name, email;
+};
+
+// Aggregation: Group holds Users but does not own their lifecycle.
+struct Group {
+    std::string id;
+    std::vector&lt;std::shared_ptr&lt;User&gt;&gt; members;
+    void addMember(std::shared_ptr&lt;User&gt; u) { members.push_back(u); }
+};
+
+// Pure data: how much one participant owes for one expense.
+struct Split {
+    std::shared_ptr&lt;User&gt; user;
+    Money amount;
+};
+
+// Params bag for strategies: keyed maps of userId -&gt; value.
+struct SplitParams {
+    std::unordered_map&lt;std::string, Money&gt; exactAmounts;   // for ExactSplitStrategy
+    std::unordered_map&lt;std::string, double&gt; percentages;   // for PercentSplitStrategy
+};
+
+// Immutable record of one shared-cost event. Composes its Splits.
+struct Expense {
+    std::string id;
+    Money amount;
+    std::shared_ptr&lt;User&gt; paidBy;
+    std::vector&lt;Split&gt; splits; // composition
+    std::string groupId;
+    long long timestamp;
+};
+
+// Records a settle-up action. Sibling of Expense, not a subclass.
+struct Payment {
+    std::string id;
+    std::shared_ptr&lt;User&gt; from, to;
+    Money amount;
+    long long timestamp;
+};
+
+// ---------- SplitStrategy hierarchy ----------
+class SplitStrategy {
+public:
+    virtual ~SplitStrategy() = default;
+    virtual std::vector&lt;Split&gt; compute(const Money&amp; total, const std::vector&lt;std::shared_ptr&lt;User&gt;&gt;&amp; participants,
+                                        const SplitParams&amp; params) = 0;
+};
+
+class EqualSplitStrategy : public SplitStrategy {
+public:
+    std::vector&lt;Split&gt; compute(const Money&amp; total, const std::vector&lt;std::shared_ptr&lt;User&gt;&gt;&amp; participants,
+                                const SplitParams&amp;) override {
+        long long n = (long long)participants.size();
+        long long base = total.cents / n;
+        long long remainder = total.cents % n;
+        std::vector&lt;Split&gt; splits;
+        for (long long i = 0; i &lt; n; i++) {
+            long long cents = base + (i &lt; remainder ? 1 : 0);
+            splits.push_back({participants[i], Money::ofCents(cents)});
+        }
+        return splits;
+    }
+};
+
+class ExactSplitStrategy : public SplitStrategy {
+public:
+    std::vector&lt;Split&gt; compute(const Money&amp; total, const std::vector&lt;std::shared_ptr&lt;User&gt;&gt;&amp; participants,
+                                const SplitParams&amp; params) override {
+        std::vector&lt;Split&gt; splits;
+        for (auto&amp; u : participants) {
+            auto it = params.exactAmounts.find(u-&gt;id);
+            if (it == params.exactAmounts.end()) throw std::invalid_argument(&quot;Missing exact amount for &quot; + u-&gt;id);
+            splits.push_back({u, it-&gt;second});
+        }
+        return splits;
+    }
+};
+
+class PercentSplitStrategy : public SplitStrategy {
+public:
+    std::vector&lt;Split&gt; compute(const Money&amp; total, const std::vector&lt;std::shared_ptr&lt;User&gt;&gt;&amp; participants,
+                                const SplitParams&amp; params) override {
+        std::vector&lt;Split&gt; splits;
+        long long allocated = 0;
+        for (size_t i = 0; i &lt; participants.size(); i++) {
+            auto&amp; u = participants[i];
+            auto it = params.percentages.find(u-&gt;id);
+            if (it == params.percentages.end()) throw std::invalid_argument(&quot;Missing percentage for &quot; + u-&gt;id);
+            long long cents = (i == participants.size() - 1)
+                    ? total.cents - allocated
+                    : (long long)std::llround(total.cents * (it-&gt;second / 100.0));
+            allocated += cents;
+            splits.push_back({u, Money::ofCents(cents)});
+        }
+        return splits;
+    }
+};
+
+// ---------- BalanceSheet ----------
+// Single source of truth for who-owes-whom: one signed net cents value per unordered pair.
+class BalanceSheet {
+    std::map&lt;std::pair&lt;std::string, std::string&gt;, long long&gt; pairwise;
+
+    std::pair&lt;std::string, std::string&gt; key(const std::string&amp; a, const std::string&amp; b) const {
+        return a &lt; b ? std::make_pair(a, b) : std::make_pair(b, a);
+    }
+public:
+    // a owes b `amount` more (amount may be negative to reduce/reverse).
+    void adjust(const std::shared_ptr&lt;User&gt;&amp; a, const std::shared_ptr&lt;User&gt;&amp; b, const Money&amp; amount) {
+        auto k = key(a-&gt;id, b-&gt;id);
+        long long signed_ = (a-&gt;id &lt; b-&gt;id) ? amount.cents : -amount.cents;
+        pairwise[k] += signed_;
+    }
+
+    // Positive =&gt; a owes b; negative =&gt; b owes a.
+    Money getBalance(const std::shared_ptr&lt;User&gt;&amp; a, const std::shared_ptr&lt;User&gt;&amp; b) const {
+        auto k = key(a-&gt;id, b-&gt;id);
+        auto it = pairwise.find(k);
+        long long stored = (it == pairwise.end()) ? 0 : it-&gt;second;
+        long long fromAPerspective = (a-&gt;id &lt; b-&gt;id) ? stored : -stored;
+        return Money::ofCents(fromAPerspective);
+    }
+};
+
+// ---------- Idempotent payment log ----------
+class PaymentLog {
+    std::unordered_map&lt;std::string, Payment&gt; byKey;
+public:
+    bool seen(const std::string&amp; k) const { return byKey.count(k) &gt; 0; }
+    Payment get(const std::string&amp; k) const { return byKey.at(k); }
+    void record(const std::string&amp; k, const Payment&amp; p) { byKey[k] = p; }
+};
+
+// ---------- ExpenseService (facade) ----------
+class ExpenseService {
+    std::unordered_map&lt;int, std::shared_ptr&lt;SplitStrategy&gt;&gt; strategyFactory; // keyed by SplitType
+    BalanceSheet balanceSheet;
+    PaymentLog paymentLog;
+    std::vector&lt;Expense&gt; expenses;
+    int expenseCounter = 0, paymentCounter = 0;
+
+public:
+    ExpenseService(std::unordered_map&lt;int, std::shared_ptr&lt;SplitStrategy&gt;&gt; factory)
+        : strategyFactory(std::move(factory)) {}
+
+    Expense addExpense(const Money&amp; total, std::shared_ptr&lt;User&gt; paidBy,
+                        const std::vector&lt;std::shared_ptr&lt;User&gt;&gt;&amp; participants,
+                        SplitType type, const SplitParams&amp; params, std::shared_ptr&lt;Group&gt; group) {
+        auto strategy = strategyFactory[(int)type];
+        std::vector&lt;Split&gt; splits = strategy-&gt;compute(total, participants, params);
+
+        long long sum = 0;
+        for (auto&amp; s : splits) sum += s.amount.cents;
+        if (sum != total.cents) throw std::logic_error(&quot;Split strategy produced mismatched total&quot;);
+
+        Expense expense{&quot;EXP-&quot; + std::to_string(++expenseCounter), total, paidBy, splits,
+                         group ? group-&gt;id : &quot;&quot;, 0};
+        for (auto&amp; s : splits) {
+            if (s.user-&gt;id != paidBy-&gt;id) {
+                balanceSheet.adjust(s.user, paidBy, s.amount); // s.user owes paidBy s.amount
+            }
+        }
+        expenses.push_back(expense);
+        return expense;
+    }
+
+    Payment settleUp(std::shared_ptr&lt;User&gt; from, std::shared_ptr&lt;User&gt; to, const Money&amp; amount,
+                      const std::string&amp; idempotencyKey) {
+        if (paymentLog.seen(idempotencyKey)) return paymentLog.get(idempotencyKey); // idempotent replay
+        balanceSheet.adjust(from, to, amount.negate()); // paying down reduces what `from` owes `to`
+        Payment payment{&quot;PAY-&quot; + std::to_string(++paymentCounter), from, to, amount, 0};
+        paymentLog.record(idempotencyKey, payment);
+        return payment;
+    }
+
+    Money getBalance(const std::shared_ptr&lt;User&gt;&amp; a, const std::shared_ptr&lt;User&gt;&amp; b) {
+        return balanceSheet.getBalance(a, b);
+    }
+
+    // net(u) = sum over others of (-balance(u, other)); positive =&gt; u is owed money overall.
+    std::vector&lt;std::pair&lt;std::shared_ptr&lt;User&gt;, Money&gt;&gt; getNetBalances(const std::shared_ptr&lt;Group&gt;&amp; group) {
+        std::vector&lt;std::pair&lt;std::shared_ptr&lt;User&gt;, Money&gt;&gt; net;
+        for (auto&amp; u : group-&gt;members) {
+            long long total = 0;
+            for (auto&amp; other : group-&gt;members) {
+                if (other-&gt;id == u-&gt;id) continue;
+                total -= balanceSheet.getBalance(u, other).cents;
+            }
+            net.push_back({u, Money::ofCents(total)});
+        }
+        return net;
+    }
+};
+
+// ---------- Demo ----------
+int main() {
+    auto alice = std::make_shared&lt;User&gt;(User{&quot;u1&quot;, &quot;Alice&quot;, &quot;alice@mail.com&quot;});
+    auto bob = std::make_shared&lt;User&gt;(User{&quot;u2&quot;, &quot;Bob&quot;, &quot;bob@mail.com&quot;});
+    auto carol = std::make_shared&lt;User&gt;(User{&quot;u3&quot;, &quot;Carol&quot;, &quot;carol@mail.com&quot;});
+
+    auto trip = std::make_shared&lt;Group&gt;();
+    trip-&gt;id = &quot;g1&quot;;
+    trip-&gt;addMember(alice);
+    trip-&gt;addMember(bob);
+    trip-&gt;addMember(carol);
+
+    std::unordered_map&lt;int, std::shared_ptr&lt;SplitStrategy&gt;&gt; factory;
+    factory[(int)SplitType::EQUAL] = std::make_shared&lt;EqualSplitStrategy&gt;();
+    factory[(int)SplitType::EXACT] = std::make_shared&lt;ExactSplitStrategy&gt;();
+    factory[(int)SplitType::PERCENT] = std::make_shared&lt;PercentSplitStrategy&gt;();
+    ExpenseService service(factory);
+
+    // Alice pays $100 for dinner, split equally among the three.
+    service.addExpense(Money::of(100.00), alice, {alice, bob, carol}, SplitType::EQUAL, SplitParams{}, trip);
+
+    // Bob pays $60 for a cab, split by exact amounts.
+    SplitParams exactParams;
+    exactParams.exactAmounts = {{&quot;u1&quot;, Money::of(20.00)}, {&quot;u2&quot;, Money::of(20.00)}, {&quot;u3&quot;, Money::of(20.00)}};
+    service.addExpense(Money::of(60.00), bob, {alice, bob, carol}, SplitType::EXACT, exactParams, trip);
+
+    std::cout &lt;&lt; &quot;Alice owes Bob: &quot; &lt;&lt; service.getBalance(alice, bob).str() &lt;&lt; &quot;\n&quot;;
+    std::cout &lt;&lt; &quot;Carol owes Alice: &quot; &lt;&lt; service.getBalance(carol, alice).str() &lt;&lt; &quot;\n&quot;;
+
+    service.settleUp(carol, alice, Money::of(20.00), &quot;idem-1&quot;);
+    std::cout &lt;&lt; &quot;After settle, Carol owes Alice: &quot; &lt;&lt; service.getBalance(carol, alice).str() &lt;&lt; &quot;\n&quot;;
+
+    std::cout &lt;&lt; &quot;Net balances:\n&quot;;
+    for (auto&amp; [u, m] : service.getNetBalances(trip)) {
+        std::cout &lt;&lt; &quot;  &quot; &lt;&lt; u-&gt;name &lt;&lt; &quot;: &quot; &lt;&lt; m.str() &lt;&lt; &quot;\n&quot;;
+    }
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">// Splitwise (Expense Sharing) — full LLD implementation with demo.
+// Single-file Node/JS translation of the Mermaid class diagram in section J.
+&#x27;use strict&#x27;;
+
+// ---------- Money (fixed-point cents) ----------
+class Money {
+  constructor(cents) { this.cents = cents; }
+  static ofCents(c) { return new Money(c); }
+  static of(dollars) { return new Money(Math.round(dollars * 100)); }
+  static zero() { return new Money(0); }
+  plus(o) { return new Money(this.cents + o.cents); }
+  minus(o) { return new Money(this.cents - o.cents); }
+  negate() { return new Money(-this.cents); }
+  isZero() { return this.cents === 0; }
+  toString() {
+    const neg = this.cents &lt; 0;
+    const c = Math.abs(this.cents);
+    const cents = String(c % 100).padStart(2, &#x27;0&#x27;);
+    return `${neg ? &#x27;-&#x27; : &#x27;&#x27;}$${Math.floor(c / 100)}.${cents}`;
+  }
+}
+
+const SplitType = Object.freeze({ EQUAL: &#x27;EQUAL&#x27;, EXACT: &#x27;EXACT&#x27;, PERCENT: &#x27;PERCENT&#x27; });
+
+// ---------- Core entities ----------
+class User {
+  constructor(id, name, email) { this.id = id; this.name = name; this.email = email; }
+  toString() { return this.name; }
+}
+
+// Aggregation: Group holds Users but does not own their lifecycle.
+class Group {
+  constructor(id) { this.id = id; this.members = []; }
+  addMember(u) { this.members.push(u); }
+}
+
+// Pure data: how much one participant owes for one expense. No computation.
+class Split {
+  constructor(user, amount) { this.user = user; this.amount = amount; }
+}
+
+// Immutable record of one shared-cost event. Composes its Splits.
+class Expense {
+  constructor(id, amount, paidBy, splits, groupId) {
+    this.id = id; this.amount = amount; this.paidBy = paidBy;
+    this.splits = [...splits]; this.groupId = groupId || null;
+    this.timestamp = Date.now();
+  }
+}
+
+// Records a settle-up action. Sibling of Expense, not a subclass (see section I).
+class Payment {
+  constructor(id, from, to, amount) {
+    this.id = id; this.from = from; this.to = to; this.amount = amount;
+    this.timestamp = Date.now();
+  }
+}
+
+// ---------- SplitStrategy hierarchy ----------
+class SplitStrategy {
+  // eslint-disable-next-line no-unused-vars
+  compute(total, participants, params) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+class EqualSplitStrategy extends SplitStrategy {
+  compute(total, participants) {
+    const n = participants.length;
+    const base = Math.trunc(total.cents / n);
+    const remainder = total.cents % n; // distribute leftover cents deterministically
+    return participants.map((u, i) =&gt; new Split(u, Money.ofCents(base + (i &lt; remainder ? 1 : 0))));
+  }
+}
+
+class ExactSplitStrategy extends SplitStrategy {
+  compute(total, participants, params) {
+    const amounts = params.amounts; // Map&lt;userId, Money&gt;
+    return participants.map((u) =&gt; {
+      const amt = amounts.get(u.id);
+      if (!amt) throw new Error(`Missing exact amount for ${u.id}`);
+      return new Split(u, amt);
+    });
+  }
+}
+
+class PercentSplitStrategy extends SplitStrategy {
+  compute(total, participants, params) {
+    const pct = params.percentages; // Map&lt;userId, percent&gt;
+    let allocated = 0;
+    return participants.map((u, i) =&gt; {
+      const p = pct.get(u.id);
+      if (p === undefined) throw new Error(`Missing percentage for ${u.id}`);
+      const cents = (i === participants.length - 1)
+        ? total.cents - allocated // last participant absorbs rounding remainder
+        : Math.round(total.cents * (p / 100));
+      allocated += cents;
+      return new Split(u, Money.ofCents(cents));
+    });
+  }
+}
+
+// ---------- BalanceSheet ----------
+// Single source of truth for who-owes-whom: one signed net cents value per unordered pair.
+class BalanceSheet {
+  constructor() { this.pairwise = new Map(); }
+
+  _key(a, b) { return a.id &lt; b.id ? `${a.id}|${b.id}` : `${b.id}|${a.id}`; }
+
+  // a owes b `amount` more (amount may be negative to reduce/reverse).
+  adjust(a, b, amount) {
+    const k = this._key(a, b);
+    const signed = a.id &lt; b.id ? amount.cents : -amount.cents;
+    this.pairwise.set(k, (this.pairwise.get(k) || 0) + signed);
+  }
+
+  // Positive =&gt; a owes b; negative =&gt; b owes a.
+  getBalance(a, b) {
+    const k = this._key(a, b);
+    const stored = this.pairwise.get(k) || 0;
+    const fromAPerspective = a.id &lt; b.id ? stored : -stored;
+    return Money.ofCents(fromAPerspective);
+  }
+}
+
+// ---------- Idempotent payment log ----------
+class PaymentLog {
+  constructor() { this.byKey = new Map(); }
+  seen(idemKey) { return this.byKey.has(idemKey); }
+  get(idemKey) { return this.byKey.get(idemKey); }
+  record(idemKey, p) { this.byKey.set(idemKey, p); }
+}
+
+// ---------- ExpenseService (facade) ----------
+class ExpenseService {
+  constructor(strategyFactory) {
+    this.strategyFactory = strategyFactory; // Map&lt;SplitType, SplitStrategy&gt;
+    this.balanceSheet = new BalanceSheet();
+    this.paymentLog = new PaymentLog();
+    this.expenses = [];
+    this.expenseCounter = 0;
+    this.paymentCounter = 0;
+  }
+
+  addExpense(total, paidBy, participants, type, params, group) {
+    const strategy = this.strategyFactory.get(type);
+    const splits = strategy.compute(total, participants, params || {});
+
+    const sum = splits.reduce((acc, s) =&gt; acc + s.amount.cents, 0);
+    if (sum !== total.cents) throw new Error(&#x27;Split strategy produced mismatched total&#x27;);
+
+    const expense = new Expense(`EXP-${++this.expenseCounter}`, total, paidBy, splits, group ? group.id : null);
+    for (const s of splits) {
+      if (s.user.id !== paidBy.id) {
+        this.balanceSheet.adjust(s.user, paidBy, s.amount); // s.user owes paidBy s.amount
+      }
+    }
+    this.expenses.push(expense);
+    return expense;
+  }
+
+  settleUp(from, to, amount, idempotencyKey) {
+    if (this.paymentLog.seen(idempotencyKey)) return this.paymentLog.get(idempotencyKey); // idempotent replay
+    this.balanceSheet.adjust(from, to, amount.negate()); // paying down reduces what `from` owes `to`
+    const payment = new Payment(`PAY-${++this.paymentCounter}`, from, to, amount);
+    this.paymentLog.record(idempotencyKey, payment);
+    return payment;
+  }
+
+  getBalance(a, b) { return this.balanceSheet.getBalance(a, b); }
+
+  // net(u) = sum over others of (-balance(u, other)); positive =&gt; u is owed money overall.
+  getNetBalances(group) {
+    const net = new Map();
+    for (const u of group.members) {
+      let total = 0;
+      for (const other of group.members) {
+        if (other === u) continue;
+        total -= this.balanceSheet.getBalance(u, other).cents;
+      }
+      net.set(u, Money.ofCents(total));
+    }
+    return net;
+  }
+}
+
+// ---------- Demo ----------
+function main() {
+  const alice = new User(&#x27;u1&#x27;, &#x27;Alice&#x27;, &#x27;alice@mail.com&#x27;);
+  const bob = new User(&#x27;u2&#x27;, &#x27;Bob&#x27;, &#x27;bob@mail.com&#x27;);
+  const carol = new User(&#x27;u3&#x27;, &#x27;Carol&#x27;, &#x27;carol@mail.com&#x27;);
+
+  const trip = new Group(&#x27;g1&#x27;);
+  trip.addMember(alice);
+  trip.addMember(bob);
+  trip.addMember(carol);
+
+  const factory = new Map([
+    [SplitType.EQUAL, new EqualSplitStrategy()],
+    [SplitType.EXACT, new ExactSplitStrategy()],
+    [SplitType.PERCENT, new PercentSplitStrategy()],
+  ]);
+  const service = new ExpenseService(factory);
+
+  // Alice pays $100 for dinner, split equally among the three.
+  service.addExpense(Money.of(100.0), alice, [alice, bob, carol], SplitType.EQUAL, {}, trip);
+
+  // Bob pays $60 for a cab, split by exact amounts.
+  const exactParams = { amounts: new Map([[&#x27;u1&#x27;, Money.of(20.0)], [&#x27;u2&#x27;, Money.of(20.0)], [&#x27;u3&#x27;, Money.of(20.0)]]) };
+  service.addExpense(Money.of(60.0), bob, [alice, bob, carol], SplitType.EXACT, exactParams, trip);
+
+  console.log(&#x27;Alice owes Bob:&#x27;, service.getBalance(alice, bob).toString());
+  console.log(&#x27;Carol owes Alice:&#x27;, service.getBalance(carol, alice).toString());
+
+  service.settleUp(carol, alice, Money.of(20.0), &#x27;idem-1&#x27;);
+  console.log(&#x27;After settle, Carol owes Alice:&#x27;, service.getBalance(carol, alice).toString());
+
+  console.log(&#x27;Net balances:&#x27;);
+  for (const [u, m] of service.getNetBalances(trip)) {
+    console.log(`  ${u}: ${m.toString()}`);
+  }
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  Money, SplitType, User, Group, Split, Expense, Payment,
+  SplitStrategy, EqualSplitStrategy, ExactSplitStrategy, PercentSplitStrategy,
+  BalanceSheet, PaymentLog, ExpenseService,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Splitwise (Expense Sharing) — full LLD implementation with demo.
+// Single-file TypeScript translation of the Mermaid class diagram in section J.
+
+// ---------- Money (fixed-point cents) ----------
+class Money {
+  private constructor(public readonly cents: number) {}
+  static ofCents(c: number): Money { return new Money(c); }
+  static of(dollars: number): Money { return new Money(Math.round(dollars * 100)); }
+  static zero(): Money { return new Money(0); }
+  plus(o: Money): Money { return new Money(this.cents + o.cents); }
+  minus(o: Money): Money { return new Money(this.cents - o.cents); }
+  negate(): Money { return new Money(-this.cents); }
+  isZero(): boolean { return this.cents === 0; }
+  toString(): string {
+    const neg = this.cents &lt; 0;
+    const c = Math.abs(this.cents);
+    const cents = String(c % 100).padStart(2, &#x27;0&#x27;);
+    return `${neg ? &#x27;-&#x27; : &#x27;&#x27;}$${Math.floor(c / 100)}.${cents}`;
+  }
+}
+
+enum SplitType { EQUAL = &#x27;EQUAL&#x27;, EXACT = &#x27;EXACT&#x27;, PERCENT = &#x27;PERCENT&#x27; }
+
+// ---------- Core entities ----------
+class User {
+  constructor(public readonly id: string, public readonly name: string, public readonly email: string) {}
+  toString(): string { return this.name; }
+}
+
+// Aggregation: Group holds Users but does not own their lifecycle.
+class Group {
+  readonly members: User[] = [];
+  constructor(public readonly id: string) {}
+  addMember(u: User): void { this.members.push(u); }
+}
+
+// Pure data: how much one participant owes for one expense. No computation.
+class Split {
+  constructor(public readonly user: User, public readonly amount: Money) {}
+}
+
+// Immutable record of one shared-cost event. Composes its Splits.
+class Expense {
+  readonly splits: readonly Split[];
+  readonly timestamp: number = Date.now();
+  constructor(
+    public readonly id: string, public readonly amount: Money, public readonly paidBy: User,
+    splits: Split[], public readonly groupId: string | null,
+  ) { this.splits = [...splits]; }
+}
+
+// Records a settle-up action. Sibling of Expense, not a subclass (see section I).
+class Payment {
+  readonly timestamp: number = Date.now();
+  constructor(
+    public readonly id: string, public readonly from: User, public readonly to: User,
+    public readonly amount: Money,
+  ) {}
+}
+
+interface SplitParams {
+  amounts?: Map&lt;string, Money&gt;;       // used by ExactSplitStrategy
+  percentages?: Map&lt;string, number&gt;;  // used by PercentSplitStrategy
+}
+
+// ---------- SplitStrategy hierarchy ----------
+interface SplitStrategy {
+  compute(total: Money, participants: User[], params: SplitParams): Split[];
+}
+
+class EqualSplitStrategy implements SplitStrategy {
+  compute(total: Money, participants: User[]): Split[] {
+    const n = participants.length;
+    const base = Math.trunc(total.cents / n);
+    const remainder = total.cents % n; // distribute leftover cents deterministically
+    return participants.map((u, i) =&gt; new Split(u, Money.ofCents(base + (i &lt; remainder ? 1 : 0))));
+  }
+}
+
+class ExactSplitStrategy implements SplitStrategy {
+  compute(total: Money, participants: User[], params: SplitParams): Split[] {
+    const amounts = params.amounts!;
+    return participants.map((u) =&gt; {
+      const amt = amounts.get(u.id);
+      if (!amt) throw new Error(`Missing exact amount for ${u.id}`);
+      return new Split(u, amt);
+    });
+  }
+}
+
+class PercentSplitStrategy implements SplitStrategy {
+  compute(total: Money, participants: User[], params: SplitParams): Split[] {
+    const pct = params.percentages!;
+    let allocated = 0;
+    return participants.map((u, i) =&gt; {
+      const p = pct.get(u.id);
+      if (p === undefined) throw new Error(`Missing percentage for ${u.id}`);
+      const cents = (i === participants.length - 1)
+        ? total.cents - allocated // last participant absorbs rounding remainder
+        : Math.round(total.cents * (p / 100));
+      allocated += cents;
+      return new Split(u, Money.ofCents(cents));
+    });
+  }
+}
+
+// ---------- BalanceSheet ----------
+// Single source of truth for who-owes-whom: one signed net cents value per unordered pair.
+class BalanceSheet {
+  private readonly pairwise = new Map&lt;string, number&gt;();
+
+  private key(a: User, b: User): string { return a.id &lt; b.id ? `${a.id}|${b.id}` : `${b.id}|${a.id}`; }
+
+  // a owes b `amount` more (amount may be negative to reduce/reverse).
+  adjust(a: User, b: User, amount: Money): void {
+    const k = this.key(a, b);
+    const signed = a.id &lt; b.id ? amount.cents : -amount.cents;
+    this.pairwise.set(k, (this.pairwise.get(k) ?? 0) + signed);
+  }
+
+  // Positive =&gt; a owes b; negative =&gt; b owes a.
+  getBalance(a: User, b: User): Money {
+    const k = this.key(a, b);
+    const stored = this.pairwise.get(k) ?? 0;
+    const fromAPerspective = a.id &lt; b.id ? stored : -stored;
+    return Money.ofCents(fromAPerspective);
+  }
+}
+
+// ---------- Idempotent payment log ----------
+class PaymentLog {
+  private readonly byKey = new Map&lt;string, Payment&gt;();
+  seen(idemKey: string): boolean { return this.byKey.has(idemKey); }
+  get(idemKey: string): Payment | undefined { return this.byKey.get(idemKey); }
+  record(idemKey: string, p: Payment): void { this.byKey.set(idemKey, p); }
+}
+
+// ---------- ExpenseService (facade) ----------
+class ExpenseService {
+  private readonly balanceSheet = new BalanceSheet();
+  private readonly paymentLog = new PaymentLog();
+  private readonly expenses: Expense[] = [];
+  private expenseCounter = 0;
+  private paymentCounter = 0;
+
+  constructor(private readonly strategyFactory: Map&lt;SplitType, SplitStrategy&gt;) {}
+
+  addExpense(
+    total: Money, paidBy: User, participants: User[], type: SplitType,
+    params: SplitParams, group: Group | null,
+  ): Expense {
+    const strategy = this.strategyFactory.get(type)!;
+    const splits = strategy.compute(total, participants, params);
+
+    const sum = splits.reduce((acc, s) =&gt; acc + s.amount.cents, 0);
+    if (sum !== total.cents) throw new Error(&#x27;Split strategy produced mismatched total&#x27;);
+
+    const expense = new Expense(`EXP-${++this.expenseCounter}`, total, paidBy, splits, group ? group.id : null);
+    for (const s of splits) {
+      if (s.user.id !== paidBy.id) {
+        this.balanceSheet.adjust(s.user, paidBy, s.amount); // s.user owes paidBy s.amount
+      }
+    }
+    this.expenses.push(expense);
+    return expense;
+  }
+
+  settleUp(from: User, to: User, amount: Money, idempotencyKey: string): Payment {
+    const existing = this.paymentLog.get(idempotencyKey);
+    if (existing) return existing; // idempotent replay
+    this.balanceSheet.adjust(from, to, amount.negate()); // paying down reduces what `from` owes `to`
+    const payment = new Payment(`PAY-${++this.paymentCounter}`, from, to, amount);
+    this.paymentLog.record(idempotencyKey, payment);
+    return payment;
+  }
+
+  getBalance(a: User, b: User): Money { return this.balanceSheet.getBalance(a, b); }
+
+  // net(u) = sum over others of (-balance(u, other)); positive =&gt; u is owed money overall.
+  getNetBalances(group: Group): Map&lt;User, Money&gt; {
+    const net = new Map&lt;User, Money&gt;();
+    for (const u of group.members) {
+      let total = 0;
+      for (const other of group.members) {
+        if (other === u) continue;
+        total -= this.balanceSheet.getBalance(u, other).cents;
+      }
+      net.set(u, Money.ofCents(total));
+    }
+    return net;
+  }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const alice = new User(&#x27;u1&#x27;, &#x27;Alice&#x27;, &#x27;alice@mail.com&#x27;);
+  const bob = new User(&#x27;u2&#x27;, &#x27;Bob&#x27;, &#x27;bob@mail.com&#x27;);
+  const carol = new User(&#x27;u3&#x27;, &#x27;Carol&#x27;, &#x27;carol@mail.com&#x27;);
+
+  const trip = new Group(&#x27;g1&#x27;);
+  trip.addMember(alice);
+  trip.addMember(bob);
+  trip.addMember(carol);
+
+  const factory = new Map&lt;SplitType, SplitStrategy&gt;([
+    [SplitType.EQUAL, new EqualSplitStrategy()],
+    [SplitType.EXACT, new ExactSplitStrategy()],
+    [SplitType.PERCENT, new PercentSplitStrategy()],
+  ]);
+  const service = new ExpenseService(factory);
+
+  // Alice pays $100 for dinner, split equally among the three.
+  service.addExpense(Money.of(100.0), alice, [alice, bob, carol], SplitType.EQUAL, {}, trip);
+
+  // Bob pays $60 for a cab, split by exact amounts.
+  const exactParams: SplitParams = {
+    amounts: new Map([[&#x27;u1&#x27;, Money.of(20.0)], [&#x27;u2&#x27;, Money.of(20.0)], [&#x27;u3&#x27;, Money.of(20.0)]]),
+  };
+  service.addExpense(Money.of(60.0), bob, [alice, bob, carol], SplitType.EXACT, exactParams, trip);
+
+  console.log(&#x27;Alice owes Bob:&#x27;, service.getBalance(alice, bob).toString());
+  console.log(&#x27;Carol owes Alice:&#x27;, service.getBalance(carol, alice).toString());
+
+  service.settleUp(carol, alice, Money.of(20.0), &#x27;idem-1&#x27;);
+  console.log(&#x27;After settle, Carol owes Alice:&#x27;, service.getBalance(carol, alice).toString());
+
+  console.log(&#x27;Net balances:&#x27;);
+  for (const [u, m] of service.getNetBalances(trip)) {
+    console.log(`  ${u.toString()}: ${m.toString()}`);
+  }
+}
+
+main();
+
+export {
+  Money, SplitType, User, Group, Split, Expense, Payment, SplitParams,
+  SplitStrategy, EqualSplitStrategy, ExactSplitStrategy, PercentSplitStrategy,
+  BalanceSheet, PaymentLog, ExpenseService,
+};
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p3.html">&larr; 3. Rate Limiter</a><a class="prevnext-link next" href="p5.html">5. Ride-Sharing Service (Uber/Lyft) &rarr;</a></div>
 </div>
 </main>
 

@@ -203,6 +203,12 @@
   "type": "section"
  },
  {
+  "title": "AG. Full Implementation",
+  "parent": "1. Parking Lot",
+  "url": "p1.html#p1-ag",
+  "type": "section"
+ },
+ {
   "title": "2. LRU Cache",
   "badge": "Intermediate",
   "url": "p2.html",
@@ -398,6 +404,12 @@
   "title": "AF. Interview Cheat Sheet",
   "parent": "2. LRU Cache",
   "url": "p2.html#p2-af",
+  "type": "section"
+ },
+ {
+  "title": "AG. Full Implementation",
+  "parent": "2. LRU Cache",
+  "url": "p2.html#p2-ag",
   "type": "section"
  },
  {
@@ -599,6 +611,12 @@
   "type": "section"
  },
  {
+  "title": "AG. Full Implementation",
+  "parent": "3. Rate Limiter",
+  "url": "p3.html#p3-ag",
+  "type": "section"
+ },
+ {
   "title": "4. Splitwise (Expense Sharing)",
   "badge": "Intermediate → Advanced",
   "url": "p4.html",
@@ -794,6 +812,12 @@
   "title": "AF. Interview Cheat Sheet",
   "parent": "4. Splitwise (Expense Sharing)",
   "url": "p4.html#p4-af",
+  "type": "section"
+ },
+ {
+  "title": "AG. Full Implementation",
+  "parent": "4. Splitwise (Expense Sharing)",
+  "url": "p4.html#p4-ag",
   "type": "section"
  },
  {
@@ -995,6 +1019,12 @@
   "type": "section"
  },
  {
+  "title": "AG. Full Implementation",
+  "parent": "5. Ride-Sharing Service (Uber/Lyft)",
+  "url": "p5.html#p5-ag",
+  "type": "section"
+ },
+ {
   "title": "6. Logging Framework",
   "badge": "Intermediate (Pattern Showcase)",
   "url": "p6.html",
@@ -1190,6 +1220,12 @@
   "title": "AF. Interview Cheat Sheet",
   "parent": "6. Logging Framework",
   "url": "p6.html#p6-af",
+  "type": "section"
+ },
+ {
+  "title": "AG. Full Implementation",
+  "parent": "6. Logging Framework",
+  "url": "p6.html#p6-ag",
   "type": "section"
  },
  {
@@ -1391,6 +1427,12 @@
   "type": "section"
  },
  {
+  "title": "AG. Full Implementation",
+  "parent": "7. Notification System",
+  "url": "p7.html#p7-ag",
+  "type": "section"
+ },
+ {
   "title": "8. Coffee Vending Machine",
   "badge": "Beginner → Intermediate",
   "url": "p8.html",
@@ -1586,6 +1628,12 @@
   "title": "AF. Interview Cheat Sheet",
   "parent": "8. Coffee Vending Machine",
   "url": "p8.html#p8-af",
+  "type": "section"
+ },
+ {
+  "title": "AG. Full Implementation",
+  "parent": "8. Coffee Vending Machine",
+  "url": "p8.html#p8-ag",
   "type": "section"
  },
  {
@@ -1787,6 +1835,12 @@
   "type": "section"
  },
  {
+  "title": "AG. Full Implementation",
+  "parent": "9. File System",
+  "url": "p9.html#p9-ag",
+  "type": "section"
+ },
+ {
   "title": "10. Pub-Sub / Message Queue",
   "badge": "Advanced + Concurrency",
   "url": "p10.html",
@@ -1982,6 +2036,12 @@
   "title": "AF. Interview Cheat Sheet",
   "parent": "10. Pub-Sub / Message Queue",
   "url": "p10.html#p10-af",
+  "type": "section"
+ },
+ {
+  "title": "AG. Full Implementation",
+  "parent": "10. Pub-Sub / Message Queue",
+  "url": "p10.html#p10-ag",
   "type": "section"
  },
  {
@@ -2183,6 +2243,12 @@
   "type": "section"
  },
  {
+  "title": "AG. Full Implementation",
+  "parent": "11. Elevator System",
+  "url": "p11.html#p11-ag",
+  "type": "section"
+ },
+ {
   "title": "12. Tic-Tac-Toe / Board Game Engine",
   "badge": "Beginner → Intermediate (Pattern Showcase)",
   "url": "p12.html",
@@ -2378,6 +2444,12 @@
   "title": "AF. Interview Cheat Sheet",
   "parent": "12. Tic-Tac-Toe / Board Game Engine",
   "url": "p12.html#p12-af",
+  "type": "section"
+ },
+ {
+  "title": "AG. Full Implementation",
+  "parent": "12. Tic-Tac-Toe / Board Game Engine",
+  "url": "p12.html#p12-ag",
   "type": "section"
  },
  {
@@ -2579,6 +2651,12 @@
   "type": "section"
  },
  {
+  "title": "AG. Full Implementation",
+  "parent": "13. Chess Game",
+  "url": "p13.html#p13-ag",
+  "type": "section"
+ },
+ {
   "title": "14. ATM Machine",
   "badge": "Intermediate",
   "url": "p14.html",
@@ -2774,6 +2852,12 @@
   "title": "AF. Interview Cheat Sheet",
   "parent": "14. ATM Machine",
   "url": "p14.html#p14-af",
+  "type": "section"
+ },
+ {
+  "title": "AG. Full Implementation",
+  "parent": "14. ATM Machine",
+  "url": "p14.html#p14-ag",
   "type": "section"
  },
  {
@@ -2975,6 +3059,12 @@
   "type": "section"
  },
  {
+  "title": "AG. Full Implementation",
+  "parent": "15. Library Management System",
+  "url": "p15.html#p15-ag",
+  "type": "section"
+ },
+ {
   "title": "16. Hotel Reservation System",
   "badge": "Intermediate → Advanced (Concurrency)",
   "url": "p16.html",
@@ -3170,6 +3260,12 @@
   "title": "AF. Interview Cheat Sheet",
   "parent": "16. Hotel Reservation System",
   "url": "p16.html#p16-af",
+  "type": "section"
+ },
+ {
+  "title": "AG. Full Implementation",
+  "parent": "16. Hotel Reservation System",
+  "url": "p16.html#p16-ag",
   "type": "section"
  },
  {
@@ -3371,6 +3467,12 @@
   "type": "section"
  },
  {
+  "title": "AG. Full Implementation",
+  "parent": "17. Movie Ticket Booking System",
+  "url": "p17.html#p17-ag",
+  "type": "section"
+ },
+ {
   "title": "18. Restaurant / Food Delivery System",
   "badge": "Intermediate → Advanced",
   "url": "p18.html",
@@ -3566,6 +3668,12 @@
   "title": "AF. Interview Cheat Sheet",
   "parent": "18. Restaurant / Food Delivery System",
   "url": "p18.html#p18-af",
+  "type": "section"
+ },
+ {
+  "title": "AG. Full Implementation",
+  "parent": "18. Restaurant / Food Delivery System",
+  "url": "p18.html#p18-ag",
   "type": "section"
  },
  {
@@ -3767,6 +3875,12 @@
   "type": "section"
  },
  {
+  "title": "AG. Full Implementation",
+  "parent": "19. E-commerce Shopping Cart &amp; Checkout",
+  "url": "p19.html#p19-ag",
+  "type": "section"
+ },
+ {
   "title": "20. Chat Application (WhatsApp-style)",
   "badge": "Advanced",
   "url": "p20.html",
@@ -3965,6 +4079,12 @@
   "type": "section"
  },
  {
+  "title": "AG. Full Implementation",
+  "parent": "20. Chat Application (WhatsApp-style)",
+  "url": "p20.html#p20-ag",
+  "type": "section"
+ },
+ {
   "title": "21. Stock Brokerage System",
   "badge": "Advanced (Concurrency &amp; Consistency)",
   "url": "p21.html",
@@ -4160,6 +4280,12 @@
   "title": "AF. Interview Cheat Sheet",
   "parent": "21. Stock Brokerage System",
   "url": "p21.html#p21-af",
+  "type": "section"
+ },
+ {
+  "title": "AG. Full Implementation",
+  "parent": "21. Stock Brokerage System",
+  "url": "p21.html#p21-ag",
   "type": "section"
  },
  {

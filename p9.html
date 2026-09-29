@@ -61,7 +61,8 @@
 <a href="#p9-y">Y. Scaling Boundary</a><a href="#p9-z">Z. Failure Scenarios</a><a href="#p9-aa">AA. Bad Designs</a>
 <a href="#p9-ab">AB. Trade-Offs</a><a href="#p9-ac">AC. Interviewer Evaluation</a><a href="#p9-ad">AD. Simulation</a>
 <a href="#p9-ae">AE. Source Comparison</a><a href="#p9-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p9">Jump to section:</label><select id="jump-p9" class="jump-select" data-jump-select><option value="p9-a">A. Realistic Interview Prompt</option><option value="p9-b">B. Difficulty</option><option value="p9-c">C. What This Problem Tests</option><option value="p9-d">D. Requirements</option><option value="p9-e">E. Clarifying Questions</option><option value="p9-f">F. Assumptions</option><option value="p9-g">G. Actors</option><option value="p9-h">H. Core Domain Entities</option><option value="p9-i">I. Class Relationships</option><option value="p9-j">J. Class Diagram</option><option value="p9-k">K. Responsibility Mapping</option><option value="p9-l">L. SOLID Analysis</option><option value="p9-m">M. Design Patterns</option><option value="p9-n">N. What Is Likely to Change?</option><option value="p9-o">O. Design Evolution</option><option value="p9-p">P. API / Interface Design</option><option value="p9-q">Q. Pseudocode — Critical Logic</option><option value="p9-r">R. End-to-End Use Case</option><option value="p9-s">S. Data Structures</option><option value="p9-t">T. Complexity Analysis</option><option value="p9-u">U. Testing Strategy</option><option value="p9-v">V. Interviewer Follow-Ups</option><option value="p9-w">W. Concurrency</option><option value="p9-x">X. Persistence</option><option value="p9-y">Y. Scaling Boundary</option><option value="p9-z">Z. Failure Scenarios</option><option value="p9-aa">AA. Common Bad Designs</option><option value="p9-ab">AB. Design Trade-Offs</option><option value="p9-ac">AC. Interviewer Evaluation</option><option value="p9-ad">AD. Interview Simulation</option><option value="p9-ae">AE. Online Solution Comparison</option><option value="p9-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p9-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p9">Jump to section:</label><select id="jump-p9" class="jump-select" data-jump-select><option value="p9-a">A. Realistic Interview Prompt</option><option value="p9-b">B. Difficulty</option><option value="p9-c">C. What This Problem Tests</option><option value="p9-d">D. Requirements</option><option value="p9-e">E. Clarifying Questions</option><option value="p9-f">F. Assumptions</option><option value="p9-g">G. Actors</option><option value="p9-h">H. Core Domain Entities</option><option value="p9-i">I. Class Relationships</option><option value="p9-j">J. Class Diagram</option><option value="p9-k">K. Responsibility Mapping</option><option value="p9-l">L. SOLID Analysis</option><option value="p9-m">M. Design Patterns</option><option value="p9-n">N. What Is Likely to Change?</option><option value="p9-o">O. Design Evolution</option><option value="p9-p">P. API / Interface Design</option><option value="p9-q">Q. Pseudocode — Critical Logic</option><option value="p9-r">R. End-to-End Use Case</option><option value="p9-s">S. Data Structures</option><option value="p9-t">T. Complexity Analysis</option><option value="p9-u">U. Testing Strategy</option><option value="p9-v">V. Interviewer Follow-Ups</option><option value="p9-w">W. Concurrency</option><option value="p9-x">X. Persistence</option><option value="p9-y">Y. Scaling Boundary</option><option value="p9-z">Z. Failure Scenarios</option><option value="p9-aa">AA. Common Bad Designs</option><option value="p9-ab">AB. Design Trade-Offs</option><option value="p9-ac">AC. Interviewer Evaluation</option><option value="p9-ad">AD. Interview Simulation</option><option value="p9-ae">AE. Online Solution Comparison</option><option value="p9-af">AF. Interview Cheat Sheet</option><option value="p9-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p9-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design an in-memory file system supporting files and directories. Support creating, deleting, moving, reading, and writing files; listing directory contents; searching for files by name or extension; and computing disk usage for any directory."</div>
@@ -635,7 +636,1098 @@ Total returned
 <tr><td><strong>Top follow-ups</strong></td><td>New aggregate query, distributed-FS pivot (LLD/HLD boundary), concurrent-move deadlock trace, symlinks</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>isDirectory boolean instead of Composite; growing the base node interface per query instead of Visitor; call-order (not canonical-order) locking in move()</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't design a distributed metadata/chunk-server system when the prompt says in-memory; don't add symlink/ACL complexity unless asked</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p8.html">&larr; 8. Coffee Vending Machine</a><a class="prevnext-link next" href="p10.html">10. Pub-Sub / Message Queue &rarr;</a></div>
+</table>
+
+<h3 id="p9-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">// File System -- full LLD implementation with demo.
+// Single-file Java translation of the Mermaid class diagram in section J.
+// No concurrency badge on this problem -- kept single-threaded; the lock-ordering idea in the
+// move() pseudocode is preserved only as commentary, not as real mutexes.
+import java.util.*;
+
+public class p9 {
+
+    // ---------- Path (value object) ----------
+    /** Normalized location, independent of the live tree. Says nothing about whether it exists. */
+    static final class Path {
+        final List&lt;String&gt; segments;
+        Path(List&lt;String&gt; segments) { this.segments = List.copyOf(segments); }
+        static Path of(String slashSeparated) {
+            List&lt;String&gt; parts = new ArrayList&lt;&gt;();
+            for (String s : slashSeparated.split(&quot;/&quot;)) if (!s.isEmpty()) parts.add(s);
+            return new Path(parts);
+        }
+        Path parent() { return new Path(segments.subList(0, Math.max(0, segments.size() - 1))); }
+        String lastSegment() { return segments.get(segments.size() - 1); }
+        Path resolve(String childName) {
+            List&lt;String&gt; next = new ArrayList&lt;&gt;(segments);
+            next.add(childName);
+            return new Path(next);
+        }
+        boolean isDescendantOf(Path other) {
+            if (other.segments.size() &gt;= segments.size()) return false;
+            for (int i = 0; i &lt; other.segments.size(); i++) {
+                if (!other.segments.get(i).equals(segments.get(i))) return false;
+            }
+            return true;
+        }
+        public String toString() { return &quot;/&quot; + String.join(&quot;/&quot;, segments); }
+    }
+
+    // ---------- NodeVisitor (interface) ----------
+    interface NodeVisitor {
+        void visitFile(File f);
+        void visitDirectory(Directory d);
+    }
+
+    // ---------- FileSystemNode (abstract) ----------
+    /** Common identity for anything in the tree. Aggregate ops are delegated to a NodeVisitor. */
+    static abstract class FileSystemNode {
+        String name;
+        Directory parent;
+        FileSystemNode(String name, Directory parent) { this.name = name; this.parent = parent; }
+        abstract void accept(NodeVisitor visitor);
+    }
+
+    // ---------- File (leaf) ----------
+    static final class File extends FileSystemNode {
+        byte[] content = new byte[0];
+        File(String name, Directory parent) { super(name, parent); }
+        int size() { return content.length; }
+        byte[] read() { return content; }
+        void write(byte[] data) { content = data; }
+        void accept(NodeVisitor visitor) { visitor.visitFile(this); }
+    }
+
+    // ---------- Directory (composite) ----------
+    static final class Directory extends FileSystemNode {
+        final Map&lt;String, FileSystemNode&gt; children = new LinkedHashMap&lt;&gt;();
+        Directory(String name, Directory parent) { super(name, parent); }
+        void addChild(FileSystemNode node) { children.put(node.name, node); }
+        void removeChild(String name) { children.remove(name); }
+        FileSystemNode getChild(String name) { return children.get(name); }
+        void accept(NodeVisitor visitor) { visitor.visitDirectory(this); }
+    }
+
+    // ---------- DirectoryIterator ----------
+    /**
+     * Snapshot iterator: copies the child list at creation time, so a concurrent addChild/removeChild
+     * on the underlying Directory during iteration cannot throw ConcurrentModificationException. This
+     * is a deliberate policy choice (snapshot over fail-fast) since the directory is a live, mutable map.
+     */
+    static final class DirectoryIterator implements Iterator&lt;FileSystemNode&gt; {
+        private final List&lt;FileSystemNode&gt; snapshot;
+        private int index = 0;
+        DirectoryIterator(Directory directory) { this.snapshot = new ArrayList&lt;&gt;(directory.children.values()); }
+        public boolean hasNext() { return index &lt; snapshot.size(); }
+        public FileSystemNode next() {
+            if (!hasNext()) throw new NoSuchElementException();
+            return snapshot.get(index++);
+        }
+    }
+
+    // ---------- NodeVisitor implementations ----------
+    static final class DiskUsageVisitor implements NodeVisitor {
+        private long lastSize;
+        long compute(FileSystemNode node) { node.accept(this); return lastSize; }
+        public void visitFile(File f) { lastSize = f.size(); }
+        public void visitDirectory(Directory d) {
+            long total = 0;
+            DirectoryIterator it = new DirectoryIterator(d);
+            while (it.hasNext()) {
+                FileSystemNode child = it.next();
+                child.accept(this); // recurses; visitFile sets lastSize directly for leaves
+                total += lastSize;
+            }
+            lastSize = total;
+        }
+    }
+
+    interface SearchCriteria { boolean matches(FileSystemNode node); }
+
+    static final class SearchVisitor implements NodeVisitor {
+        private final SearchCriteria criteria;
+        private final Path currentBase;
+        private final List&lt;Path&gt; matches = new ArrayList&lt;&gt;();
+        SearchVisitor(SearchCriteria criteria, Path base) { this.criteria = criteria; this.currentBase = base; }
+
+        List&lt;Path&gt; search(FileSystemNode node) { walk(node, currentBase); return matches; }
+
+        private void walk(FileSystemNode node, Path path) {
+            if (criteria.matches(node)) matches.add(path);
+            if (node instanceof Directory) {
+                Directory d = (Directory) node;
+                DirectoryIterator it = new DirectoryIterator(d);
+                while (it.hasNext()) {
+                    FileSystemNode child = it.next();
+                    walk(child, path.resolve(child.name));
+                }
+            }
+        }
+        public void visitFile(File f) { /* traversal handled by walk(); visitor methods unused here */ }
+        public void visitDirectory(Directory d) { /* see walk() */ }
+    }
+
+    // ---------- FileSystem (facade) ----------
+    static final class FileSystem {
+        final Directory root = new Directory(&quot;&quot;, null);
+
+        private Directory resolveParent(Path path) {
+            Directory current = root;
+            for (int i = 0; i &lt; path.segments.size() - 1; i++) {
+                FileSystemNode next = current.getChild(path.segments.get(i));
+                if (!(next instanceof Directory)) throw new IllegalArgumentException(&quot;No such directory: &quot; + path);
+                current = (Directory) next;
+            }
+            return current;
+        }
+
+        private FileSystemNode resolve(Path path) {
+            if (path.segments.isEmpty()) return root;
+            Directory parentDir = resolveParent(path);
+            FileSystemNode node = parentDir.getChild(path.lastSegment());
+            if (node == null) throw new IllegalArgumentException(&quot;No such path: &quot; + path);
+            return node;
+        }
+
+        void createFile(Path path) {
+            Directory parentDir = resolveParent(path);
+            parentDir.addChild(new File(path.lastSegment(), parentDir));
+        }
+
+        void createDirectory(Path path) {
+            Directory parentDir = resolveParent(path);
+            parentDir.addChild(new Directory(path.lastSegment(), parentDir));
+        }
+
+        void delete(Path path, boolean recursive) {
+            Directory parentDir = resolveParent(path);
+            FileSystemNode node = parentDir.getChild(path.lastSegment());
+            if (node instanceof Directory &amp;&amp; !((Directory) node).children.isEmpty() &amp;&amp; !recursive) {
+                throw new IllegalStateException(&quot;Directory not empty; pass recursive=true to delete: &quot; + path);
+            }
+            parentDir.removeChild(path.lastSegment());
+        }
+
+        byte[] read(Path path) {
+            FileSystemNode node = resolve(path);
+            if (!(node instanceof File)) throw new IllegalArgumentException(&quot;Not a file: &quot; + path);
+            return ((File) node).read();
+        }
+
+        void write(Path path, byte[] data) {
+            FileSystemNode node = resolve(path);
+            if (!(node instanceof File)) throw new IllegalArgumentException(&quot;Not a file: &quot; + path);
+            ((File) node).write(data);
+        }
+
+        List&lt;String&gt; list(Path directoryPath) {
+            FileSystemNode node = resolve(directoryPath);
+            if (!(node instanceof Directory)) throw new IllegalArgumentException(&quot;Not a directory: &quot; + directoryPath);
+            List&lt;String&gt; names = new ArrayList&lt;&gt;();
+            DirectoryIterator it = new DirectoryIterator((Directory) node);
+            while (it.hasNext()) names.add(it.next().name);
+            return names;
+        }
+
+        /**
+         * Move source under destination&#x27;s parent. Guards against moving a directory into its own
+         * subtree (would create a cycle). No real threads exist in this single-threaded translation,
+         * so the &quot;lock in canonical-path order&quot; step from the pseudocode is left as a comment only --
+         * this is where a two-mutex ABBA-safe acquisition would go under a concurrent implementation.
+         */
+        void move(Path source, Path destination) {
+            Directory srcParent = resolveParent(source);
+            Directory destParent = resolveParent(destination);
+            FileSystemNode node = srcParent.getChild(source.lastSegment());
+            if (node == null) throw new IllegalArgumentException(&quot;No such path: &quot; + source);
+
+            if (node instanceof Directory &amp;&amp; destination.isDescendantOf(source)) {
+                throw new IllegalArgumentException(&quot;cannot move a directory into its own subtree&quot;);
+            }
+
+            // lock ordering would be established here by canonical path in a concurrent version
+            srcParent.removeChild(node.name);
+            node.name = destination.lastSegment();
+            node.parent = destParent;
+            destParent.addChild(node);
+        }
+
+        List&lt;Path&gt; search(Path root, SearchCriteria criteria) {
+            FileSystemNode startNode = resolve(root);
+            return new SearchVisitor(criteria, root).search(startNode);
+        }
+
+        long diskUsage(Path root) {
+            FileSystemNode startNode = resolve(root);
+            return new DiskUsageVisitor().compute(startNode);
+        }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) {
+        FileSystem fs = new FileSystem();
+        fs.createDirectory(Path.of(&quot;/docs&quot;));
+        fs.createDirectory(Path.of(&quot;/docs/reports&quot;));
+        fs.createFile(Path.of(&quot;/docs/readme.txt&quot;));
+        fs.createFile(Path.of(&quot;/docs/reports/q1.csv&quot;));
+        fs.createFile(Path.of(&quot;/docs/reports/q2.csv&quot;));
+        fs.createDirectory(Path.of(&quot;/media&quot;));
+
+        fs.write(Path.of(&quot;/docs/readme.txt&quot;), &quot;hello world&quot;.getBytes());
+        fs.write(Path.of(&quot;/docs/reports/q1.csv&quot;), &quot;a,b,c\n1,2,3&quot;.getBytes());
+        fs.write(Path.of(&quot;/docs/reports/q2.csv&quot;), &quot;x,y,z\n4,5,6\n7,8,9&quot;.getBytes());
+
+        System.out.println(&quot;Listing /docs: &quot; + fs.list(Path.of(&quot;/docs&quot;)));
+        System.out.println(&quot;Listing /docs/reports: &quot; + fs.list(Path.of(&quot;/docs/reports&quot;)));
+
+        System.out.println(&quot;Read /docs/readme.txt: &quot; + new String(fs.read(Path.of(&quot;/docs/readme.txt&quot;))));
+
+        System.out.println(&quot;Disk usage of /docs: &quot; + fs.diskUsage(Path.of(&quot;/docs&quot;)) + &quot; bytes&quot;);
+
+        List&lt;Path&gt; csvFiles = fs.search(Path.of(&quot;/docs&quot;), node -&gt; node instanceof File &amp;&amp; node.name.endsWith(&quot;.csv&quot;));
+        System.out.println(&quot;Search *.csv under /docs: &quot; + csvFiles);
+
+        System.out.println(&quot;\nMoving /docs/reports -&gt; /media/reports&quot;);
+        fs.move(Path.of(&quot;/docs/reports&quot;), Path.of(&quot;/media/reports&quot;));
+        System.out.println(&quot;Listing /media: &quot; + fs.list(Path.of(&quot;/media&quot;)));
+        System.out.println(&quot;Listing /docs after move: &quot; + fs.list(Path.of(&quot;/docs&quot;)));
+
+        try {
+            fs.move(Path.of(&quot;/media&quot;), Path.of(&quot;/media/reports/media&quot;));
+        } catch (IllegalArgumentException e) {
+            System.out.println(&quot;\nExpected rejection moving a directory into its own subtree: &quot; + e.getMessage());
+        }
+
+        try {
+            fs.delete(Path.of(&quot;/media&quot;), false);
+        } catch (IllegalStateException e) {
+            System.out.println(&quot;Expected rejection deleting non-empty dir without recursive: &quot; + e.getMessage());
+        }
+        fs.delete(Path.of(&quot;/media&quot;), true);
+        System.out.println(&quot;Root listing after recursive delete of /media: &quot; + fs.list(Path.of(&quot;&quot;)));
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// File System -- full class-diagram implementation, single-threaded.
+// No concurrency badge on this problem -- kept single-threaded; the lock-ordering idea in the
+// move() pseudocode is preserved only as commentary, not as real mutexes.
+#include &lt;iostream&gt;
+#include &lt;string&gt;
+#include &lt;vector&gt;
+#include &lt;map&gt;
+#include &lt;memory&gt;
+#include &lt;sstream&gt;
+#include &lt;stdexcept&gt;
+#include &lt;functional&gt;
+
+// ---------- Path (value object) ----------
+class Path {
+public:
+    std::vector&lt;std::string&gt; segments;
+    explicit Path(std::vector&lt;std::string&gt; segs = {}) : segments(std::move(segs)) {}
+
+    static Path of(const std::string&amp; slashSeparated) {
+        std::vector&lt;std::string&gt; parts;
+        std::stringstream ss(slashSeparated);
+        std::string part;
+        while (std::getline(ss, part, &#x27;/&#x27;)) if (!part.empty()) parts.push_back(part);
+        return Path(parts);
+    }
+    Path parentPath() const {
+        if (segments.empty()) return Path();
+        return Path(std::vector&lt;std::string&gt;(segments.begin(), segments.end() - 1));
+    }
+    std::string lastSegment() const { return segments.back(); }
+    Path resolveChild(const std::string&amp; childName) const {
+        std::vector&lt;std::string&gt; next = segments;
+        next.push_back(childName);
+        return Path(next);
+    }
+    bool isDescendantOf(const Path&amp; other) const {
+        if (other.segments.size() &gt;= segments.size()) return false;
+        for (size_t i = 0; i &lt; other.segments.size(); i++) {
+            if (other.segments[i] != segments[i]) return false;
+        }
+        return true;
+    }
+    std::string toString() const {
+        std::string out = &quot;/&quot;;
+        for (size_t i = 0; i &lt; segments.size(); i++) { out += segments[i]; if (i + 1 &lt; segments.size()) out += &quot;/&quot;; }
+        return out;
+    }
+};
+
+class File;
+class Directory;
+
+// ---------- NodeVisitor (interface) ----------
+struct NodeVisitor {
+    virtual ~NodeVisitor() = default;
+    virtual void visitFile(File&amp; f) = 0;
+    virtual void visitDirectory(Directory&amp; d) = 0;
+};
+
+// ---------- FileSystemNode (abstract) ----------
+// Common identity for anything in the tree. Aggregate ops are delegated to a NodeVisitor.
+class FileSystemNode {
+public:
+    std::string name;
+    Directory* parent;
+    FileSystemNode(std::string name_, Directory* parent_) : name(std::move(name_)), parent(parent_) {}
+    virtual ~FileSystemNode() = default;
+    virtual void accept(NodeVisitor&amp; visitor) = 0;
+};
+
+// ---------- File (leaf) ----------
+class File : public FileSystemNode {
+public:
+    std::string content;
+    File(std::string name_, Directory* parent_) : FileSystemNode(std::move(name_), parent_) {}
+    size_t size() const { return content.size(); }
+    std::string read() const { return content; }
+    void write(const std::string&amp; data) { content = data; }
+    void accept(NodeVisitor&amp; visitor) override;
+};
+
+// ---------- Directory (composite) ----------
+class Directory : public FileSystemNode {
+public:
+    std::map&lt;std::string, std::shared_ptr&lt;FileSystemNode&gt;&gt; children; // ordered by name
+    Directory(std::string name_, Directory* parent_) : FileSystemNode(std::move(name_), parent_) {}
+    void addChild(std::shared_ptr&lt;FileSystemNode&gt; node) { children[node-&gt;name] = node; }
+    void removeChild(const std::string&amp; name) { children.erase(name); }
+    std::shared_ptr&lt;FileSystemNode&gt; getChild(const std::string&amp; name) const {
+        auto it = children.find(name);
+        return it == children.end() ? nullptr : it-&gt;second;
+    }
+    void accept(NodeVisitor&amp; visitor) override;
+};
+
+void File::accept(NodeVisitor&amp; visitor) { visitor.visitFile(*this); }
+void Directory::accept(NodeVisitor&amp; visitor) { visitor.visitDirectory(*this); }
+
+// ---------- DirectoryIterator ----------
+// Snapshot iterator: copies the child list at creation time so a concurrent mutation of the
+// underlying Directory during iteration can&#x27;t invalidate iterators mid-walk (policy choice: snapshot).
+class DirectoryIterator {
+public:
+    explicit DirectoryIterator(const Directory&amp; dir) {
+        for (auto&amp; kv : dir.children) snapshot_.push_back(kv.second);
+    }
+    bool hasNext() const { return index_ &lt; snapshot_.size(); }
+    std::shared_ptr&lt;FileSystemNode&gt; next() { return snapshot_[index_++]; }
+private:
+    std::vector&lt;std::shared_ptr&lt;FileSystemNode&gt;&gt; snapshot_;
+    size_t index_ = 0;
+};
+
+// ---------- NodeVisitor implementations ----------
+class DiskUsageVisitor : public NodeVisitor {
+public:
+    long long compute(std::shared_ptr&lt;FileSystemNode&gt; node) { node-&gt;accept(*this); return lastSize_; }
+    void visitFile(File&amp; f) override { lastSize_ = (long long)f.size(); }
+    void visitDirectory(Directory&amp; d) override {
+        long long total = 0;
+        DirectoryIterator it(d);
+        while (it.hasNext()) {
+            auto child = it.next();
+            child-&gt;accept(*this); // recurses; visitFile sets lastSize_ directly for leaves
+            total += lastSize_;
+        }
+        lastSize_ = total;
+    }
+private:
+    long long lastSize_ = 0;
+};
+
+using SearchCriteria = std::function&lt;bool(const FileSystemNode&amp;)&gt;;
+
+class SearchVisitor : public NodeVisitor {
+public:
+    SearchVisitor(SearchCriteria criteria, Path base) : criteria_(std::move(criteria)), base_(std::move(base)) {}
+
+    std::vector&lt;Path&gt; search(std::shared_ptr&lt;FileSystemNode&gt; node) {
+        walk(node, base_);
+        return matches_;
+    }
+    void visitFile(File&amp;) override {}      // traversal is driven by walk(), not the visitor dispatch
+    void visitDirectory(Directory&amp;) override {}
+private:
+    SearchCriteria criteria_;
+    Path base_;
+    std::vector&lt;Path&gt; matches_;
+
+    void walk(std::shared_ptr&lt;FileSystemNode&gt; node, const Path&amp; path) {
+        if (criteria_(*node)) matches_.push_back(path);
+        auto dir = std::dynamic_pointer_cast&lt;Directory&gt;(node);
+        if (dir) {
+            DirectoryIterator it(*dir);
+            while (it.hasNext()) {
+                auto child = it.next();
+                walk(child, path.resolveChild(child-&gt;name));
+            }
+        }
+    }
+};
+
+// ---------- FileSystem (facade) ----------
+class FileSystem {
+public:
+    std::shared_ptr&lt;Directory&gt; root = std::make_shared&lt;Directory&gt;(&quot;&quot;, nullptr);
+
+    void createFile(const Path&amp; path) {
+        auto parentDir = resolveParent(path);
+        parentDir-&gt;addChild(std::make_shared&lt;File&gt;(path.lastSegment(), parentDir.get()));
+    }
+
+    void createDirectory(const Path&amp; path) {
+        auto parentDir = resolveParent(path);
+        parentDir-&gt;addChild(std::make_shared&lt;Directory&gt;(path.lastSegment(), parentDir.get()));
+    }
+
+    void deleteNode(const Path&amp; path, bool recursive) {
+        auto parentDir = resolveParent(path);
+        auto node = parentDir-&gt;getChild(path.lastSegment());
+        auto dir = std::dynamic_pointer_cast&lt;Directory&gt;(node);
+        if (dir &amp;&amp; !dir-&gt;children.empty() &amp;&amp; !recursive) {
+            throw std::runtime_error(&quot;Directory not empty; pass recursive=true to delete: &quot; + path.toString());
+        }
+        parentDir-&gt;removeChild(path.lastSegment());
+    }
+
+    std::string read(const Path&amp; path) {
+        auto node = resolve(path);
+        auto file = std::dynamic_pointer_cast&lt;File&gt;(node);
+        if (!file) throw std::runtime_error(&quot;Not a file: &quot; + path.toString());
+        return file-&gt;read();
+    }
+
+    void write(const Path&amp; path, const std::string&amp; data) {
+        auto node = resolve(path);
+        auto file = std::dynamic_pointer_cast&lt;File&gt;(node);
+        if (!file) throw std::runtime_error(&quot;Not a file: &quot; + path.toString());
+        file-&gt;write(data);
+    }
+
+    std::vector&lt;std::string&gt; list(const Path&amp; directoryPath) {
+        auto node = resolve(directoryPath);
+        auto dir = std::dynamic_pointer_cast&lt;Directory&gt;(node);
+        if (!dir) throw std::runtime_error(&quot;Not a directory: &quot; + directoryPath.toString());
+        std::vector&lt;std::string&gt; names;
+        DirectoryIterator it(*dir);
+        while (it.hasNext()) names.push_back(it.next()-&gt;name);
+        return names;
+    }
+
+    // Move source under destination&#x27;s parent (destination&#x27;s last segment becomes the new name).
+    // Guards against moving a directory into its own subtree. No real threads exist in this
+    // single-threaded translation, so canonical-path lock ordering is left as commentary only --
+    // this is where a two-mutex ABBA-safe acquisition would go under a concurrent implementation.
+    void move(const Path&amp; source, const Path&amp; destination) {
+        auto srcParent = resolveParent(source);
+        auto destParent = resolveParent(destination);
+        auto node = srcParent-&gt;getChild(source.lastSegment());
+        if (!node) throw std::runtime_error(&quot;No such path: &quot; + source.toString());
+
+        auto asDir = std::dynamic_pointer_cast&lt;Directory&gt;(node);
+        if (asDir &amp;&amp; destination.isDescendantOf(source)) {
+            throw std::runtime_error(&quot;cannot move a directory into its own subtree&quot;);
+        }
+
+        // lock ordering would be established here by canonical path in a concurrent version
+        srcParent-&gt;removeChild(node-&gt;name);
+        node-&gt;name = destination.lastSegment();
+        node-&gt;parent = destParent.get();
+        destParent-&gt;addChild(node);
+    }
+
+    std::vector&lt;Path&gt; search(const Path&amp; startPath, const SearchCriteria&amp; criteria) {
+        auto startNode = resolve(startPath);
+        return SearchVisitor(criteria, startPath).search(startNode);
+    }
+
+    long long diskUsage(const Path&amp; startPath) {
+        auto startNode = resolve(startPath);
+        return DiskUsageVisitor().compute(startNode);
+    }
+
+private:
+    std::shared_ptr&lt;Directory&gt; resolveParent(const Path&amp; path) {
+        std::shared_ptr&lt;Directory&gt; current = root;
+        for (size_t i = 0; i + 1 &lt; path.segments.size(); i++) {
+            auto next = std::dynamic_pointer_cast&lt;Directory&gt;(current-&gt;getChild(path.segments[i]));
+            if (!next) throw std::runtime_error(&quot;No such directory in path: &quot; + path.toString());
+            current = next;
+        }
+        return current;
+    }
+
+    std::shared_ptr&lt;FileSystemNode&gt; resolve(const Path&amp; path) {
+        if (path.segments.empty()) return root;
+        auto parentDir = resolveParent(path);
+        auto node = parentDir-&gt;getChild(path.lastSegment());
+        if (!node) throw std::runtime_error(&quot;No such path: &quot; + path.toString());
+        return node;
+    }
+};
+
+static void printVec(const std::string&amp; label, const std::vector&lt;std::string&gt;&amp; v) {
+    std::cout &lt;&lt; label &lt;&lt; &quot;: [&quot;;
+    for (size_t i = 0; i &lt; v.size(); i++) { std::cout &lt;&lt; v[i]; if (i + 1 &lt; v.size()) std::cout &lt;&lt; &quot;, &quot;; }
+    std::cout &lt;&lt; &quot;]\n&quot;;
+}
+
+int main() {
+    FileSystem fs;
+    fs.createDirectory(Path::of(&quot;/docs&quot;));
+    fs.createDirectory(Path::of(&quot;/docs/reports&quot;));
+    fs.createFile(Path::of(&quot;/docs/readme.txt&quot;));
+    fs.createFile(Path::of(&quot;/docs/reports/q1.csv&quot;));
+    fs.createFile(Path::of(&quot;/docs/reports/q2.csv&quot;));
+    fs.createDirectory(Path::of(&quot;/media&quot;));
+
+    fs.write(Path::of(&quot;/docs/readme.txt&quot;), &quot;hello world&quot;);
+    fs.write(Path::of(&quot;/docs/reports/q1.csv&quot;), &quot;a,b,c\n1,2,3&quot;);
+    fs.write(Path::of(&quot;/docs/reports/q2.csv&quot;), &quot;x,y,z\n4,5,6\n7,8,9&quot;);
+
+    printVec(&quot;Listing /docs&quot;, fs.list(Path::of(&quot;/docs&quot;)));
+    printVec(&quot;Listing /docs/reports&quot;, fs.list(Path::of(&quot;/docs/reports&quot;)));
+
+    std::cout &lt;&lt; &quot;Read /docs/readme.txt: &quot; &lt;&lt; fs.read(Path::of(&quot;/docs/readme.txt&quot;)) &lt;&lt; &quot;\n&quot;;
+    std::cout &lt;&lt; &quot;Disk usage of /docs: &quot; &lt;&lt; fs.diskUsage(Path::of(&quot;/docs&quot;)) &lt;&lt; &quot; bytes\n&quot;;
+
+    auto csvFiles = fs.search(Path::of(&quot;/docs&quot;), [](const FileSystemNode&amp; n) {
+        return dynamic_cast&lt;const File*&gt;(&amp;n) != nullptr &amp;&amp; n.name.size() &gt; 4 &amp;&amp; n.name.substr(n.name.size() - 4) == &quot;.csv&quot;;
+    });
+    std::cout &lt;&lt; &quot;Search *.csv under /docs: [&quot;;
+    for (size_t i = 0; i &lt; csvFiles.size(); i++) { std::cout &lt;&lt; csvFiles[i].toString(); if (i + 1 &lt; csvFiles.size()) std::cout &lt;&lt; &quot;, &quot;; }
+    std::cout &lt;&lt; &quot;]\n&quot;;
+
+    std::cout &lt;&lt; &quot;\nMoving /docs/reports -&gt; /media/reports\n&quot;;
+    fs.move(Path::of(&quot;/docs/reports&quot;), Path::of(&quot;/media/reports&quot;));
+    printVec(&quot;Listing /media&quot;, fs.list(Path::of(&quot;/media&quot;)));
+    printVec(&quot;Listing /docs after move&quot;, fs.list(Path::of(&quot;/docs&quot;)));
+
+    try {
+        fs.move(Path::of(&quot;/media&quot;), Path::of(&quot;/media/reports/media&quot;));
+    } catch (const std::exception&amp; e) {
+        std::cout &lt;&lt; &quot;\nExpected rejection moving a directory into its own subtree: &quot; &lt;&lt; e.what() &lt;&lt; &quot;\n&quot;;
+    }
+
+    try {
+        fs.deleteNode(Path::of(&quot;/media&quot;), false);
+    } catch (const std::exception&amp; e) {
+        std::cout &lt;&lt; &quot;Expected rejection deleting non-empty dir without recursive: &quot; &lt;&lt; e.what() &lt;&lt; &quot;\n&quot;;
+    }
+    fs.deleteNode(Path::of(&quot;/media&quot;), true);
+    printVec(&quot;Root listing after recursive delete of /media&quot;, fs.list(Path::of(&quot;&quot;)));
+
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">// File System -- full class-diagram implementation, single-threaded.
+// No concurrency badge on this problem -- kept single-threaded; the lock-ordering idea in the
+// move() pseudocode is preserved only as commentary, not as real mutexes.
+// Node-style, plain classes, CommonJS.
+
+// ---------- Path (value object) ----------
+class Path {
+  constructor(segments = []) { this.segments = [...segments]; }
+  static of(slashSeparated) {
+    return new Path(slashSeparated.split(&#x27;/&#x27;).filter((s) =&gt; s.length &gt; 0));
+  }
+  parentPath() { return new Path(this.segments.slice(0, -1)); }
+  lastSegment() { return this.segments[this.segments.length - 1]; }
+  resolveChild(childName) { return new Path([...this.segments, childName]); }
+  isDescendantOf(other) {
+    if (other.segments.length &gt;= this.segments.length) return false;
+    return other.segments.every((seg, i) =&gt; seg === this.segments[i]);
+  }
+  toString() { return &#x27;/&#x27; + this.segments.join(&#x27;/&#x27;); }
+}
+
+// ---------- NodeVisitor (interface) ----------
+class NodeVisitor {
+  visitFile(_f) { throw new Error(&#x27;not implemented&#x27;); }
+  visitDirectory(_d) { throw new Error(&#x27;not implemented&#x27;); }
+}
+
+// ---------- FileSystemNode (abstract) ----------
+// Common identity for anything in the tree. Aggregate ops are delegated to a NodeVisitor.
+class FileSystemNode {
+  constructor(name, parent) {
+    if (new.target === FileSystemNode) throw new Error(&#x27;FileSystemNode is abstract&#x27;);
+    this.name = name;
+    this.parent = parent;
+  }
+  accept(_visitor) { throw new Error(&#x27;accept() not implemented&#x27;); }
+}
+
+// ---------- File (leaf) ----------
+class File extends FileSystemNode {
+  constructor(name, parent) { super(name, parent); this.content = Buffer.alloc(0); }
+  size() { return this.content.length; }
+  read() { return this.content; }
+  write(data) { this.content = Buffer.isBuffer(data) ? data : Buffer.from(data); }
+  accept(visitor) { visitor.visitFile(this); }
+}
+
+// ---------- Directory (composite) ----------
+class Directory extends FileSystemNode {
+  constructor(name, parent) { super(name, parent); this.children = new Map(); }
+  addChild(node) { this.children.set(node.name, node); }
+  removeChild(name) { this.children.delete(name); }
+  getChild(name) { return this.children.get(name); }
+  accept(visitor) { visitor.visitDirectory(this); }
+}
+
+// ---------- DirectoryIterator ----------
+// Snapshot iterator: copies the child list at creation time so a concurrent mutation of the
+// underlying Directory during iteration can&#x27;t invalidate iteration mid-walk (policy: snapshot).
+class DirectoryIterator {
+  constructor(directory) {
+    this.snapshot = Array.from(directory.children.values());
+    this.index = 0;
+  }
+  hasNext() { return this.index &lt; this.snapshot.length; }
+  next() {
+    if (!this.hasNext()) throw new Error(&#x27;No more elements&#x27;);
+    return this.snapshot[this.index++];
+  }
+}
+
+// ---------- NodeVisitor implementations ----------
+class DiskUsageVisitor extends NodeVisitor {
+  compute(node) { node.accept(this); return this.lastSize; }
+  visitFile(f) { this.lastSize = f.size(); }
+  visitDirectory(d) {
+    let total = 0;
+    const it = new DirectoryIterator(d);
+    while (it.hasNext()) {
+      const child = it.next();
+      child.accept(this); // recurses; visitFile sets lastSize directly for leaves
+      total += this.lastSize;
+    }
+    this.lastSize = total;
+  }
+}
+
+class SearchVisitor extends NodeVisitor {
+  constructor(criteria, base) { super(); this.criteria = criteria; this.base = base; this.matches = []; }
+  search(node) { this._walk(node, this.base); return this.matches; }
+  visitFile(_f) {}      // traversal is driven by _walk(), not the visitor dispatch
+  visitDirectory(_d) {}
+  _walk(node, path) {
+    if (this.criteria(node)) this.matches.push(path);
+    if (node instanceof Directory) {
+      const it = new DirectoryIterator(node);
+      while (it.hasNext()) {
+        const child = it.next();
+        this._walk(child, path.resolveChild(child.name));
+      }
+    }
+  }
+}
+
+// ---------- FileSystem (facade) ----------
+class FileSystem {
+  constructor() { this.root = new Directory(&#x27;&#x27;, null); }
+
+  _resolveParent(path) {
+    let current = this.root;
+    for (let i = 0; i &lt; path.segments.length - 1; i++) {
+      const next = current.getChild(path.segments[i]);
+      if (!(next instanceof Directory)) throw new Error(`No such directory: ${path}`);
+      current = next;
+    }
+    return current;
+  }
+
+  _resolve(path) {
+    if (path.segments.length === 0) return this.root;
+    const parentDir = this._resolveParent(path);
+    const node = parentDir.getChild(path.lastSegment());
+    if (!node) throw new Error(`No such path: ${path}`);
+    return node;
+  }
+
+  createFile(path) {
+    const parentDir = this._resolveParent(path);
+    parentDir.addChild(new File(path.lastSegment(), parentDir));
+  }
+
+  createDirectory(path) {
+    const parentDir = this._resolveParent(path);
+    parentDir.addChild(new Directory(path.lastSegment(), parentDir));
+  }
+
+  delete(path, recursive) {
+    const parentDir = this._resolveParent(path);
+    const node = parentDir.getChild(path.lastSegment());
+    if (node instanceof Directory &amp;&amp; node.children.size &gt; 0 &amp;&amp; !recursive) {
+      throw new Error(`Directory not empty; pass recursive=true to delete: ${path}`);
+    }
+    parentDir.removeChild(path.lastSegment());
+  }
+
+  read(path) {
+    const node = this._resolve(path);
+    if (!(node instanceof File)) throw new Error(`Not a file: ${path}`);
+    return node.read();
+  }
+
+  write(path, data) {
+    const node = this._resolve(path);
+    if (!(node instanceof File)) throw new Error(`Not a file: ${path}`);
+    node.write(data);
+  }
+
+  list(directoryPath) {
+    const node = this._resolve(directoryPath);
+    if (!(node instanceof Directory)) throw new Error(`Not a directory: ${directoryPath}`);
+    const names = [];
+    const it = new DirectoryIterator(node);
+    while (it.hasNext()) names.push(it.next().name);
+    return names;
+  }
+
+  // Move source under destination&#x27;s parent (destination&#x27;s last segment becomes the new name).
+  // Guards against moving a directory into its own subtree. No real threads exist in this
+  // single-threaded translation, so canonical-path lock ordering is left as commentary only --
+  // this is where a two-mutex ABBA-safe acquisition would go under a concurrent implementation.
+  move(source, destination) {
+    const srcParent = this._resolveParent(source);
+    const destParent = this._resolveParent(destination);
+    const node = srcParent.getChild(source.lastSegment());
+    if (!node) throw new Error(`No such path: ${source}`);
+
+    if (node instanceof Directory &amp;&amp; destination.isDescendantOf(source)) {
+      throw new Error(&#x27;cannot move a directory into its own subtree&#x27;);
+    }
+
+    // lock ordering would be established here by canonical path in a concurrent version
+    srcParent.removeChild(node.name);
+    node.name = destination.lastSegment();
+    node.parent = destParent;
+    destParent.addChild(node);
+  }
+
+  search(startPath, criteria) {
+    const startNode = this._resolve(startPath);
+    return new SearchVisitor(criteria, startPath).search(startNode);
+  }
+
+  diskUsage(startPath) {
+    const startNode = this._resolve(startPath);
+    return new DiskUsageVisitor().compute(startNode);
+  }
+}
+
+// ---------- Demo ----------
+function main() {
+  const fs = new FileSystem();
+  fs.createDirectory(Path.of(&#x27;/docs&#x27;));
+  fs.createDirectory(Path.of(&#x27;/docs/reports&#x27;));
+  fs.createFile(Path.of(&#x27;/docs/readme.txt&#x27;));
+  fs.createFile(Path.of(&#x27;/docs/reports/q1.csv&#x27;));
+  fs.createFile(Path.of(&#x27;/docs/reports/q2.csv&#x27;));
+  fs.createDirectory(Path.of(&#x27;/media&#x27;));
+
+  fs.write(Path.of(&#x27;/docs/readme.txt&#x27;), &#x27;hello world&#x27;);
+  fs.write(Path.of(&#x27;/docs/reports/q1.csv&#x27;), &#x27;a,b,c\n1,2,3&#x27;);
+  fs.write(Path.of(&#x27;/docs/reports/q2.csv&#x27;), &#x27;x,y,z\n4,5,6\n7,8,9&#x27;);
+
+  console.log(&#x27;Listing /docs:&#x27;, fs.list(Path.of(&#x27;/docs&#x27;)));
+  console.log(&#x27;Listing /docs/reports:&#x27;, fs.list(Path.of(&#x27;/docs/reports&#x27;)));
+
+  console.log(&#x27;Read /docs/readme.txt:&#x27;, fs.read(Path.of(&#x27;/docs/readme.txt&#x27;)).toString());
+  console.log(&#x27;Disk usage of /docs:&#x27;, fs.diskUsage(Path.of(&#x27;/docs&#x27;)), &#x27;bytes&#x27;);
+
+  const csvFiles = fs.search(Path.of(&#x27;/docs&#x27;), (node) =&gt; node instanceof File &amp;&amp; node.name.endsWith(&#x27;.csv&#x27;));
+  console.log(&#x27;Search *.csv under /docs:&#x27;, csvFiles.map(String));
+
+  console.log(&#x27;\nMoving /docs/reports -&gt; /media/reports&#x27;);
+  fs.move(Path.of(&#x27;/docs/reports&#x27;), Path.of(&#x27;/media/reports&#x27;));
+  console.log(&#x27;Listing /media:&#x27;, fs.list(Path.of(&#x27;/media&#x27;)));
+  console.log(&#x27;Listing /docs after move:&#x27;, fs.list(Path.of(&#x27;/docs&#x27;)));
+
+  try {
+    fs.move(Path.of(&#x27;/media&#x27;), Path.of(&#x27;/media/reports/media&#x27;));
+  } catch (e) {
+    console.log(&#x27;\nExpected rejection moving a directory into its own subtree:&#x27;, e.message);
+  }
+
+  try {
+    fs.delete(Path.of(&#x27;/media&#x27;), false);
+  } catch (e) {
+    console.log(&#x27;Expected rejection deleting non-empty dir without recursive:&#x27;, e.message);
+  }
+  fs.delete(Path.of(&#x27;/media&#x27;), true);
+  console.log(&#x27;Root listing after recursive delete of /media:&#x27;, fs.list(Path.of(&#x27;&#x27;)));
+}
+
+if (require.main === module) main();
+
+module.exports = {
+  Path, NodeVisitor, FileSystemNode, File, Directory, DirectoryIterator,
+  DiskUsageVisitor, SearchVisitor, FileSystem,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// File System -- full class-diagram implementation, single-threaded.
+// No concurrency badge on this problem -- kept single-threaded; the lock-ordering idea in the
+// move() pseudocode is preserved only as commentary, not as real mutexes.
+//
+// Note: the diagram&#x27;s `File` leaf class is named `FileNode`, and its `FileSystem` facade is
+// named `VirtualFileSystem`, here because TypeScript&#x27;s default lib set includes DOM, which
+// declares global `File` and `FileSystem` types; this avoids those name collisions while
+// keeping identical fields/behavior. `Directory` and the rest keep their diagram names.
+
+// ---------- Path (value object) ----------
+class Path {
+  readonly segments: string[];
+  constructor(segments: string[] = []) { this.segments = [...segments]; }
+  static of(slashSeparated: string): Path {
+    return new Path(slashSeparated.split(&#x27;/&#x27;).filter((s) =&gt; s.length &gt; 0));
+  }
+  parentPath(): Path { return new Path(this.segments.slice(0, -1)); }
+  lastSegment(): string { return this.segments[this.segments.length - 1]; }
+  resolveChild(childName: string): Path { return new Path([...this.segments, childName]); }
+  isDescendantOf(other: Path): boolean {
+    if (other.segments.length &gt;= this.segments.length) return false;
+    return other.segments.every((seg, i) =&gt; seg === this.segments[i]);
+  }
+  toString(): string { return &#x27;/&#x27; + this.segments.join(&#x27;/&#x27;); }
+}
+
+// ---------- NodeVisitor (interface) ----------
+interface NodeVisitor {
+  visitFile(f: FileNode): void;
+  visitDirectory(d: Directory): void;
+}
+
+// ---------- FileSystemNode (abstract) ----------
+// Common identity for anything in the tree. Aggregate ops are delegated to a NodeVisitor.
+abstract class FileSystemNode {
+  constructor(public name: string, public parent: Directory | null) {}
+  abstract accept(visitor: NodeVisitor): void;
+}
+
+// ---------- FileNode (leaf) ----------
+class FileNode extends FileSystemNode {
+  content: string = &#x27;&#x27;;
+  constructor(name: string, parent: Directory | null) { super(name, parent); }
+  size(): number { return this.content.length; }
+  read(): string { return this.content; }
+  write(data: string): void { this.content = data; }
+  accept(visitor: NodeVisitor): void { visitor.visitFile(this); }
+}
+
+// ---------- Directory (composite) ----------
+class Directory extends FileSystemNode {
+  readonly children = new Map&lt;string, FileSystemNode&gt;();
+  constructor(name: string, parent: Directory | null) { super(name, parent); }
+  addChild(node: FileSystemNode): void { this.children.set(node.name, node); }
+  removeChild(name: string): void { this.children.delete(name); }
+  getChild(name: string): FileSystemNode | undefined { return this.children.get(name); }
+  accept(visitor: NodeVisitor): void { visitor.visitDirectory(this); }
+}
+
+// ---------- DirectoryIterator ----------
+// Snapshot iterator: copies the child list at creation time so a concurrent mutation of the
+// underlying Directory during iteration can&#x27;t invalidate iteration mid-walk (policy: snapshot).
+class DirectoryIterator {
+  private readonly snapshot: FileSystemNode[];
+  private index = 0;
+  constructor(directory: Directory) { this.snapshot = Array.from(directory.children.values()); }
+  hasNext(): boolean { return this.index &lt; this.snapshot.length; }
+  next(): FileSystemNode {
+    if (!this.hasNext()) throw new Error(&#x27;No more elements&#x27;);
+    return this.snapshot[this.index++];
+  }
+}
+
+// ---------- NodeVisitor implementations ----------
+class DiskUsageVisitor implements NodeVisitor {
+  private lastSize = 0;
+  compute(node: FileSystemNode): number { node.accept(this); return this.lastSize; }
+  visitFile(f: FileNode): void { this.lastSize = f.size(); }
+  visitDirectory(d: Directory): void {
+    let total = 0;
+    const it = new DirectoryIterator(d);
+    while (it.hasNext()) {
+      const child = it.next();
+      child.accept(this); // recurses; visitFile sets lastSize directly for leaves
+      total += this.lastSize;
+    }
+    this.lastSize = total;
+  }
+}
+
+type SearchCriteria = (node: FileSystemNode) =&gt; boolean;
+
+class SearchVisitor implements NodeVisitor {
+  private readonly matches: Path[] = [];
+  constructor(private readonly criteria: SearchCriteria, private readonly base: Path) {}
+
+  search(node: FileSystemNode): Path[] { this.walk(node, this.base); return this.matches; }
+  visitFile(_f: FileNode): void {}      // traversal is driven by walk(), not the visitor dispatch
+  visitDirectory(_d: Directory): void {}
+
+  private walk(node: FileSystemNode, path: Path): void {
+    if (this.criteria(node)) this.matches.push(path);
+    if (node instanceof Directory) {
+      const it = new DirectoryIterator(node);
+      while (it.hasNext()) {
+        const child = it.next();
+        this.walk(child, path.resolveChild(child.name));
+      }
+    }
+  }
+}
+
+// ---------- VirtualFileSystem (facade) ----------
+class VirtualFileSystem {
+  readonly root = new Directory(&#x27;&#x27;, null);
+
+  private resolveParent(path: Path): Directory {
+    let current = this.root;
+    for (let i = 0; i &lt; path.segments.length - 1; i++) {
+      const next = current.getChild(path.segments[i]);
+      if (!(next instanceof Directory)) throw new Error(`No such directory: ${path}`);
+      current = next;
+    }
+    return current;
+  }
+
+  private resolve(path: Path): FileSystemNode {
+    if (path.segments.length === 0) return this.root;
+    const parentDir = this.resolveParent(path);
+    const node = parentDir.getChild(path.lastSegment());
+    if (!node) throw new Error(`No such path: ${path}`);
+    return node;
+  }
+
+  createFile(path: Path): void {
+    const parentDir = this.resolveParent(path);
+    parentDir.addChild(new FileNode(path.lastSegment(), parentDir));
+  }
+
+  createDirectory(path: Path): void {
+    const parentDir = this.resolveParent(path);
+    parentDir.addChild(new Directory(path.lastSegment(), parentDir));
+  }
+
+  delete(path: Path, recursive: boolean): void {
+    const parentDir = this.resolveParent(path);
+    const node = parentDir.getChild(path.lastSegment());
+    if (node instanceof Directory &amp;&amp; node.children.size &gt; 0 &amp;&amp; !recursive) {
+      throw new Error(`Directory not empty; pass recursive=true to delete: ${path}`);
+    }
+    parentDir.removeChild(path.lastSegment());
+  }
+
+  read(path: Path): string {
+    const node = this.resolve(path);
+    if (!(node instanceof FileNode)) throw new Error(`Not a file: ${path}`);
+    return node.read();
+  }
+
+  write(path: Path, data: string): void {
+    const node = this.resolve(path);
+    if (!(node instanceof FileNode)) throw new Error(`Not a file: ${path}`);
+    node.write(data);
+  }
+
+  list(directoryPath: Path): string[] {
+    const node = this.resolve(directoryPath);
+    if (!(node instanceof Directory)) throw new Error(`Not a directory: ${directoryPath}`);
+    const names: string[] = [];
+    const it = new DirectoryIterator(node);
+    while (it.hasNext()) names.push(it.next().name);
+    return names;
+  }
+
+  // Move source under destination&#x27;s parent (destination&#x27;s last segment becomes the new name).
+  // Guards against moving a directory into its own subtree. No real threads exist in this
+  // single-threaded translation, so canonical-path lock ordering is left as commentary only --
+  // this is where a two-mutex ABBA-safe acquisition would go under a concurrent implementation.
+  move(source: Path, destination: Path): void {
+    const srcParent = this.resolveParent(source);
+    const destParent = this.resolveParent(destination);
+    const node = srcParent.getChild(source.lastSegment());
+    if (!node) throw new Error(`No such path: ${source}`);
+
+    if (node instanceof Directory &amp;&amp; destination.isDescendantOf(source)) {
+      throw new Error(&#x27;cannot move a directory into its own subtree&#x27;);
+    }
+
+    // lock ordering would be established here by canonical path in a concurrent version
+    srcParent.removeChild(node.name);
+    node.name = destination.lastSegment();
+    node.parent = destParent;
+    destParent.addChild(node);
+  }
+
+  search(startPath: Path, criteria: SearchCriteria): Path[] {
+    const startNode = this.resolve(startPath);
+    return new SearchVisitor(criteria, startPath).search(startNode);
+  }
+
+  diskUsage(startPath: Path): number {
+    const startNode = this.resolve(startPath);
+    return new DiskUsageVisitor().compute(startNode);
+  }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const fs = new VirtualFileSystem();
+  fs.createDirectory(Path.of(&#x27;/docs&#x27;));
+  fs.createDirectory(Path.of(&#x27;/docs/reports&#x27;));
+  fs.createFile(Path.of(&#x27;/docs/readme.txt&#x27;));
+  fs.createFile(Path.of(&#x27;/docs/reports/q1.csv&#x27;));
+  fs.createFile(Path.of(&#x27;/docs/reports/q2.csv&#x27;));
+  fs.createDirectory(Path.of(&#x27;/media&#x27;));
+
+  fs.write(Path.of(&#x27;/docs/readme.txt&#x27;), &#x27;hello world&#x27;);
+  fs.write(Path.of(&#x27;/docs/reports/q1.csv&#x27;), &#x27;a,b,c\n1,2,3&#x27;);
+  fs.write(Path.of(&#x27;/docs/reports/q2.csv&#x27;), &#x27;x,y,z\n4,5,6\n7,8,9&#x27;);
+
+  console.log(&#x27;Listing /docs:&#x27;, fs.list(Path.of(&#x27;/docs&#x27;)));
+  console.log(&#x27;Listing /docs/reports:&#x27;, fs.list(Path.of(&#x27;/docs/reports&#x27;)));
+
+  console.log(&#x27;Read /docs/readme.txt:&#x27;, fs.read(Path.of(&#x27;/docs/readme.txt&#x27;)));
+  console.log(&#x27;Disk usage of /docs:&#x27;, fs.diskUsage(Path.of(&#x27;/docs&#x27;)), &#x27;bytes&#x27;);
+
+  const csvFiles = fs.search(Path.of(&#x27;/docs&#x27;), (node) =&gt; node instanceof FileNode &amp;&amp; node.name.endsWith(&#x27;.csv&#x27;));
+  console.log(&#x27;Search *.csv under /docs:&#x27;, csvFiles.map(String));
+
+  console.log(&#x27;\nMoving /docs/reports -&gt; /media/reports&#x27;);
+  fs.move(Path.of(&#x27;/docs/reports&#x27;), Path.of(&#x27;/media/reports&#x27;));
+  console.log(&#x27;Listing /media:&#x27;, fs.list(Path.of(&#x27;/media&#x27;)));
+  console.log(&#x27;Listing /docs after move:&#x27;, fs.list(Path.of(&#x27;/docs&#x27;)));
+
+  try {
+    fs.move(Path.of(&#x27;/media&#x27;), Path.of(&#x27;/media/reports/media&#x27;));
+  } catch (e) {
+    console.log(&#x27;\nExpected rejection moving a directory into its own subtree:&#x27;, (e as Error).message);
+  }
+
+  try {
+    fs.delete(Path.of(&#x27;/media&#x27;), false);
+  } catch (e) {
+    console.log(&#x27;Expected rejection deleting non-empty dir without recursive:&#x27;, (e as Error).message);
+  }
+  fs.delete(Path.of(&#x27;/media&#x27;), true);
+  console.log(&#x27;Root listing after recursive delete of /media:&#x27;, fs.list(Path.of(&#x27;&#x27;)));
+}
+
+main();
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p8.html">&larr; 8. Coffee Vending Machine</a><a class="prevnext-link next" href="p10.html">10. Pub-Sub / Message Queue &rarr;</a></div>
 </div>
 </main>
 

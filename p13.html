@@ -61,7 +61,8 @@
 <a href="#p13-y">Y. Scaling Boundary</a><a href="#p13-z">Z. Failure Scenarios</a><a href="#p13-aa">AA. Bad Designs</a>
 <a href="#p13-ab">AB. Trade-Offs</a><a href="#p13-ac">AC. Interviewer Evaluation</a><a href="#p13-ad">AD. Simulation</a>
 <a href="#p13-ae">AE. Source Comparison</a><a href="#p13-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p13">Jump to section:</label><select id="jump-p13" class="jump-select" data-jump-select><option value="p13-a">A. Realistic Interview Prompt</option><option value="p13-b">B. Difficulty</option><option value="p13-c">C. What This Problem Tests</option><option value="p13-d">D. Requirements</option><option value="p13-e">E. Clarifying Questions</option><option value="p13-f">F. Assumptions</option><option value="p13-g">G. Actors</option><option value="p13-h">H. Core Domain Entities</option><option value="p13-i">I. Class Relationships</option><option value="p13-j">J. Class Diagram</option><option value="p13-k">K. Responsibility Mapping</option><option value="p13-l">L. SOLID Analysis</option><option value="p13-m">M. Design Patterns</option><option value="p13-n">N. What Is Likely to Change?</option><option value="p13-o">O. Design Evolution</option><option value="p13-p">P. API / Interface Design</option><option value="p13-q">Q. Pseudocode — Critical Logic</option><option value="p13-r">R. End-to-End Use Case</option><option value="p13-s">S. Data Structures</option><option value="p13-t">T. Complexity Analysis</option><option value="p13-u">U. Testing Strategy</option><option value="p13-v">V. Interviewer Follow-Ups</option><option value="p13-w">W. Concurrency</option><option value="p13-x">X. Persistence</option><option value="p13-y">Y. Scaling Boundary</option><option value="p13-z">Z. Failure Scenarios</option><option value="p13-aa">AA. Common Bad Designs</option><option value="p13-ab">AB. Design Trade-Offs</option><option value="p13-ac">AC. Interviewer Evaluation</option><option value="p13-ad">AD. Interview Simulation</option><option value="p13-ae">AE. Online Solution Comparison</option><option value="p13-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p13-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p13">Jump to section:</label><select id="jump-p13" class="jump-select" data-jump-select><option value="p13-a">A. Realistic Interview Prompt</option><option value="p13-b">B. Difficulty</option><option value="p13-c">C. What This Problem Tests</option><option value="p13-d">D. Requirements</option><option value="p13-e">E. Clarifying Questions</option><option value="p13-f">F. Assumptions</option><option value="p13-g">G. Actors</option><option value="p13-h">H. Core Domain Entities</option><option value="p13-i">I. Class Relationships</option><option value="p13-j">J. Class Diagram</option><option value="p13-k">K. Responsibility Mapping</option><option value="p13-l">L. SOLID Analysis</option><option value="p13-m">M. Design Patterns</option><option value="p13-n">N. What Is Likely to Change?</option><option value="p13-o">O. Design Evolution</option><option value="p13-p">P. API / Interface Design</option><option value="p13-q">Q. Pseudocode — Critical Logic</option><option value="p13-r">R. End-to-End Use Case</option><option value="p13-s">S. Data Structures</option><option value="p13-t">T. Complexity Analysis</option><option value="p13-u">U. Testing Strategy</option><option value="p13-v">V. Interviewer Follow-Ups</option><option value="p13-w">W. Concurrency</option><option value="p13-x">X. Persistence</option><option value="p13-y">Y. Scaling Boundary</option><option value="p13-z">Z. Failure Scenarios</option><option value="p13-aa">AA. Common Bad Designs</option><option value="p13-ab">AB. Design Trade-Offs</option><option value="p13-ac">AC. Interviewer Evaluation</option><option value="p13-ad">AD. Interview Simulation</option><option value="p13-ae">AE. Online Solution Comparison</option><option value="p13-af">AF. Interview Cheat Sheet</option><option value="p13-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p13-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a two-player chess game. Support standard piece movement, detecting check and checkmate, and undoing a move. You do not need a graphical interface."</div>
@@ -559,7 +560,1318 @@ If no legal move exists for WHITE while in check → isCheckmate(WHITE) == true 
 <tr><td><strong>Top follow-ups</strong></td><td>Castling/en passant/promotion, networked play, AI opponent (LLD/AI boundary)</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>Type-enum-and-switch Piece class; duplicated check-detection algorithm; incomplete undo; reflexive Strategy on piece movement</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Don't build bitboards or an AI evaluation engine unless explicitly asked</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p12.html">&larr; 12. Tic-Tac-Toe / Board Game Engine</a><a class="prevnext-link next" href="p14.html">14. ATM Machine &rarr;</a></div>
+</table>
+
+<h3 id="p13-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">// Chess Game - full LLD implementation (single-file demo).
+// No &quot;Concurrency&quot; badge -&gt; single-threaded, no locks needed.
+//
+// Design notes:
+// - Piece uses plain subclassing (not Strategy): a piece&#x27;s type and its movement rule
+//   are the same fact and always change together, so Piece -&gt; Rook/Bishop/... is the
+//   honest simpler answer.
+// - Move is a Command: it knows how to execute()/undo() itself (including restoring a
+//   captured piece), so ChessGame.undo() is a one-line pop-and-undo off MoveHistory.
+// - Board.isSquareAttacked() reuses each piece&#x27;s own getValidMoves() rather than a
+//   second parallel &quot;attack&quot; implementation - check detection is exactly &quot;does any
+//   opposing piece&#x27;s move-set include this square&quot;.
+import java.util.*;
+
+public class p13 {
+
+    enum Color { WHITE, BLACK }
+
+    enum MoveResult { OK, CHECK, CHECKMATE, STALEMATE, REJECTED_ILLEGAL, REJECTED_SELF_CHECK }
+
+    // ---------- Position ----------
+    static final class Position {
+        final int row, col;
+        Position(int row, int col) { this.row = row; this.col = col; }
+        boolean inBounds() { return row &gt;= 0 &amp;&amp; row &lt; 8 &amp;&amp; col &gt;= 0 &amp;&amp; col &lt; 8; }
+        @Override public boolean equals(Object o) {
+            if (!(o instanceof Position)) return false;
+            Position p = (Position) o;
+            return p.row == row &amp;&amp; p.col == col;
+        }
+        @Override public int hashCode() { return row * 8 + col; }
+        @Override public String toString() { return &quot;&quot; + (char) (&#x27;a&#x27; + col) + (8 - row); }
+    }
+
+    // ---------- Piece hierarchy ----------
+    static abstract class Piece {
+        Color color;
+        Position position;
+        Piece(Color color, Position position) { this.color = color; this.position = position; }
+
+        // Pseudo-legal moves: respects board occupancy/own-piece blocking, but does NOT
+        // check whether the move leaves the mover&#x27;s own king in check - that is
+        // ChessGame&#x27;s job, one level up.
+        abstract List&lt;Position&gt; getValidMoves(Board board);
+        abstract char symbol();
+
+        // Shared helper: walk a direction until off-board, own piece, or a capture.
+        void slide(Board board, List&lt;Position&gt; out, int dr, int dc) {
+            int r = position.row + dr, c = position.col + dc;
+            while (true) {
+                Position p = new Position(r, c);
+                if (!p.inBounds()) break;
+                Piece occupant = board.getPieceAt(p);
+                if (occupant == null) { out.add(p); }
+                else { if (occupant.color != color) out.add(p); break; }
+                r += dr; c += dc;
+            }
+        }
+    }
+
+    static class Rook extends Piece {
+        Rook(Color c, Position p) { super(c, p); }
+        List&lt;Position&gt; getValidMoves(Board board) {
+            List&lt;Position&gt; moves = new ArrayList&lt;&gt;();
+            for (int[] d : new int[][]{{1,0},{-1,0},{0,1},{0,-1}}) slide(board, moves, d[0], d[1]);
+            return moves;
+        }
+        char symbol() { return color == Color.WHITE ? &#x27;R&#x27; : &#x27;r&#x27;; }
+    }
+
+    static class Bishop extends Piece {
+        Bishop(Color c, Position p) { super(c, p); }
+        List&lt;Position&gt; getValidMoves(Board board) {
+            List&lt;Position&gt; moves = new ArrayList&lt;&gt;();
+            for (int[] d : new int[][]{{1,1},{1,-1},{-1,1},{-1,-1}}) slide(board, moves, d[0], d[1]);
+            return moves;
+        }
+        char symbol() { return color == Color.WHITE ? &#x27;B&#x27; : &#x27;b&#x27;; }
+    }
+
+    static class Queen extends Piece {
+        Queen(Color c, Position p) { super(c, p); }
+        List&lt;Position&gt; getValidMoves(Board board) {
+            List&lt;Position&gt; moves = new ArrayList&lt;&gt;();
+            for (int[] d : new int[][]{{1,0},{-1,0},{0,1},{0,-1},{1,1},{1,-1},{-1,1},{-1,-1}})
+                slide(board, moves, d[0], d[1]);
+            return moves;
+        }
+        char symbol() { return color == Color.WHITE ? &#x27;Q&#x27; : &#x27;q&#x27;; }
+    }
+
+    static class Knight extends Piece {
+        Knight(Color c, Position p) { super(c, p); }
+        List&lt;Position&gt; getValidMoves(Board board) {
+            List&lt;Position&gt; moves = new ArrayList&lt;&gt;();
+            int[][] deltas = {{1,2},{2,1},{-1,2},{-2,1},{1,-2},{2,-1},{-1,-2},{-2,-1}};
+            for (int[] d : deltas) {
+                Position p = new Position(position.row + d[0], position.col + d[1]);
+                if (!p.inBounds()) continue;
+                Piece occ = board.getPieceAt(p);
+                if (occ == null || occ.color != color) moves.add(p);
+            }
+            return moves;
+        }
+        char symbol() { return color == Color.WHITE ? &#x27;N&#x27; : &#x27;n&#x27;; }
+    }
+
+    static class King extends Piece {
+        King(Color c, Position p) { super(c, p); }
+        List&lt;Position&gt; getValidMoves(Board board) {
+            List&lt;Position&gt; moves = new ArrayList&lt;&gt;();
+            for (int dr = -1; dr &lt;= 1; dr++) {
+                for (int dc = -1; dc &lt;= 1; dc++) {
+                    if (dr == 0 &amp;&amp; dc == 0) continue;
+                    Position p = new Position(position.row + dr, position.col + dc);
+                    if (!p.inBounds()) continue;
+                    Piece occ = board.getPieceAt(p);
+                    if (occ == null || occ.color != color) moves.add(p);
+                }
+            }
+            return moves; // castling intentionally omitted - out of scope for this exercise
+        }
+        char symbol() { return color == Color.WHITE ? &#x27;K&#x27; : &#x27;k&#x27;; }
+    }
+
+    static class Pawn extends Piece {
+        Pawn(Color c, Position p) { super(c, p); }
+        List&lt;Position&gt; getValidMoves(Board board) {
+            List&lt;Position&gt; moves = new ArrayList&lt;&gt;();
+            int dir = color == Color.WHITE ? -1 : 1;
+            int startRow = color == Color.WHITE ? 6 : 1;
+
+            Position oneStep = new Position(position.row + dir, position.col);
+            if (oneStep.inBounds() &amp;&amp; board.getPieceAt(oneStep) == null) {
+                moves.add(oneStep);
+                Position twoStep = new Position(position.row + 2 * dir, position.col);
+                if (position.row == startRow &amp;&amp; board.getPieceAt(twoStep) == null) moves.add(twoStep);
+            }
+            for (int dc : new int[]{-1, 1}) {
+                Position diag = new Position(position.row + dir, position.col + dc);
+                if (!diag.inBounds()) continue;
+                Piece occ = board.getPieceAt(diag);
+                if (occ != null &amp;&amp; occ.color != color) moves.add(diag); // capture only diagonally
+            }
+            return moves; // en passant / promotion intentionally omitted
+        }
+        char symbol() { return color == Color.WHITE ? &#x27;P&#x27; : &#x27;p&#x27;; }
+    }
+
+    // ---------- Board ----------
+    static class Board {
+        private final Piece[][] grid = new Piece[8][8];
+
+        Piece getPieceAt(Position p) { return p.inBounds() ? grid[p.row][p.col] : null; }
+
+        void setPieceAt(Position p, Piece piece) {
+            grid[p.row][p.col] = piece;
+            if (piece != null) piece.position = p;
+        }
+
+        List&lt;Piece&gt; getAllPieces(Color color) {
+            List&lt;Piece&gt; pieces = new ArrayList&lt;&gt;();
+            for (Piece[] row : grid) for (Piece p : row) if (p != null &amp;&amp; p.color == color) pieces.add(p);
+            return pieces;
+        }
+
+        // Reuses each piece&#x27;s own getValidMoves() - the same movement logic already
+        // written for regular moves, not a second parallel &quot;attack&quot; implementation.
+        boolean isSquareAttacked(Position square, Color byColor) {
+            for (Piece piece : getAllPieces(byColor)) {
+                if (piece.getValidMoves(this).contains(square)) return true;
+            }
+            return false;
+        }
+
+        void setupStandardPosition() {
+            Color[] rows = {Color.BLACK, Color.WHITE};
+            int[] backRanks = {0, 7};
+            int[] pawnRanks = {1, 6};
+            for (int i = 0; i &lt; 2; i++) {
+                Color color = rows[i];
+                int back = backRanks[i];
+                setPieceAt(new Position(back, 0), new Rook(color, null));
+                setPieceAt(new Position(back, 1), new Knight(color, null));
+                setPieceAt(new Position(back, 2), new Bishop(color, null));
+                setPieceAt(new Position(back, 3), new Queen(color, null));
+                setPieceAt(new Position(back, 4), new King(color, null));
+                setPieceAt(new Position(back, 5), new Bishop(color, null));
+                setPieceAt(new Position(back, 6), new Knight(color, null));
+                setPieceAt(new Position(back, 7), new Rook(color, null));
+                for (int c = 0; c &lt; 8; c++) setPieceAt(new Position(pawnRanks[i], c), new Pawn(color, null));
+            }
+        }
+
+        void print() {
+            for (int r = 0; r &lt; 8; r++) {
+                StringBuilder sb = new StringBuilder();
+                for (int c = 0; c &lt; 8; c++) {
+                    Piece p = grid[r][c];
+                    sb.append(p == null ? &#x27;.&#x27; : p.symbol()).append(&#x27; &#x27;);
+                }
+                System.out.println(sb);
+            }
+        }
+    }
+
+    // ---------- Move (Command) ----------
+    static class Move {
+        final Position from, to;
+        final Piece movedPiece;
+        final Piece capturedPiece;
+        String specialFlag = &quot;NONE&quot;; // extension point for castling/promotion, unused here
+
+        Move(Position from, Position to, Piece movedPiece, Piece capturedPiece) {
+            this.from = from; this.to = to; this.movedPiece = movedPiece; this.capturedPiece = capturedPiece;
+        }
+
+        void execute(Board board) {
+            board.setPieceAt(to, movedPiece);
+            board.setPieceAt(from, null);
+        }
+
+        // Restores both the moved piece&#x27;s square AND the captured piece - this is what
+        // makes undo a single call instead of manually diffing board state.
+        void undo(Board board) {
+            board.setPieceAt(from, movedPiece);
+            board.setPieceAt(to, capturedPiece);
+        }
+    }
+
+    // ---------- MoveHistory ----------
+    static class MoveHistory {
+        private final Deque&lt;Move&gt; stack = new ArrayDeque&lt;&gt;();
+        void push(Move move) { stack.push(move); }
+        Move popAndUndo(Board board) {
+            if (stack.isEmpty()) return null;
+            Move move = stack.pop();
+            move.undo(board);
+            return move;
+        }
+        boolean isEmpty() { return stack.isEmpty(); }
+    }
+
+    // ---------- ChessGame (facade) ----------
+    static class ChessGame {
+        final Board board = new Board();
+        Color currentTurn = Color.WHITE;
+        final MoveHistory history = new MoveHistory();
+
+        ChessGame() { board.setupStandardPosition(); }
+
+        Color opponent(Color c) { return c == Color.WHITE ? Color.BLACK : Color.WHITE; }
+
+        Position findKing(Color color) {
+            for (Piece p : board.getAllPieces(color)) if (p instanceof King) return p.position;
+            throw new IllegalStateException(&quot;King missing for &quot; + color);
+        }
+
+        boolean isInCheck(Color color) {
+            return board.isSquareAttacked(findKing(color), opponent(color));
+        }
+
+        // Checkmate iff in check AND no legal move (for any of this color&#x27;s pieces)
+        // escapes check when simulated.
+        boolean isCheckmate(Color color) {
+            if (!isInCheck(color)) return false;
+            return !hasAnyLegalMove(color);
+        }
+
+        boolean isStalemate(Color color) {
+            return !isInCheck(color) &amp;&amp; !hasAnyLegalMove(color);
+        }
+
+        private boolean hasAnyLegalMove(Color color) {
+            for (Piece piece : new ArrayList&lt;&gt;(board.getAllPieces(color))) {
+                for (Position dest : piece.getValidMoves(board)) {
+                    Move trial = new Move(piece.position, dest, piece, board.getPieceAt(dest));
+                    trial.execute(board);
+                    boolean stillInCheck = isInCheck(color);
+                    trial.undo(board);
+                    if (!stillInCheck) return true;
+                }
+            }
+            return false;
+        }
+
+        MoveResult makeMove(Position from, Position to) {
+            Piece piece = board.getPieceAt(from);
+            if (piece == null || piece.color != currentTurn) return MoveResult.REJECTED_ILLEGAL;
+            if (!piece.getValidMoves(board).contains(to)) return MoveResult.REJECTED_ILLEGAL;
+
+            Move move = new Move(from, to, piece, board.getPieceAt(to));
+            move.execute(board); // simulate first
+            if (isInCheck(currentTurn)) {
+                move.undo(board); // illegal - leaves own king in check
+                return MoveResult.REJECTED_SELF_CHECK;
+            }
+            history.push(move); // commit
+            currentTurn = opponent(currentTurn);
+
+            if (isCheckmate(currentTurn)) return MoveResult.CHECKMATE;
+            if (isStalemate(currentTurn)) return MoveResult.STALEMATE;
+            if (isInCheck(currentTurn)) return MoveResult.CHECK;
+            return MoveResult.OK;
+        }
+
+        void undo() {
+            if (history.isEmpty()) return;
+            history.popAndUndo(board);
+            currentTurn = opponent(currentTurn);
+        }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) {
+        ChessGame game = new ChessGame();
+        game.board.print();
+
+        // 1. e2-e4 (White pawn double step)
+        System.out.println(game.makeMove(new Position(6, 4), new Position(4, 4)));
+        // 2. e7-e5 (Black pawn double step)
+        System.out.println(game.makeMove(new Position(1, 4), new Position(3, 4)));
+        // 3. Queen out for White: d1-h5
+        System.out.println(game.makeMove(new Position(7, 3), new Position(3, 7)));
+        // Illegal: it&#x27;s Black&#x27;s turn now, but this tries to move a White pawn
+        System.out.println(game.makeMove(new Position(6, 0), new Position(5, 0)));
+
+        System.out.println(&quot;Is white in check? &quot; + game.isInCheck(Color.WHITE));
+        game.undo(); // undo the queen move
+        game.board.print();
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Chess Game - full LLD implementation (single-file demo).
+// No &quot;Concurrency&quot; badge -&gt; single-threaded, no mutexes needed.
+//
+// Design notes:
+// - Piece uses plain subclassing (not Strategy): a piece&#x27;s type and its movement rule
+//   are the same fact and always change together, so Piece -&gt; Rook/Bishop/... is the
+//   honest simpler answer.
+// - Move is a Command: it knows how to execute()/undo() itself (including restoring a
+//   captured piece), so ChessGame::undo() is a one-line pop-and-undo off MoveHistory.
+// - Board::isSquareAttacked() reuses each piece&#x27;s own getValidMoves() rather than a
+//   second parallel &quot;attack&quot; implementation.
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+#include &lt;memory&gt;
+#include &lt;algorithm&gt;
+#include &lt;stdexcept&gt;
+
+using namespace std;
+
+enum class Color { WHITE, BLACK };
+enum class MoveResult { OK, CHECK, CHECKMATE, STALEMATE, REJECTED_ILLEGAL, REJECTED_SELF_CHECK };
+
+// ---------- Position ----------
+struct Position {
+    int row, col;
+    Position(int r = -1, int c = -1) : row(r), col(c) {}
+    bool inBounds() const { return row &gt;= 0 &amp;&amp; row &lt; 8 &amp;&amp; col &gt;= 0 &amp;&amp; col &lt; 8; }
+    bool operator==(const Position&amp; o) const { return row == o.row &amp;&amp; col == o.col; }
+};
+
+static string toString(MoveResult r) {
+    switch (r) {
+        case MoveResult::OK: return &quot;OK&quot;;
+        case MoveResult::CHECK: return &quot;CHECK&quot;;
+        case MoveResult::CHECKMATE: return &quot;CHECKMATE&quot;;
+        case MoveResult::STALEMATE: return &quot;STALEMATE&quot;;
+        case MoveResult::REJECTED_ILLEGAL: return &quot;REJECTED_ILLEGAL&quot;;
+        case MoveResult::REJECTED_SELF_CHECK: return &quot;REJECTED_SELF_CHECK&quot;;
+    }
+    return &quot;?&quot;;
+}
+
+class Board;
+
+// ---------- Piece hierarchy ----------
+class Piece {
+public:
+    Color color;
+    Position position;
+    Piece(Color c, Position p) : color(c), position(p) {}
+    virtual ~Piece() = default;
+    // Pseudo-legal moves only; self-check filtering is ChessGame&#x27;s job.
+    virtual vector&lt;Position&gt; getValidMoves(Board&amp; board) = 0;
+    virtual char symbol() const = 0;
+
+protected:
+    void slide(Board&amp; board, vector&lt;Position&gt;&amp; out, int dr, int dc);
+};
+
+class Board {
+    Piece* grid[8][8];
+public:
+    Board() { for (int r = 0; r &lt; 8; r++) for (int c = 0; c &lt; 8; c++) grid[r][c] = nullptr; }
+
+    Piece* getPieceAt(const Position&amp; p) const { return p.inBounds() ? grid[p.row][p.col] : nullptr; }
+
+    void setPieceAt(const Position&amp; p, Piece* piece) {
+        grid[p.row][p.col] = piece;
+        if (piece) piece-&gt;position = p;
+    }
+
+    vector&lt;Piece*&gt; getAllPieces(Color color) const {
+        vector&lt;Piece*&gt; pieces;
+        for (int r = 0; r &lt; 8; r++)
+            for (int c = 0; c &lt; 8; c++)
+                if (grid[r][c] != nullptr &amp;&amp; grid[r][c]-&gt;color == color) pieces.push_back(grid[r][c]);
+        return pieces;
+    }
+
+    // Reuses each piece&#x27;s own movement logic - same code path as regular moves.
+    bool isSquareAttacked(const Position&amp; square, Color byColor) {
+        for (Piece* piece : getAllPieces(byColor)) {
+            auto moves = piece-&gt;getValidMoves(*this);
+            if (find(moves.begin(), moves.end(), square) != moves.end()) return true;
+        }
+        return false;
+    }
+
+    void print() const {
+        for (int r = 0; r &lt; 8; r++) {
+            for (int c = 0; c &lt; 8; c++) cout &lt;&lt; (grid[r][c] ? grid[r][c]-&gt;symbol() : &#x27;.&#x27;) &lt;&lt; &#x27; &#x27;;
+            cout &lt;&lt; &quot;\n&quot;;
+        }
+    }
+};
+
+void Piece::slide(Board&amp; board, vector&lt;Position&gt;&amp; out, int dr, int dc) {
+    int r = position.row + dr, c = position.col + dc;
+    while (true) {
+        Position p(r, c);
+        if (!p.inBounds()) break;
+        Piece* occupant = board.getPieceAt(p);
+        if (occupant == nullptr) { out.push_back(p); }
+        else { if (occupant-&gt;color != color) out.push_back(p); break; }
+        r += dr; c += dc;
+    }
+}
+
+class Rook : public Piece {
+public:
+    Rook(Color c, Position p) : Piece(c, p) {}
+    vector&lt;Position&gt; getValidMoves(Board&amp; board) override {
+        vector&lt;Position&gt; moves;
+        int dirs[4][2] = {{1,0},{-1,0},{0,1},{0,-1}};
+        for (auto&amp; d : dirs) slide(board, moves, d[0], d[1]);
+        return moves;
+    }
+    char symbol() const override { return color == Color::WHITE ? &#x27;R&#x27; : &#x27;r&#x27;; }
+};
+
+class Bishop : public Piece {
+public:
+    Bishop(Color c, Position p) : Piece(c, p) {}
+    vector&lt;Position&gt; getValidMoves(Board&amp; board) override {
+        vector&lt;Position&gt; moves;
+        int dirs[4][2] = {{1,1},{1,-1},{-1,1},{-1,-1}};
+        for (auto&amp; d : dirs) slide(board, moves, d[0], d[1]);
+        return moves;
+    }
+    char symbol() const override { return color == Color::WHITE ? &#x27;B&#x27; : &#x27;b&#x27;; }
+};
+
+class Queen : public Piece {
+public:
+    Queen(Color c, Position p) : Piece(c, p) {}
+    vector&lt;Position&gt; getValidMoves(Board&amp; board) override {
+        vector&lt;Position&gt; moves;
+        int dirs[8][2] = {{1,0},{-1,0},{0,1},{0,-1},{1,1},{1,-1},{-1,1},{-1,-1}};
+        for (auto&amp; d : dirs) slide(board, moves, d[0], d[1]);
+        return moves;
+    }
+    char symbol() const override { return color == Color::WHITE ? &#x27;Q&#x27; : &#x27;q&#x27;; }
+};
+
+class Knight : public Piece {
+public:
+    Knight(Color c, Position p) : Piece(c, p) {}
+    vector&lt;Position&gt; getValidMoves(Board&amp; board) override {
+        vector&lt;Position&gt; moves;
+        int deltas[8][2] = {{1,2},{2,1},{-1,2},{-2,1},{1,-2},{2,-1},{-1,-2},{-2,-1}};
+        for (auto&amp; d : deltas) {
+            Position p(position.row + d[0], position.col + d[1]);
+            if (!p.inBounds()) continue;
+            Piece* occ = board.getPieceAt(p);
+            if (occ == nullptr || occ-&gt;color != color) moves.push_back(p);
+        }
+        return moves;
+    }
+    char symbol() const override { return color == Color::WHITE ? &#x27;N&#x27; : &#x27;n&#x27;; }
+};
+
+class King : public Piece {
+public:
+    King(Color c, Position p) : Piece(c, p) {}
+    vector&lt;Position&gt; getValidMoves(Board&amp; board) override {
+        vector&lt;Position&gt; moves;
+        for (int dr = -1; dr &lt;= 1; dr++)
+            for (int dc = -1; dc &lt;= 1; dc++) {
+                if (dr == 0 &amp;&amp; dc == 0) continue;
+                Position p(position.row + dr, position.col + dc);
+                if (!p.inBounds()) continue;
+                Piece* occ = board.getPieceAt(p);
+                if (occ == nullptr || occ-&gt;color != color) moves.push_back(p);
+            }
+        return moves; // castling intentionally omitted
+    }
+    char symbol() const override { return color == Color::WHITE ? &#x27;K&#x27; : &#x27;k&#x27;; }
+};
+
+class Pawn : public Piece {
+public:
+    Pawn(Color c, Position p) : Piece(c, p) {}
+    vector&lt;Position&gt; getValidMoves(Board&amp; board) override {
+        vector&lt;Position&gt; moves;
+        int dir = color == Color::WHITE ? -1 : 1;
+        int startRow = color == Color::WHITE ? 6 : 1;
+
+        Position oneStep(position.row + dir, position.col);
+        if (oneStep.inBounds() &amp;&amp; board.getPieceAt(oneStep) == nullptr) {
+            moves.push_back(oneStep);
+            Position twoStep(position.row + 2 * dir, position.col);
+            if (position.row == startRow &amp;&amp; board.getPieceAt(twoStep) == nullptr) moves.push_back(twoStep);
+        }
+        for (int dc : {-1, 1}) {
+            Position diag(position.row + dir, position.col + dc);
+            if (!diag.inBounds()) continue;
+            Piece* occ = board.getPieceAt(diag);
+            if (occ != nullptr &amp;&amp; occ-&gt;color != color) moves.push_back(diag);
+        }
+        return moves; // en passant / promotion intentionally omitted
+    }
+    char symbol() const override { return color == Color::WHITE ? &#x27;P&#x27; : &#x27;p&#x27;; }
+};
+
+// ---------- Move (Command) ----------
+class Move {
+public:
+    Position from, to;
+    Piece* movedPiece;
+    Piece* capturedPiece;
+    string specialFlag = &quot;NONE&quot;; // extension point for castling/promotion, unused here
+
+    Move(Position f, Position t, Piece* mp, Piece* cp) : from(f), to(t), movedPiece(mp), capturedPiece(cp) {}
+
+    void execute(Board&amp; board) {
+        board.setPieceAt(to, movedPiece);
+        board.setPieceAt(from, nullptr);
+    }
+
+    // Restores both the moved piece&#x27;s square AND the captured piece.
+    void undo(Board&amp; board) {
+        board.setPieceAt(from, movedPiece);
+        board.setPieceAt(to, capturedPiece);
+    }
+};
+
+// ---------- MoveHistory ----------
+class MoveHistory {
+    vector&lt;Move&gt; stack;
+public:
+    void push(const Move&amp; move) { stack.push_back(move); }
+    bool isEmpty() const { return stack.empty(); }
+    void popAndUndo(Board&amp; board) {
+        if (stack.empty()) return;
+        Move move = stack.back();
+        stack.pop_back();
+        move.undo(board);
+    }
+};
+
+// ---------- ChessGame (facade) ----------
+class ChessGame {
+public:
+    Board board;
+    Color currentTurn = Color::WHITE;
+    MoveHistory history;
+    vector&lt;unique_ptr&lt;Piece&gt;&gt; pieces; // owns all piece lifetimes
+
+    ChessGame() { setupStandardPosition(); }
+
+    static Color opponent(Color c) { return c == Color::WHITE ? Color::BLACK : Color::WHITE; }
+
+    Position findKing(Color color) {
+        for (Piece* p : board.getAllPieces(color))
+            if (dynamic_cast&lt;King*&gt;(p) != nullptr) return p-&gt;position;
+        throw runtime_error(&quot;King missing&quot;);
+    }
+
+    bool isInCheck(Color color) { return board.isSquareAttacked(findKing(color), opponent(color)); }
+
+    bool isCheckmate(Color color) {
+        if (!isInCheck(color)) return false;
+        return !hasAnyLegalMove(color);
+    }
+
+    bool isStalemate(Color color) { return !isInCheck(color) &amp;&amp; !hasAnyLegalMove(color); }
+
+    MoveResult makeMove(Position from, Position to) {
+        Piece* piece = board.getPieceAt(from);
+        if (piece == nullptr || piece-&gt;color != currentTurn) return MoveResult::REJECTED_ILLEGAL;
+        auto validMoves = piece-&gt;getValidMoves(board);
+        if (find(validMoves.begin(), validMoves.end(), to) == validMoves.end()) return MoveResult::REJECTED_ILLEGAL;
+
+        Move move(from, to, piece, board.getPieceAt(to));
+        move.execute(board); // simulate first
+        if (isInCheck(currentTurn)) {
+            move.undo(board); // illegal - leaves own king in check
+            return MoveResult::REJECTED_SELF_CHECK;
+        }
+        history.push(move); // commit
+        currentTurn = opponent(currentTurn);
+
+        if (isCheckmate(currentTurn)) return MoveResult::CHECKMATE;
+        if (isStalemate(currentTurn)) return MoveResult::STALEMATE;
+        if (isInCheck(currentTurn)) return MoveResult::CHECK;
+        return MoveResult::OK;
+    }
+
+    void undo() {
+        if (history.isEmpty()) return;
+        history.popAndUndo(board);
+        currentTurn = opponent(currentTurn);
+    }
+
+private:
+    bool hasAnyLegalMove(Color color) {
+        for (Piece* piece : board.getAllPieces(color)) {
+            for (Position dest : piece-&gt;getValidMoves(board)) {
+                Move trial(piece-&gt;position, dest, piece, board.getPieceAt(dest));
+                trial.execute(board);
+                bool stillInCheck = isInCheck(color);
+                trial.undo(board);
+                if (!stillInCheck) return true;
+            }
+        }
+        return false;
+    }
+
+    template &lt;typename T&gt;
+    Piece* make(Color c, Position p) {
+        pieces.push_back(make_unique&lt;T&gt;(c, p));
+        return pieces.back().get();
+    }
+
+    void setupStandardPosition() {
+        Color rows[2] = {Color::BLACK, Color::WHITE};
+        int backRanks[2] = {0, 7};
+        int pawnRanks[2] = {1, 6};
+        for (int i = 0; i &lt; 2; i++) {
+            Color color = rows[i];
+            int back = backRanks[i];
+            board.setPieceAt(Position(back, 0), make&lt;Rook&gt;(color, Position(back, 0)));
+            board.setPieceAt(Position(back, 1), make&lt;Knight&gt;(color, Position(back, 1)));
+            board.setPieceAt(Position(back, 2), make&lt;Bishop&gt;(color, Position(back, 2)));
+            board.setPieceAt(Position(back, 3), make&lt;Queen&gt;(color, Position(back, 3)));
+            board.setPieceAt(Position(back, 4), make&lt;King&gt;(color, Position(back, 4)));
+            board.setPieceAt(Position(back, 5), make&lt;Bishop&gt;(color, Position(back, 5)));
+            board.setPieceAt(Position(back, 6), make&lt;Knight&gt;(color, Position(back, 6)));
+            board.setPieceAt(Position(back, 7), make&lt;Rook&gt;(color, Position(back, 7)));
+            for (int c = 0; c &lt; 8; c++)
+                board.setPieceAt(Position(pawnRanks[i], c), make&lt;Pawn&gt;(color, Position(pawnRanks[i], c)));
+        }
+    }
+};
+
+// ---------- Demo ----------
+int main() {
+    ChessGame game;
+    game.board.print();
+
+    cout &lt;&lt; toString(game.makeMove(Position(6, 4), Position(4, 4))) &lt;&lt; &quot;\n&quot;; // e2-e4
+    cout &lt;&lt; toString(game.makeMove(Position(1, 4), Position(3, 4))) &lt;&lt; &quot;\n&quot;; // e7-e5
+    cout &lt;&lt; toString(game.makeMove(Position(7, 3), Position(3, 7))) &lt;&lt; &quot;\n&quot;; // Qd1-h5
+    // Illegal: it&#x27;s Black&#x27;s turn now, but this tries to move a White pawn
+    cout &lt;&lt; toString(game.makeMove(Position(6, 0), Position(5, 0))) &lt;&lt; &quot;\n&quot;;
+
+    cout &lt;&lt; &quot;Is white in check? &quot; &lt;&lt; (game.isInCheck(Color::WHITE) ? &quot;true&quot; : &quot;false&quot;) &lt;&lt; &quot;\n&quot;;
+    game.undo(); // undo the queen move
+    game.board.print();
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">// Chess Game - full LLD implementation (single-file demo, Node/CommonJS).
+// No &quot;Concurrency&quot; badge -&gt; single-threaded, no locking primitives needed.
+//
+// Design notes:
+// - Piece uses plain subclassing (not Strategy): a piece&#x27;s type and its movement rule
+//   are the same fact and always change together, so Piece -&gt; Rook/Bishop/... is the
+//   honest simpler answer.
+// - Move is a Command: it knows how to execute()/undo() itself (including restoring a
+//   captured piece), so ChessGame.undo() is a one-line pop-and-undo off MoveHistory.
+// - Board.isSquareAttacked() reuses each piece&#x27;s own getValidMoves() rather than a
+//   second parallel &quot;attack&quot; implementation.
+
+const Color = Object.freeze({ WHITE: &#x27;WHITE&#x27;, BLACK: &#x27;BLACK&#x27; });
+const MoveResult = Object.freeze({
+  OK: &#x27;OK&#x27;, CHECK: &#x27;CHECK&#x27;, CHECKMATE: &#x27;CHECKMATE&#x27;, STALEMATE: &#x27;STALEMATE&#x27;,
+  REJECTED_ILLEGAL: &#x27;REJECTED_ILLEGAL&#x27;, REJECTED_SELF_CHECK: &#x27;REJECTED_SELF_CHECK&#x27;,
+});
+
+class Position {
+  constructor(row, col) { this.row = row; this.col = col; }
+  inBounds() { return this.row &gt;= 0 &amp;&amp; this.row &lt; 8 &amp;&amp; this.col &gt;= 0 &amp;&amp; this.col &lt; 8; }
+  equals(other) { return other != null &amp;&amp; this.row === other.row &amp;&amp; this.col === other.col; }
+}
+
+function containsPosition(list, pos) { return list.some((p) =&gt; p.equals(pos)); }
+
+// ---------- Piece hierarchy ----------
+class Piece {
+  constructor(color, position) {
+    if (new.target === Piece) throw new Error(&#x27;Piece is abstract&#x27;);
+    this.color = color;
+    this.position = position;
+  }
+  // Pseudo-legal moves only; self-check filtering happens one level up, in ChessGame.
+  getValidMoves(_board) { throw new Error(&#x27;not implemented&#x27;); }
+  symbol() { throw new Error(&#x27;not implemented&#x27;); }
+
+  slide(board, out, dr, dc) {
+    let r = this.position.row + dr;
+    let c = this.position.col + dc;
+    while (true) {
+      const p = new Position(r, c);
+      if (!p.inBounds()) break;
+      const occupant = board.getPieceAt(p);
+      if (occupant === null) { out.push(p); }
+      else { if (occupant.color !== this.color) out.push(p); break; }
+      r += dr; c += dc;
+    }
+  }
+}
+
+class Rook extends Piece {
+  getValidMoves(board) {
+    const moves = [];
+    for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) this.slide(board, moves, dr, dc);
+    return moves;
+  }
+  symbol() { return this.color === Color.WHITE ? &#x27;R&#x27; : &#x27;r&#x27;; }
+}
+
+class Bishop extends Piece {
+  getValidMoves(board) {
+    const moves = [];
+    for (const [dr, dc] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) this.slide(board, moves, dr, dc);
+    return moves;
+  }
+  symbol() { return this.color === Color.WHITE ? &#x27;B&#x27; : &#x27;b&#x27;; }
+}
+
+class Queen extends Piece {
+  getValidMoves(board) {
+    const moves = [];
+    for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      this.slide(board, moves, dr, dc);
+    }
+    return moves;
+  }
+  symbol() { return this.color === Color.WHITE ? &#x27;Q&#x27; : &#x27;q&#x27;; }
+}
+
+class Knight extends Piece {
+  getValidMoves(board) {
+    const moves = [];
+    const deltas = [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]];
+    for (const [dr, dc] of deltas) {
+      const p = new Position(this.position.row + dr, this.position.col + dc);
+      if (!p.inBounds()) continue;
+      const occ = board.getPieceAt(p);
+      if (occ === null || occ.color !== this.color) moves.push(p);
+    }
+    return moves;
+  }
+  symbol() { return this.color === Color.WHITE ? &#x27;N&#x27; : &#x27;n&#x27;; }
+}
+
+class King extends Piece {
+  getValidMoves(board) {
+    const moves = [];
+    for (let dr = -1; dr &lt;= 1; dr++) {
+      for (let dc = -1; dc &lt;= 1; dc++) {
+        if (dr === 0 &amp;&amp; dc === 0) continue;
+        const p = new Position(this.position.row + dr, this.position.col + dc);
+        if (!p.inBounds()) continue;
+        const occ = board.getPieceAt(p);
+        if (occ === null || occ.color !== this.color) moves.push(p);
+      }
+    }
+    return moves; // castling intentionally omitted
+  }
+  symbol() { return this.color === Color.WHITE ? &#x27;K&#x27; : &#x27;k&#x27;; }
+}
+
+class Pawn extends Piece {
+  getValidMoves(board) {
+    const moves = [];
+    const dir = this.color === Color.WHITE ? -1 : 1;
+    const startRow = this.color === Color.WHITE ? 6 : 1;
+
+    const oneStep = new Position(this.position.row + dir, this.position.col);
+    if (oneStep.inBounds() &amp;&amp; board.getPieceAt(oneStep) === null) {
+      moves.push(oneStep);
+      const twoStep = new Position(this.position.row + 2 * dir, this.position.col);
+      if (this.position.row === startRow &amp;&amp; board.getPieceAt(twoStep) === null) moves.push(twoStep);
+    }
+    for (const dc of [-1, 1]) {
+      const diag = new Position(this.position.row + dir, this.position.col + dc);
+      if (!diag.inBounds()) continue;
+      const occ = board.getPieceAt(diag);
+      if (occ !== null &amp;&amp; occ.color !== this.color) moves.push(diag); // capture only diagonally
+    }
+    return moves; // en passant / promotion intentionally omitted
+  }
+  symbol() { return this.color === Color.WHITE ? &#x27;P&#x27; : &#x27;p&#x27;; }
+}
+
+// ---------- Board ----------
+class Board {
+  constructor() {
+    this.grid = Array.from({ length: 8 }, () =&gt; Array(8).fill(null));
+  }
+
+  getPieceAt(p) { return p.inBounds() ? this.grid[p.row][p.col] : null; }
+
+  setPieceAt(p, piece) {
+    this.grid[p.row][p.col] = piece;
+    if (piece) piece.position = p;
+  }
+
+  getAllPieces(color) {
+    const pieces = [];
+    for (const row of this.grid) for (const p of row) if (p !== null &amp;&amp; p.color === color) pieces.push(p);
+    return pieces;
+  }
+
+  // Reuses each piece&#x27;s own movement logic - the same code path as regular moves.
+  isSquareAttacked(square, byColor) {
+    for (const piece of this.getAllPieces(byColor)) {
+      if (containsPosition(piece.getValidMoves(this), square)) return true;
+    }
+    return false;
+  }
+
+  setupStandardPosition() {
+    const rows = [Color.BLACK, Color.WHITE];
+    const backRanks = [0, 7];
+    const pawnRanks = [1, 6];
+    for (let i = 0; i &lt; 2; i++) {
+      const color = rows[i];
+      const back = backRanks[i];
+      const order = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook];
+      order.forEach((Ctor, col) =&gt; this.setPieceAt(new Position(back, col), new Ctor(color, new Position(back, col))));
+      for (let c = 0; c &lt; 8; c++) {
+        this.setPieceAt(new Position(pawnRanks[i], c), new Pawn(color, new Position(pawnRanks[i], c)));
+      }
+    }
+  }
+
+  print() {
+    for (let r = 0; r &lt; 8; r++) {
+      console.log(this.grid[r].map((p) =&gt; (p ? p.symbol() : &#x27;.&#x27;)).join(&#x27; &#x27;));
+    }
+  }
+}
+
+// ---------- Move (Command) ----------
+class Move {
+  constructor(from, to, movedPiece, capturedPiece) {
+    this.from = from;
+    this.to = to;
+    this.movedPiece = movedPiece;
+    this.capturedPiece = capturedPiece;
+    this.specialFlag = &#x27;NONE&#x27;; // extension point for castling/promotion, unused here
+  }
+
+  execute(board) {
+    board.setPieceAt(this.to, this.movedPiece);
+    board.setPieceAt(this.from, null);
+  }
+
+  // Restores both the moved piece&#x27;s square AND the captured piece.
+  undo(board) {
+    board.setPieceAt(this.from, this.movedPiece);
+    board.setPieceAt(this.to, this.capturedPiece);
+  }
+}
+
+// ---------- MoveHistory ----------
+class MoveHistory {
+  constructor() { this.stack = []; }
+  push(move) { this.stack.push(move); }
+  isEmpty() { return this.stack.length === 0; }
+  popAndUndo(board) {
+    if (this.stack.length === 0) return null;
+    const move = this.stack.pop();
+    move.undo(board);
+    return move;
+  }
+}
+
+// ---------- ChessGame (facade) ----------
+class ChessGame {
+  constructor() {
+    this.board = new Board();
+    this.currentTurn = Color.WHITE;
+    this.history = new MoveHistory();
+    this.board.setupStandardPosition();
+  }
+
+  static opponent(c) { return c === Color.WHITE ? Color.BLACK : Color.WHITE; }
+
+  findKing(color) {
+    const king = this.board.getAllPieces(color).find((p) =&gt; p instanceof King);
+    if (!king) throw new Error(`King missing for ${color}`);
+    return king.position;
+  }
+
+  isInCheck(color) {
+    return this.board.isSquareAttacked(this.findKing(color), ChessGame.opponent(color));
+  }
+
+  isCheckmate(color) {
+    if (!this.isInCheck(color)) return false;
+    return !this.hasAnyLegalMove(color);
+  }
+
+  isStalemate(color) {
+    return !this.isInCheck(color) &amp;&amp; !this.hasAnyLegalMove(color);
+  }
+
+  hasAnyLegalMove(color) {
+    for (const piece of [...this.board.getAllPieces(color)]) {
+      for (const dest of piece.getValidMoves(this.board)) {
+        const trial = new Move(piece.position, dest, piece, this.board.getPieceAt(dest));
+        trial.execute(this.board);
+        const stillInCheck = this.isInCheck(color);
+        trial.undo(this.board);
+        if (!stillInCheck) return true;
+      }
+    }
+    return false;
+  }
+
+  makeMove(from, to) {
+    const piece = this.board.getPieceAt(from);
+    if (piece === null || piece.color !== this.currentTurn) return MoveResult.REJECTED_ILLEGAL;
+    if (!containsPosition(piece.getValidMoves(this.board), to)) return MoveResult.REJECTED_ILLEGAL;
+
+    const move = new Move(from, to, piece, this.board.getPieceAt(to));
+    move.execute(this.board); // simulate first
+    if (this.isInCheck(this.currentTurn)) {
+      move.undo(this.board); // illegal - leaves own king in check
+      return MoveResult.REJECTED_SELF_CHECK;
+    }
+    this.history.push(move); // commit
+    this.currentTurn = ChessGame.opponent(this.currentTurn);
+
+    if (this.isCheckmate(this.currentTurn)) return MoveResult.CHECKMATE;
+    if (this.isStalemate(this.currentTurn)) return MoveResult.STALEMATE;
+    if (this.isInCheck(this.currentTurn)) return MoveResult.CHECK;
+    return MoveResult.OK;
+  }
+
+  undo() {
+    if (this.history.isEmpty()) return;
+    this.history.popAndUndo(this.board);
+    this.currentTurn = ChessGame.opponent(this.currentTurn);
+  }
+}
+
+// ---------- Demo ----------
+function main() {
+  const game = new ChessGame();
+  game.board.print();
+
+  console.log(game.makeMove(new Position(6, 4), new Position(4, 4))); // e2-e4
+  console.log(game.makeMove(new Position(1, 4), new Position(3, 4))); // e7-e5
+  console.log(game.makeMove(new Position(7, 3), new Position(3, 7))); // Qd1-h5
+  // Illegal: it&#x27;s Black&#x27;s turn now, but this tries to move a White pawn
+  console.log(game.makeMove(new Position(6, 0), new Position(5, 0)));
+
+  console.log(&#x27;Is white in check?&#x27;, game.isInCheck(Color.WHITE));
+  game.undo(); // undo the queen move
+  game.board.print();
+}
+
+if (require.main === module) main();
+
+module.exports = {
+  Color, MoveResult, Position, Piece, Rook, Bishop, Queen, Knight, King, Pawn, Board, Move, MoveHistory, ChessGame,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Chess Game - full LLD implementation (single-file demo).
+// No &quot;Concurrency&quot; badge -&gt; single-threaded, no locking primitives needed.
+//
+// Design notes:
+// - Piece uses plain subclassing (not Strategy): a piece&#x27;s type and its movement rule
+//   are the same fact and always change together, so Piece -&gt; Rook/Bishop/... is the
+//   honest simpler answer.
+// - Move is a Command: it knows how to execute()/undo() itself (including restoring a
+//   captured piece), so ChessGame.undo() is a one-line pop-and-undo off MoveHistory.
+// - Board.isSquareAttacked() reuses each piece&#x27;s own getValidMoves() rather than a
+//   second parallel &quot;attack&quot; implementation.
+
+enum Color { WHITE = &#x27;WHITE&#x27;, BLACK = &#x27;BLACK&#x27; }
+
+enum MoveResult {
+  OK = &#x27;OK&#x27;, CHECK = &#x27;CHECK&#x27;, CHECKMATE = &#x27;CHECKMATE&#x27;, STALEMATE = &#x27;STALEMATE&#x27;,
+  REJECTED_ILLEGAL = &#x27;REJECTED_ILLEGAL&#x27;, REJECTED_SELF_CHECK = &#x27;REJECTED_SELF_CHECK&#x27;,
+}
+
+class Position {
+  constructor(public row: number, public col: number) {}
+  inBounds(): boolean { return this.row &gt;= 0 &amp;&amp; this.row &lt; 8 &amp;&amp; this.col &gt;= 0 &amp;&amp; this.col &lt; 8; }
+  equals(other: Position | null): boolean { return other != null &amp;&amp; this.row === other.row &amp;&amp; this.col === other.col; }
+}
+
+function containsPosition(list: Position[], pos: Position): boolean {
+  return list.some((p) =&gt; p.equals(pos));
+}
+
+// ---------- Piece hierarchy ----------
+abstract class Piece {
+  color: Color;
+  position: Position;
+  constructor(color: Color, position: Position) { this.color = color; this.position = position; }
+
+  // Pseudo-legal moves only; self-check filtering happens one level up, in ChessGame.
+  abstract getValidMoves(board: Board): Position[];
+  abstract symbol(): string;
+
+  protected slide(board: Board, out: Position[], dr: number, dc: number): void {
+    let r = this.position.row + dr;
+    let c = this.position.col + dc;
+    while (true) {
+      const p = new Position(r, c);
+      if (!p.inBounds()) break;
+      const occupant = board.getPieceAt(p);
+      if (occupant === null) { out.push(p); }
+      else { if (occupant.color !== this.color) out.push(p); break; }
+      r += dr; c += dc;
+    }
+  }
+}
+
+class Rook extends Piece {
+  getValidMoves(board: Board): Position[] {
+    const moves: Position[] = [];
+    for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) this.slide(board, moves, dr, dc);
+    return moves;
+  }
+  symbol(): string { return this.color === Color.WHITE ? &#x27;R&#x27; : &#x27;r&#x27;; }
+}
+
+class Bishop extends Piece {
+  getValidMoves(board: Board): Position[] {
+    const moves: Position[] = [];
+    for (const [dr, dc] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) this.slide(board, moves, dr, dc);
+    return moves;
+  }
+  symbol(): string { return this.color === Color.WHITE ? &#x27;B&#x27; : &#x27;b&#x27;; }
+}
+
+class Queen extends Piece {
+  getValidMoves(board: Board): Position[] {
+    const moves: Position[] = [];
+    for (const [dr, dc] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
+      this.slide(board, moves, dr, dc);
+    }
+    return moves;
+  }
+  symbol(): string { return this.color === Color.WHITE ? &#x27;Q&#x27; : &#x27;q&#x27;; }
+}
+
+class Knight extends Piece {
+  getValidMoves(board: Board): Position[] {
+    const moves: Position[] = [];
+    const deltas = [[1, 2], [2, 1], [-1, 2], [-2, 1], [1, -2], [2, -1], [-1, -2], [-2, -1]];
+    for (const [dr, dc] of deltas) {
+      const p = new Position(this.position.row + dr, this.position.col + dc);
+      if (!p.inBounds()) continue;
+      const occ = board.getPieceAt(p);
+      if (occ === null || occ.color !== this.color) moves.push(p);
+    }
+    return moves;
+  }
+  symbol(): string { return this.color === Color.WHITE ? &#x27;N&#x27; : &#x27;n&#x27;; }
+}
+
+class King extends Piece {
+  getValidMoves(board: Board): Position[] {
+    const moves: Position[] = [];
+    for (let dr = -1; dr &lt;= 1; dr++) {
+      for (let dc = -1; dc &lt;= 1; dc++) {
+        if (dr === 0 &amp;&amp; dc === 0) continue;
+        const p = new Position(this.position.row + dr, this.position.col + dc);
+        if (!p.inBounds()) continue;
+        const occ = board.getPieceAt(p);
+        if (occ === null || occ.color !== this.color) moves.push(p);
+      }
+    }
+    return moves; // castling intentionally omitted
+  }
+  symbol(): string { return this.color === Color.WHITE ? &#x27;K&#x27; : &#x27;k&#x27;; }
+}
+
+class Pawn extends Piece {
+  getValidMoves(board: Board): Position[] {
+    const moves: Position[] = [];
+    const dir = this.color === Color.WHITE ? -1 : 1;
+    const startRow = this.color === Color.WHITE ? 6 : 1;
+
+    const oneStep = new Position(this.position.row + dir, this.position.col);
+    if (oneStep.inBounds() &amp;&amp; board.getPieceAt(oneStep) === null) {
+      moves.push(oneStep);
+      const twoStep = new Position(this.position.row + 2 * dir, this.position.col);
+      if (this.position.row === startRow &amp;&amp; board.getPieceAt(twoStep) === null) moves.push(twoStep);
+    }
+    for (const dc of [-1, 1]) {
+      const diag = new Position(this.position.row + dir, this.position.col + dc);
+      if (!diag.inBounds()) continue;
+      const occ = board.getPieceAt(diag);
+      if (occ !== null &amp;&amp; occ.color !== this.color) moves.push(diag); // capture only diagonally
+    }
+    return moves; // en passant / promotion intentionally omitted
+  }
+  symbol(): string { return this.color === Color.WHITE ? &#x27;P&#x27; : &#x27;p&#x27;; }
+}
+
+// ---------- Board ----------
+class Board {
+  private grid: (Piece | null)[][] = Array.from({ length: 8 }, () =&gt; Array(8).fill(null));
+
+  getPieceAt(p: Position): Piece | null { return p.inBounds() ? this.grid[p.row][p.col] : null; }
+
+  setPieceAt(p: Position, piece: Piece | null): void {
+    this.grid[p.row][p.col] = piece;
+    if (piece) piece.position = p;
+  }
+
+  getAllPieces(color: Color): Piece[] {
+    const pieces: Piece[] = [];
+    for (const row of this.grid) for (const p of row) if (p !== null &amp;&amp; p.color === color) pieces.push(p);
+    return pieces;
+  }
+
+  // Reuses each piece&#x27;s own movement logic - the same code path as regular moves.
+  isSquareAttacked(square: Position, byColor: Color): boolean {
+    for (const piece of this.getAllPieces(byColor)) {
+      if (containsPosition(piece.getValidMoves(this), square)) return true;
+    }
+    return false;
+  }
+
+  setupStandardPosition(): void {
+    const rows = [Color.BLACK, Color.WHITE];
+    const backRanks = [0, 7];
+    const pawnRanks = [1, 6];
+    for (let i = 0; i &lt; 2; i++) {
+      const color = rows[i];
+      const back = backRanks[i];
+      const order: Array&lt;new (c: Color, p: Position) =&gt; Piece&gt; = [Rook, Knight, Bishop, Queen, King, Bishop, Knight, Rook];
+      order.forEach((Ctor, col) =&gt; this.setPieceAt(new Position(back, col), new Ctor(color, new Position(back, col))));
+      for (let c = 0; c &lt; 8; c++) {
+        this.setPieceAt(new Position(pawnRanks[i], c), new Pawn(color, new Position(pawnRanks[i], c)));
+      }
+    }
+  }
+
+  print(): void {
+    for (let r = 0; r &lt; 8; r++) {
+      console.log(this.grid[r].map((p) =&gt; (p ? p.symbol() : &#x27;.&#x27;)).join(&#x27; &#x27;));
+    }
+  }
+}
+
+// ---------- Move (Command) ----------
+class Move {
+  specialFlag = &#x27;NONE&#x27;; // extension point for castling/promotion, unused here
+  constructor(
+    public from: Position,
+    public to: Position,
+    public movedPiece: Piece,
+    public capturedPiece: Piece | null,
+  ) {}
+
+  execute(board: Board): void {
+    board.setPieceAt(this.to, this.movedPiece);
+    board.setPieceAt(this.from, null);
+  }
+
+  // Restores both the moved piece&#x27;s square AND the captured piece.
+  undo(board: Board): void {
+    board.setPieceAt(this.from, this.movedPiece);
+    board.setPieceAt(this.to, this.capturedPiece);
+  }
+}
+
+// ---------- MoveHistory ----------
+class MoveHistory {
+  private stack: Move[] = [];
+  push(move: Move): void { this.stack.push(move); }
+  isEmpty(): boolean { return this.stack.length === 0; }
+  popAndUndo(board: Board): Move | null {
+    const move = this.stack.pop();
+    if (!move) return null;
+    move.undo(board);
+    return move;
+  }
+}
+
+// ---------- ChessGame (facade) ----------
+class ChessGame {
+  board = new Board();
+  currentTurn: Color = Color.WHITE;
+  history = new MoveHistory();
+
+  constructor() { this.board.setupStandardPosition(); }
+
+  static opponent(c: Color): Color { return c === Color.WHITE ? Color.BLACK : Color.WHITE; }
+
+  findKing(color: Color): Position {
+    const king = this.board.getAllPieces(color).find((p) =&gt; p instanceof King);
+    if (!king) throw new Error(`King missing for ${color}`);
+    return king.position;
+  }
+
+  isInCheck(color: Color): boolean {
+    return this.board.isSquareAttacked(this.findKing(color), ChessGame.opponent(color));
+  }
+
+  isCheckmate(color: Color): boolean {
+    if (!this.isInCheck(color)) return false;
+    return !this.hasAnyLegalMove(color);
+  }
+
+  isStalemate(color: Color): boolean {
+    return !this.isInCheck(color) &amp;&amp; !this.hasAnyLegalMove(color);
+  }
+
+  private hasAnyLegalMove(color: Color): boolean {
+    for (const piece of [...this.board.getAllPieces(color)]) {
+      for (const dest of piece.getValidMoves(this.board)) {
+        const trial = new Move(piece.position, dest, piece, this.board.getPieceAt(dest));
+        trial.execute(this.board);
+        const stillInCheck = this.isInCheck(color);
+        trial.undo(this.board);
+        if (!stillInCheck) return true;
+      }
+    }
+    return false;
+  }
+
+  makeMove(from: Position, to: Position): MoveResult {
+    const piece = this.board.getPieceAt(from);
+    if (piece === null || piece.color !== this.currentTurn) return MoveResult.REJECTED_ILLEGAL;
+    if (!containsPosition(piece.getValidMoves(this.board), to)) return MoveResult.REJECTED_ILLEGAL;
+
+    const move = new Move(from, to, piece, this.board.getPieceAt(to));
+    move.execute(this.board); // simulate first
+    if (this.isInCheck(this.currentTurn)) {
+      move.undo(this.board); // illegal - leaves own king in check
+      return MoveResult.REJECTED_SELF_CHECK;
+    }
+    this.history.push(move); // commit
+    this.currentTurn = ChessGame.opponent(this.currentTurn);
+
+    if (this.isCheckmate(this.currentTurn)) return MoveResult.CHECKMATE;
+    if (this.isStalemate(this.currentTurn)) return MoveResult.STALEMATE;
+    if (this.isInCheck(this.currentTurn)) return MoveResult.CHECK;
+    return MoveResult.OK;
+  }
+
+  undo(): void {
+    if (this.history.isEmpty()) return;
+    this.history.popAndUndo(this.board);
+    this.currentTurn = ChessGame.opponent(this.currentTurn);
+  }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const game = new ChessGame();
+  game.board.print();
+
+  console.log(game.makeMove(new Position(6, 4), new Position(4, 4))); // e2-e4
+  console.log(game.makeMove(new Position(1, 4), new Position(3, 4))); // e7-e5
+  console.log(game.makeMove(new Position(7, 3), new Position(3, 7))); // Qd1-h5
+  // Illegal: it&#x27;s Black&#x27;s turn now, but this tries to move a White pawn
+  console.log(game.makeMove(new Position(6, 0), new Position(5, 0)));
+
+  console.log(&#x27;Is white in check?&#x27;, game.isInCheck(Color.WHITE));
+  game.undo(); // undo the queen move
+  game.board.print();
+}
+
+main();
+
+export {
+  Color, MoveResult, Position, Piece, Rook, Bishop, Queen, Knight, King, Pawn, Board, Move, MoveHistory, ChessGame,
+};
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p12.html">&larr; 12. Tic-Tac-Toe / Board Game Engine</a><a class="prevnext-link next" href="p14.html">14. ATM Machine &rarr;</a></div>
 </div>
 </main>
 

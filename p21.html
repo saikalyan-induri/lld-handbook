@@ -61,7 +61,8 @@
 <a href="#p21-y">Y. Scaling Boundary</a><a href="#p21-z">Z. Failure Scenarios</a><a href="#p21-aa">AA. Bad Designs</a>
 <a href="#p21-ab">AB. Trade-Offs</a><a href="#p21-ac">AC. Interviewer Evaluation</a><a href="#p21-ad">AD. Simulation</a>
 <a href="#p21-ae">AE. Source Comparison</a><a href="#p21-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p21">Jump to section:</label><select id="jump-p21" class="jump-select" data-jump-select><option value="p21-a">A. Realistic Interview Prompt</option><option value="p21-b">B. Difficulty</option><option value="p21-c">C. What This Problem Tests</option><option value="p21-d">D. Requirements</option><option value="p21-e">E. Clarifying Questions</option><option value="p21-f">F. Assumptions</option><option value="p21-g">G. Actors</option><option value="p21-h">H. Core Domain Entities</option><option value="p21-i">I. Class Relationships</option><option value="p21-j">J. Class Diagram</option><option value="p21-k">K. Responsibility Mapping</option><option value="p21-l">L. SOLID Analysis</option><option value="p21-m">M. Design Patterns</option><option value="p21-n">N. What Is Likely to Change?</option><option value="p21-o">O. Design Evolution</option><option value="p21-p">P. API / Interface Design</option><option value="p21-q">Q. Pseudocode — Critical Logic</option><option value="p21-r">R. End-to-End Use Case</option><option value="p21-s">S. Data Structures</option><option value="p21-t">T. Complexity Analysis</option><option value="p21-u">U. Testing Strategy</option><option value="p21-v">V. Interviewer Follow-Ups</option><option value="p21-w">W. Concurrency</option><option value="p21-x">X. Persistence</option><option value="p21-y">Y. Scaling Boundary</option><option value="p21-z">Z. Failure Scenarios</option><option value="p21-aa">AA. Common Bad Designs</option><option value="p21-ab">AB. Design Trade-Offs</option><option value="p21-ac">AC. Interviewer Evaluation</option><option value="p21-ad">AD. Interview Simulation</option><option value="p21-ae">AE. Online Solution Comparison</option><option value="p21-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p21-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p21">Jump to section:</label><select id="jump-p21" class="jump-select" data-jump-select><option value="p21-a">A. Realistic Interview Prompt</option><option value="p21-b">B. Difficulty</option><option value="p21-c">C. What This Problem Tests</option><option value="p21-d">D. Requirements</option><option value="p21-e">E. Clarifying Questions</option><option value="p21-f">F. Assumptions</option><option value="p21-g">G. Actors</option><option value="p21-h">H. Core Domain Entities</option><option value="p21-i">I. Class Relationships</option><option value="p21-j">J. Class Diagram</option><option value="p21-k">K. Responsibility Mapping</option><option value="p21-l">L. SOLID Analysis</option><option value="p21-m">M. Design Patterns</option><option value="p21-n">N. What Is Likely to Change?</option><option value="p21-o">O. Design Evolution</option><option value="p21-p">P. API / Interface Design</option><option value="p21-q">Q. Pseudocode — Critical Logic</option><option value="p21-r">R. End-to-End Use Case</option><option value="p21-s">S. Data Structures</option><option value="p21-t">T. Complexity Analysis</option><option value="p21-u">U. Testing Strategy</option><option value="p21-v">V. Interviewer Follow-Ups</option><option value="p21-w">W. Concurrency</option><option value="p21-x">X. Persistence</option><option value="p21-y">Y. Scaling Boundary</option><option value="p21-z">Z. Failure Scenarios</option><option value="p21-aa">AA. Common Bad Designs</option><option value="p21-ab">AB. Design Trade-Offs</option><option value="p21-ac">AC. Interviewer Evaluation</option><option value="p21-ad">AD. Interview Simulation</option><option value="p21-ae">AE. Online Solution Comparison</option><option value="p21-af">AF. Interview Cheat Sheet</option><option value="p21-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p21-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a stock brokerage system. Users should be able to create an account, deposit and withdraw cash, place buy and sell orders for stocks, and view their portfolio and order history. Assume stock prices come from an external market data feed."</div>
@@ -822,7 +823,1202 @@ Order.status = EXECUTED                 // investor sees the fill in history
 <tr><td><strong>Top follow-ups</strong></td><td>Stop-loss orders, cancel/execute race, feed outage, margin/short-selling, city-scale users (HLD boundary)</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>God-class Broker; Singleton by default; float for money; polling instead of Observer</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>A real order-matching engine, multi-currency, tax reporting — unless explicitly asked</td></tr>
-</table><div class="prevnext"><a class="prevnext-link prev" href="p20.html">&larr; 20. Chat Application (WhatsApp-style)</a><a class="prevnext-link next" href="synthesis.html">Cross-Problem Synthesis &rarr;</a></div>
+</table>
+
+<h3 id="p21-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">// Problem 21: Stock Brokerage System
+// Patterns: Strategy (ExecutionStrategy), Observer (MarketDataFeed -&gt; Broker), Facade (Broker)
+// Concurrency: per-account lock guards reserve+execute+settle so cash/holdings never corrupt
+// under concurrent orders (badge: Advanced, Concurrency &amp; Consistency).
+import java.util.*;
+import java.util.concurrent.locks.ReentrantLock;
+
+public class p21 {
+
+    // ---------- Exceptions ----------
+    static class InsufficientFundsException extends RuntimeException { InsufficientFundsException(String m) { super(m); } }
+    static class InsufficientHoldingsException extends RuntimeException { InsufficientHoldingsException(String m) { super(m); } }
+    static class InvalidOrderStateException extends RuntimeException { InvalidOrderStateException(String m) { super(m); } }
+    static class OrderNotFoundException extends RuntimeException { OrderNotFoundException(String m) { super(m); } }
+
+    enum Side { BUY, SELL }
+    enum OrderType { MARKET, LIMIT }
+    enum OrderStatus { PENDING, EXECUTED, CANCELLED }
+
+    // ---------- Stock ----------
+    static class Stock {
+        final String symbol;
+        volatile double currentPrice;
+        Stock(String symbol, double currentPrice) { this.symbol = symbol; this.currentPrice = currentPrice; }
+        void updatePrice(double newPrice) { this.currentPrice = newPrice; }
+    }
+
+    // ---------- Portfolio (owned by Account) ----------
+    static class Portfolio {
+        private final Map&lt;String, Integer&gt; holdings = new HashMap&lt;&gt;();
+        private final Map&lt;String, Integer&gt; reserved = new HashMap&lt;&gt;();
+
+        void reserveShares(Stock stock, int qty) {
+            int owned = holdings.getOrDefault(stock.symbol, 0);
+            int alreadyReserved = reserved.getOrDefault(stock.symbol, 0);
+            if (owned - alreadyReserved &lt; qty) throw new InsufficientHoldingsException(&quot;Not enough shares of &quot; + stock.symbol);
+            reserved.merge(stock.symbol, qty, Integer::sum);
+        }
+
+        void releaseShares(Stock stock, int qty) {
+            reserved.merge(stock.symbol, -qty, Integer::sum);
+        }
+
+        void addHolding(Stock stock, int qty) {
+            holdings.merge(stock.symbol, qty, Integer::sum);
+        }
+
+        // Removes settled (sold) shares from both holdings and their reservation.
+        void settle(Stock stock, int qty, Side side) {
+            if (side == Side.SELL) {
+                holdings.merge(stock.symbol, -qty, Integer::sum);
+                reserved.merge(stock.symbol, -qty, Integer::sum);
+            }
+        }
+
+        int holdingOf(String symbol) { return holdings.getOrDefault(symbol, 0); }
+    }
+
+    // ---------- Account (owns Portfolio) ----------
+    static class Account {
+        final String id;
+        double cashBalance;
+        double reservedCash;
+        final Portfolio portfolio = new Portfolio();
+        final ReentrantLock lock = new ReentrantLock(); // guards reserve/execute/settle atomicity
+
+        Account(String id, double initialCash) { this.id = id; this.cashBalance = initialCash; }
+
+        void reserve(double amount) {
+            if (cashBalance - reservedCash &lt; amount) throw new InsufficientFundsException(&quot;Insufficient funds in &quot; + id);
+            reservedCash += amount;
+        }
+        void release(double amount) { reservedCash = Math.max(0, reservedCash - amount); }
+        void deposit(double amount) { cashBalance += amount; }
+        void withdraw(double amount) {
+            if (cashBalance &lt; amount) throw new InsufficientFundsException(&quot;Insufficient funds in &quot; + id);
+            cashBalance -= amount;
+        }
+    }
+
+    // ---------- Order (abstract) ----------
+    static abstract class Order {
+        final String id;
+        final Account account;
+        final Stock stock;
+        final int quantity;
+        final OrderType type;
+        final double limitPrice; // unused for MARKET
+        double reservedEstimate;
+        OrderStatus status = OrderStatus.PENDING;
+        final long createdAt = System.nanoTime();
+
+        Order(String id, Account account, Stock stock, int quantity, OrderType type, double limitPrice) {
+            this.id = id; this.account = account; this.stock = stock;
+            this.quantity = quantity; this.type = type; this.limitPrice = limitPrice;
+        }
+
+        abstract Side getSide();
+
+        void cancel() {
+            if (status != OrderStatus.PENDING) throw new InvalidOrderStateException(&quot;Order not cancellable: &quot; + status);
+            status = OrderStatus.CANCELLED;
+        }
+    }
+
+    static class BuyOrder extends Order {
+        BuyOrder(String id, Account account, Stock stock, int quantity, OrderType type, double limitPrice) {
+            super(id, account, stock, quantity, type, limitPrice);
+        }
+        @Override Side getSide() { return Side.BUY; }
+    }
+
+    static class SellOrder extends Order {
+        SellOrder(String id, Account account, Stock stock, int quantity, OrderType type, double limitPrice) {
+            super(id, account, stock, quantity, type, limitPrice);
+        }
+        @Override Side getSide() { return Side.SELL; }
+    }
+
+    // ---------- ExecutionStrategy ----------
+    interface ExecutionStrategy {
+        OptionalDouble tryExecute(Order order, double currentPrice);
+    }
+
+    static class MarketExecutionStrategy implements ExecutionStrategy {
+        @Override public OptionalDouble tryExecute(Order order, double currentPrice) {
+            return OptionalDouble.of(currentPrice); // market orders always execute immediately
+        }
+    }
+
+    static class LimitExecutionStrategy implements ExecutionStrategy {
+        @Override public OptionalDouble tryExecute(Order order, double currentPrice) {
+            boolean conditionMet = order.getSide() == Side.BUY
+                    ? currentPrice &lt;= order.limitPrice
+                    : currentPrice &gt;= order.limitPrice;
+            return conditionMet ? OptionalDouble.of(currentPrice) : OptionalDouble.empty();
+        }
+    }
+
+    // ---------- MarketDataFeed ----------
+    interface PriceListener {
+        void onPriceUpdate(String symbol, double newPrice);
+    }
+
+    interface MarketDataFeed {
+        double getPrice(String symbol);
+        void subscribe(String symbol, PriceListener listener);
+    }
+
+    static class SimpleMarketDataFeed implements MarketDataFeed {
+        private final Map&lt;String, Stock&gt; stocks;
+        private final Map&lt;String, List&lt;PriceListener&gt;&gt; listeners = new HashMap&lt;&gt;();
+
+        SimpleMarketDataFeed(Map&lt;String, Stock&gt; stocks) { this.stocks = stocks; }
+
+        @Override public double getPrice(String symbol) { return stocks.get(symbol).currentPrice; }
+
+        @Override public void subscribe(String symbol, PriceListener listener) {
+            List&lt;PriceListener&gt; ls = listeners.computeIfAbsent(symbol, k -&gt; new ArrayList&lt;&gt;());
+            if (!ls.contains(listener)) ls.add(listener);
+        }
+
+        void updatePrice(String symbol, double newPrice) {
+            stocks.get(symbol).updatePrice(newPrice);
+            for (PriceListener l : listeners.getOrDefault(symbol, Collections.emptyList())) {
+                l.onPriceUpdate(symbol, newPrice); // push, don&#x27;t poll
+            }
+        }
+    }
+
+    // ---------- Broker (Facade) ----------
+    static class Broker implements PriceListener {
+        private final Map&lt;String, Account&gt; accounts = new HashMap&lt;&gt;();
+        private final Map&lt;String, Order&gt; ordersById = new HashMap&lt;&gt;();
+        private final Map&lt;String, List&lt;Order&gt;&gt; pendingOrdersBySymbol = new HashMap&lt;&gt;();
+        private final MarketDataFeed feed;
+        private final ExecutionStrategy marketStrategy = new MarketExecutionStrategy();
+        private final ExecutionStrategy limitStrategy = new LimitExecutionStrategy();
+        private int nextOrderId = 1;
+
+        Broker(MarketDataFeed feed) { this.feed = feed; }
+
+        void addAccount(Account account) { accounts.put(account.id, account); }
+
+        void deposit(Account account, double amount) { account.deposit(amount); }
+
+        void withdraw(Account account, double amount) { account.withdraw(amount); }
+
+        Order placeOrder(Account account, Stock stock, Side side, int quantity, OrderType type, double limitPrice) {
+            account.lock.lock(); // guard reserve + execution-attempt + settle atomically
+            try {
+                ExecutionStrategy strategy = (type == OrderType.MARKET) ? marketStrategy : limitStrategy;
+                double currentPrice = feed.getPrice(stock.symbol);
+                String id = &quot;ORD-&quot; + (nextOrderId++);
+                Order order;
+
+                if (side == Side.BUY) {
+                    double estimatedCost = quantity * (type == OrderType.MARKET ? currentPrice : limitPrice);
+                    account.reserve(estimatedCost); // throws InsufficientFundsException
+                    order = new BuyOrder(id, account, stock, quantity, type, limitPrice);
+                    order.reservedEstimate = estimatedCost;
+                } else {
+                    account.portfolio.reserveShares(stock, quantity); // throws InsufficientHoldingsException
+                    order = new SellOrder(id, account, stock, quantity, type, limitPrice);
+                }
+                ordersById.put(order.id, order);
+
+                OptionalDouble result = strategy.tryExecute(order, currentPrice);
+                if (result.isPresent()) {
+                    settle(order, result.getAsDouble());
+                } else {
+                    order.status = OrderStatus.PENDING;
+                    pendingOrdersBySymbol.computeIfAbsent(stock.symbol, k -&gt; new ArrayList&lt;&gt;()).add(order);
+                    feed.subscribe(stock.symbol, this); // re-checked on future price ticks
+                }
+                return order;
+            } finally {
+                account.lock.unlock();
+            }
+        }
+
+        @Override public void onPriceUpdate(String symbol, double newPrice) {
+            List&lt;Order&gt; pending = pendingOrdersBySymbol.get(symbol);
+            if (pending == null) return;
+            List&lt;Order&gt; stillPending = new ArrayList&lt;&gt;();
+            for (Order order : new ArrayList&lt;&gt;(pending)) {
+                if (order.status != OrderStatus.PENDING) continue; // already cancelled/executed
+                order.account.lock.lock();
+                try {
+                    ExecutionStrategy strategy = (order.type == OrderType.MARKET) ? marketStrategy : limitStrategy;
+                    OptionalDouble result = strategy.tryExecute(order, newPrice);
+                    if (result.isPresent()) {
+                        settle(order, result.getAsDouble());
+                    } else {
+                        stillPending.add(order);
+                    }
+                } finally {
+                    order.account.lock.unlock();
+                }
+            }
+            pendingOrdersBySymbol.put(symbol, stillPending);
+        }
+
+        // Must be called while holding order.account.lock.
+        private void settle(Order order, double executionPrice) {
+            Account account = order.account;
+            if (order.getSide() == Side.BUY) {
+                account.release(order.reservedEstimate);
+                account.withdraw(executionPrice * order.quantity);
+                account.portfolio.addHolding(order.stock, order.quantity);
+            } else {
+                account.portfolio.settle(order.stock, order.quantity, Side.SELL); // removes reserved shares
+                account.deposit(executionPrice * order.quantity);
+            }
+            order.status = OrderStatus.EXECUTED;
+        }
+
+        void cancelOrder(String orderId) {
+            Order order = ordersById.get(orderId);
+            if (order == null) throw new OrderNotFoundException(&quot;No such order: &quot; + orderId);
+            order.account.lock.lock();
+            try {
+                if (order.status != OrderStatus.PENDING) throw new InvalidOrderStateException(&quot;Order not cancellable: &quot; + order.status);
+                if (order.getSide() == Side.BUY) order.account.release(order.reservedEstimate);
+                else order.account.portfolio.releaseShares(order.stock, order.quantity);
+                order.status = OrderStatus.CANCELLED;
+            } finally {
+                order.account.lock.unlock();
+            }
+        }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) throws InterruptedException {
+        Stock appl = new Stock(&quot;AAPL&quot;, 150.0);
+        Map&lt;String, Stock&gt; stocks = new HashMap&lt;&gt;();
+        stocks.put(&quot;AAPL&quot;, appl);
+        SimpleMarketDataFeed feed = new SimpleMarketDataFeed(stocks);
+
+        Broker broker = new Broker(feed);
+        Account account = new Account(&quot;A1&quot;, 10000.0);
+        broker.addAccount(account);
+
+        // Market buy: executes immediately.
+        Order buy = broker.placeOrder(account, appl, Side.BUY, 10, OrderType.MARKET, 0);
+        System.out.println(&quot;Market buy status=&quot; + buy.status + &quot; cash=&quot; + account.cashBalance + &quot; holdings=&quot; + account.portfolio.holdingOf(&quot;AAPL&quot;));
+
+        // Limit sell above current price: stays pending until price rises.
+        Order limitSell = broker.placeOrder(account, appl, Side.SELL, 5, OrderType.LIMIT, 160.0);
+        System.out.println(&quot;Limit sell status=&quot; + limitSell.status);
+
+        feed.updatePrice(&quot;AAPL&quot;, 161.0); // Observer push triggers re-check
+        System.out.println(&quot;After price tick, limit sell status=&quot; + limitSell.status + &quot; cash=&quot; + account.cashBalance);
+
+        // Place another limit sell, then cancel it before it executes.
+        Order toCancel = broker.placeOrder(account, appl, Side.SELL, 2, OrderType.LIMIT, 500.0);
+        broker.cancelOrder(toCancel.id);
+        System.out.println(&quot;Cancelled order status=&quot; + toCancel.status + &quot; holdings=&quot; + account.portfolio.holdingOf(&quot;AAPL&quot;));
+
+        // Concurrency demo: two threads race to sell the last 3 shares concurrently.
+        Account raceAccount = new Account(&quot;A2&quot;, 5000.0);
+        broker.addAccount(raceAccount);
+        broker.placeOrder(raceAccount, appl, Side.BUY, 3, OrderType.MARKET, 0); // gives raceAccount exactly 3 shares
+
+        Runnable trySell = () -&gt; {
+            try {
+                broker.placeOrder(raceAccount, appl, Side.SELL, 3, OrderType.MARKET, 0);
+            } catch (InsufficientHoldingsException e) {
+                System.out.println(&quot;Thread correctly rejected: &quot; + e.getMessage());
+            }
+        };
+        Thread t1 = new Thread(trySell);
+        Thread t2 = new Thread(trySell);
+        t1.start(); t2.start();
+        t1.join(); t2.join();
+        System.out.println(&quot;Race account final holdings=&quot; + raceAccount.portfolio.holdingOf(&quot;AAPL&quot;) + &quot; (never negative)&quot;);
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Problem 21: Stock Brokerage System
+// Patterns: Strategy (ExecutionStrategy), Observer (MarketDataFeed -&gt; Broker), Facade (Broker)
+// Concurrency: per-account mutex guards reserve+execute+settle so cash/holdings never corrupt
+// under concurrent orders (badge: Advanced, Concurrency &amp; Consistency).
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+#include &lt;map&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+#include &lt;optional&gt;
+#include &lt;mutex&gt;
+#include &lt;thread&gt;
+#include &lt;stdexcept&gt;
+#include &lt;algorithm&gt;
+
+using namespace std;
+
+// ---------- Exceptions ----------
+struct InsufficientFundsException : runtime_error { InsufficientFundsException(const string&amp; m) : runtime_error(m) {} };
+struct InsufficientHoldingsException : runtime_error { InsufficientHoldingsException(const string&amp; m) : runtime_error(m) {} };
+struct InvalidOrderStateException : runtime_error { InvalidOrderStateException(const string&amp; m) : runtime_error(m) {} };
+struct OrderNotFoundException : runtime_error { OrderNotFoundException(const string&amp; m) : runtime_error(m) {} };
+
+enum class Side { BUY, SELL };
+enum class OrderType { MARKET, LIMIT };
+enum class OrderStatus { PENDING, EXECUTED, CANCELLED };
+
+// ---------- Stock ----------
+struct Stock {
+    string symbol;
+    double currentPrice;
+    Stock(string symbol_, double price) : symbol(move(symbol_)), currentPrice(price) {}
+    void updatePrice(double newPrice) { currentPrice = newPrice; }
+};
+
+// ---------- Portfolio (owned by Account) ----------
+class Portfolio {
+    map&lt;string, int&gt; holdings;
+    map&lt;string, int&gt; reserved;
+public:
+    void reserveShares(const Stock&amp; stock, int qty) {
+        int owned = holdings.count(stock.symbol) ? holdings[stock.symbol] : 0;
+        int alreadyReserved = reserved.count(stock.symbol) ? reserved[stock.symbol] : 0;
+        if (owned - alreadyReserved &lt; qty) throw InsufficientHoldingsException(&quot;Not enough shares of &quot; + stock.symbol);
+        reserved[stock.symbol] += qty;
+    }
+    void releaseShares(const Stock&amp; stock, int qty) { reserved[stock.symbol] -= qty; }
+    void addHolding(const Stock&amp; stock, int qty) { holdings[stock.symbol] += qty; }
+
+    // Removes settled (sold) shares from both holdings and their reservation.
+    void settle(const Stock&amp; stock, int qty, Side side) {
+        if (side == Side::SELL) {
+            holdings[stock.symbol] -= qty;
+            reserved[stock.symbol] -= qty;
+        }
+    }
+    int holdingOf(const string&amp; symbol) { return holdings.count(symbol) ? holdings[symbol] : 0; }
+};
+
+// ---------- Account (owns Portfolio) ----------
+class Account {
+public:
+    string id;
+    double cashBalance;
+    double reservedCash = 0;
+    Portfolio portfolio;
+    mutex lockMutex; // guards reserve/execute/settle atomicity
+
+    Account(string id_, double initialCash) : id(move(id_)), cashBalance(initialCash) {}
+
+    void reserve(double amount) {
+        if (cashBalance - reservedCash &lt; amount) throw InsufficientFundsException(&quot;Insufficient funds in &quot; + id);
+        reservedCash += amount;
+    }
+    void release(double amount) { reservedCash = max(0.0, reservedCash - amount); }
+    void deposit(double amount) { cashBalance += amount; }
+    void withdraw(double amount) {
+        if (cashBalance &lt; amount) throw InsufficientFundsException(&quot;Insufficient funds in &quot; + id);
+        cashBalance -= amount;
+    }
+};
+
+// ---------- Order (abstract) ----------
+class Order {
+public:
+    string id;
+    shared_ptr&lt;Account&gt; account;
+    shared_ptr&lt;Stock&gt; stock;
+    int quantity;
+    OrderType type;
+    double limitPrice; // unused for MARKET
+    double reservedEstimate = 0;
+    OrderStatus status = OrderStatus::PENDING;
+
+    Order(string id_, shared_ptr&lt;Account&gt; account_, shared_ptr&lt;Stock&gt; stock_, int quantity_, OrderType type_, double limitPrice_)
+        : id(move(id_)), account(account_), stock(stock_), quantity(quantity_), type(type_), limitPrice(limitPrice_) {}
+    virtual ~Order() = default;
+
+    virtual Side getSide() const = 0;
+
+    void cancel() {
+        if (status != OrderStatus::PENDING) throw InvalidOrderStateException(&quot;Order not cancellable&quot;);
+        status = OrderStatus::CANCELLED;
+    }
+};
+
+class BuyOrder : public Order {
+public:
+    using Order::Order;
+    Side getSide() const override { return Side::BUY; }
+};
+class SellOrder : public Order {
+public:
+    using Order::Order;
+    Side getSide() const override { return Side::SELL; }
+};
+
+// ---------- ExecutionStrategy ----------
+class ExecutionStrategy {
+public:
+    virtual ~ExecutionStrategy() = default;
+    virtual optional&lt;double&gt; tryExecute(Order&amp; order, double currentPrice) = 0;
+};
+
+class MarketExecutionStrategy : public ExecutionStrategy {
+public:
+    optional&lt;double&gt; tryExecute(Order&amp;, double currentPrice) override { return currentPrice; } // always executes
+};
+
+class LimitExecutionStrategy : public ExecutionStrategy {
+public:
+    optional&lt;double&gt; tryExecute(Order&amp; order, double currentPrice) override {
+        bool conditionMet = order.getSide() == Side::BUY
+            ? currentPrice &lt;= order.limitPrice
+            : currentPrice &gt;= order.limitPrice;
+        return conditionMet ? optional&lt;double&gt;(currentPrice) : nullopt;
+    }
+};
+
+// ---------- MarketDataFeed ----------
+class PriceListener {
+public:
+    virtual ~PriceListener() = default;
+    virtual void onPriceUpdate(const string&amp; symbol, double newPrice) = 0;
+};
+
+class MarketDataFeed {
+public:
+    virtual ~MarketDataFeed() = default;
+    virtual double getPrice(const string&amp; symbol) = 0;
+    virtual void subscribe(const string&amp; symbol, PriceListener* listener) = 0;
+};
+
+class SimpleMarketDataFeed : public MarketDataFeed {
+    map&lt;string, shared_ptr&lt;Stock&gt;&gt; stocks;
+    map&lt;string, vector&lt;PriceListener*&gt;&gt; listeners;
+public:
+    SimpleMarketDataFeed(map&lt;string, shared_ptr&lt;Stock&gt;&gt; stocks_) : stocks(move(stocks_)) {}
+
+    double getPrice(const string&amp; symbol) override { return stocks[symbol]-&gt;currentPrice; }
+
+    void subscribe(const string&amp; symbol, PriceListener* listener) override {
+        auto&amp; ls = listeners[symbol];
+        if (find(ls.begin(), ls.end(), listener) == ls.end()) ls.push_back(listener);
+    }
+
+    void updatePrice(const string&amp; symbol, double newPrice) {
+        stocks[symbol]-&gt;updatePrice(newPrice);
+        for (auto* l : listeners[symbol]) l-&gt;onPriceUpdate(symbol, newPrice); // push, don&#x27;t poll
+    }
+};
+
+// ---------- Broker (Facade) ----------
+class Broker : public PriceListener {
+    map&lt;string, shared_ptr&lt;Account&gt;&gt; accounts;
+    map&lt;string, shared_ptr&lt;Order&gt;&gt; ordersById;
+    map&lt;string, vector&lt;shared_ptr&lt;Order&gt;&gt;&gt; pendingOrdersBySymbol;
+    MarketDataFeed* feed;
+    MarketExecutionStrategy marketStrategy;
+    LimitExecutionStrategy limitStrategy;
+    int nextOrderId = 1;
+
+public:
+    Broker(MarketDataFeed* feed_) : feed(feed_) {}
+
+    void addAccount(shared_ptr&lt;Account&gt; account) { accounts[account-&gt;id] = account; }
+    void deposit(shared_ptr&lt;Account&gt; account, double amount) { account-&gt;deposit(amount); }
+    void withdraw(shared_ptr&lt;Account&gt; account, double amount) { account-&gt;withdraw(amount); }
+
+    shared_ptr&lt;Order&gt; placeOrder(shared_ptr&lt;Account&gt; account, shared_ptr&lt;Stock&gt; stock, Side side,
+                                  int quantity, OrderType type, double limitPrice) {
+        lock_guard&lt;mutex&gt; guard(account-&gt;lockMutex); // guard reserve + execution-attempt + settle atomically
+        ExecutionStrategy* strategy = (type == OrderType::MARKET) ? (ExecutionStrategy*)&amp;marketStrategy : (ExecutionStrategy*)&amp;limitStrategy;
+        double currentPrice = feed-&gt;getPrice(stock-&gt;symbol);
+        string id = &quot;ORD-&quot; + to_string(nextOrderId++);
+        shared_ptr&lt;Order&gt; order;
+
+        if (side == Side::BUY) {
+            double estimatedCost = quantity * (type == OrderType::MARKET ? currentPrice : limitPrice);
+            account-&gt;reserve(estimatedCost); // throws InsufficientFundsException
+            order = make_shared&lt;BuyOrder&gt;(id, account, stock, quantity, type, limitPrice);
+            order-&gt;reservedEstimate = estimatedCost;
+        } else {
+            account-&gt;portfolio.reserveShares(*stock, quantity); // throws InsufficientHoldingsException
+            order = make_shared&lt;SellOrder&gt;(id, account, stock, quantity, type, limitPrice);
+        }
+        ordersById[order-&gt;id] = order;
+
+        auto result = strategy-&gt;tryExecute(*order, currentPrice);
+        if (result.has_value()) {
+            settle(*order, *result);
+        } else {
+            order-&gt;status = OrderStatus::PENDING;
+            pendingOrdersBySymbol[stock-&gt;symbol].push_back(order);
+            feed-&gt;subscribe(stock-&gt;symbol, this); // re-checked on future price ticks
+        }
+        return order;
+    }
+
+    void onPriceUpdate(const string&amp; symbol, double newPrice) override {
+        auto it = pendingOrdersBySymbol.find(symbol);
+        if (it == pendingOrdersBySymbol.end()) return;
+        vector&lt;shared_ptr&lt;Order&gt;&gt; stillPending;
+        for (auto&amp; order : it-&gt;second) {
+            if (order-&gt;status != OrderStatus::PENDING) continue;
+            lock_guard&lt;mutex&gt; guard(order-&gt;account-&gt;lockMutex);
+            ExecutionStrategy* strategy = (order-&gt;type == OrderType::MARKET) ? (ExecutionStrategy*)&amp;marketStrategy : (ExecutionStrategy*)&amp;limitStrategy;
+            auto result = strategy-&gt;tryExecute(*order, newPrice);
+            if (result.has_value()) settle(*order, *result);
+            else stillPending.push_back(order);
+        }
+        it-&gt;second = stillPending;
+    }
+
+    void cancelOrder(const string&amp; orderId) {
+        auto it = ordersById.find(orderId);
+        if (it == ordersById.end()) throw OrderNotFoundException(&quot;No such order: &quot; + orderId);
+        auto order = it-&gt;second;
+        lock_guard&lt;mutex&gt; guard(order-&gt;account-&gt;lockMutex);
+        if (order-&gt;status != OrderStatus::PENDING) throw InvalidOrderStateException(&quot;Order not cancellable&quot;);
+        if (order-&gt;getSide() == Side::BUY) order-&gt;account-&gt;release(order-&gt;reservedEstimate);
+        else order-&gt;account-&gt;portfolio.releaseShares(*order-&gt;stock, order-&gt;quantity);
+        order-&gt;status = OrderStatus::CANCELLED;
+    }
+
+private:
+    // Must be called while holding order.account-&gt;lockMutex.
+    void settle(Order&amp; order, double executionPrice) {
+        auto account = order.account;
+        if (order.getSide() == Side::BUY) {
+            account-&gt;release(order.reservedEstimate);
+            account-&gt;withdraw(executionPrice * order.quantity);
+            account-&gt;portfolio.addHolding(*order.stock, order.quantity);
+        } else {
+            account-&gt;portfolio.settle(*order.stock, order.quantity, Side::SELL); // removes reserved shares
+            account-&gt;deposit(executionPrice * order.quantity);
+        }
+        order.status = OrderStatus::EXECUTED;
+    }
+};
+
+string statusName(OrderStatus s) {
+    switch (s) {
+        case OrderStatus::PENDING: return &quot;PENDING&quot;;
+        case OrderStatus::EXECUTED: return &quot;EXECUTED&quot;;
+        case OrderStatus::CANCELLED: return &quot;CANCELLED&quot;;
+    }
+    return &quot;?&quot;;
+}
+
+// ---------- Demo ----------
+int main() {
+    auto appl = make_shared&lt;Stock&gt;(&quot;AAPL&quot;, 150.0);
+    map&lt;string, shared_ptr&lt;Stock&gt;&gt; stocks = {{&quot;AAPL&quot;, appl}};
+    SimpleMarketDataFeed feed(stocks);
+
+    Broker broker(&amp;feed);
+    auto account = make_shared&lt;Account&gt;(&quot;A1&quot;, 10000.0);
+    broker.addAccount(account);
+
+    auto buy = broker.placeOrder(account, appl, Side::BUY, 10, OrderType::MARKET, 0);
+    cout &lt;&lt; &quot;Market buy status=&quot; &lt;&lt; statusName(buy-&gt;status) &lt;&lt; &quot; cash=&quot; &lt;&lt; account-&gt;cashBalance
+         &lt;&lt; &quot; holdings=&quot; &lt;&lt; account-&gt;portfolio.holdingOf(&quot;AAPL&quot;) &lt;&lt; endl;
+
+    auto limitSell = broker.placeOrder(account, appl, Side::SELL, 5, OrderType::LIMIT, 160.0);
+    cout &lt;&lt; &quot;Limit sell status=&quot; &lt;&lt; statusName(limitSell-&gt;status) &lt;&lt; endl;
+
+    feed.updatePrice(&quot;AAPL&quot;, 161.0); // Observer push triggers re-check
+    cout &lt;&lt; &quot;After price tick, limit sell status=&quot; &lt;&lt; statusName(limitSell-&gt;status) &lt;&lt; &quot; cash=&quot; &lt;&lt; account-&gt;cashBalance &lt;&lt; endl;
+
+    auto toCancel = broker.placeOrder(account, appl, Side::SELL, 2, OrderType::LIMIT, 500.0);
+    broker.cancelOrder(toCancel-&gt;id);
+    cout &lt;&lt; &quot;Cancelled order status=&quot; &lt;&lt; statusName(toCancel-&gt;status) &lt;&lt; &quot; holdings=&quot; &lt;&lt; account-&gt;portfolio.holdingOf(&quot;AAPL&quot;) &lt;&lt; endl;
+
+    // Concurrency demo: two threads race to sell the last 3 shares concurrently.
+    auto raceAccount = make_shared&lt;Account&gt;(&quot;A2&quot;, 5000.0);
+    broker.addAccount(raceAccount);
+    broker.placeOrder(raceAccount, appl, Side::BUY, 3, OrderType::MARKET, 0);
+
+    auto trySell = [&amp;]() {
+        try {
+            broker.placeOrder(raceAccount, appl, Side::SELL, 3, OrderType::MARKET, 0);
+        } catch (InsufficientHoldingsException&amp; e) {
+            cout &lt;&lt; &quot;Thread correctly rejected: &quot; &lt;&lt; e.what() &lt;&lt; endl;
+        }
+    };
+    thread t1(trySell), t2(trySell);
+    t1.join(); t2.join();
+    cout &lt;&lt; &quot;Race account final holdings=&quot; &lt;&lt; raceAccount-&gt;portfolio.holdingOf(&quot;AAPL&quot;) &lt;&lt; &quot; (never negative)&quot; &lt;&lt; endl;
+
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">// Problem 21: Stock Brokerage System
+// Patterns: Strategy (ExecutionStrategy), Observer (MarketDataFeed -&gt; Broker), Facade (Broker)
+// Concurrency note: Node.js runs this synchronous demo on a single thread, so there is no
+// real data race to guard against here -- but we still model a per-account Lock explicitly
+// (mirroring the Java/C++ versions&#x27; mutex) so that the *shape* of the critical section
+// (reserve -&gt; tryExecute -&gt; settle, all atomic w.r.t. one account) is structurally faithful
+// and would compose correctly if ported to a worker/thread-based environment.
+
+class InsufficientFundsException extends Error {}
+class InsufficientHoldingsException extends Error {}
+class InvalidOrderStateException extends Error {}
+class OrderNotFoundException extends Error {}
+
+const Side = Object.freeze({ BUY: &#x27;BUY&#x27;, SELL: &#x27;SELL&#x27; });
+const OrderType = Object.freeze({ MARKET: &#x27;MARKET&#x27;, LIMIT: &#x27;LIMIT&#x27; });
+const OrderStatus = Object.freeze({ PENDING: &#x27;PENDING&#x27;, EXECUTED: &#x27;EXECUTED&#x27;, CANCELLED: &#x27;CANCELLED&#x27; });
+
+// Trivial synchronous lock: acquire/release bracket the critical section explicitly,
+// keeping the code shape identical to the Java/C++ mutex-guarded versions.
+class Lock {
+  acquire() { /* no-op: single-threaded event loop, but marks the critical section */ }
+  release() { /* no-op */ }
+}
+
+// ---------- Stock ----------
+class Stock {
+  constructor(symbol, currentPrice) { this.symbol = symbol; this.currentPrice = currentPrice; }
+  updatePrice(newPrice) { this.currentPrice = newPrice; }
+}
+
+// ---------- Portfolio (owned by Account) ----------
+class Portfolio {
+  constructor() { this.holdings = new Map(); this.reserved = new Map(); }
+
+  reserveShares(stock, qty) {
+    const owned = this.holdings.get(stock.symbol) || 0;
+    const alreadyReserved = this.reserved.get(stock.symbol) || 0;
+    if (owned - alreadyReserved &lt; qty) throw new InsufficientHoldingsException(`Not enough shares of ${stock.symbol}`);
+    this.reserved.set(stock.symbol, alreadyReserved + qty);
+  }
+  releaseShares(stock, qty) {
+    this.reserved.set(stock.symbol, (this.reserved.get(stock.symbol) || 0) - qty);
+  }
+  addHolding(stock, qty) {
+    this.holdings.set(stock.symbol, (this.holdings.get(stock.symbol) || 0) + qty);
+  }
+  // Removes settled (sold) shares from both holdings and their reservation.
+  settle(stock, qty, side) {
+    if (side === Side.SELL) {
+      this.holdings.set(stock.symbol, (this.holdings.get(stock.symbol) || 0) - qty);
+      this.reserved.set(stock.symbol, (this.reserved.get(stock.symbol) || 0) - qty);
+    }
+  }
+  holdingOf(symbol) { return this.holdings.get(symbol) || 0; }
+}
+
+// ---------- Account (owns Portfolio) ----------
+class Account {
+  constructor(id, initialCash) {
+    this.id = id; this.cashBalance = initialCash; this.reservedCash = 0;
+    this.portfolio = new Portfolio();
+    this.lock = new Lock(); // guards reserve/execute/settle atomicity
+  }
+  reserve(amount) {
+    if (this.cashBalance - this.reservedCash &lt; amount) throw new InsufficientFundsException(`Insufficient funds in ${this.id}`);
+    this.reservedCash += amount;
+  }
+  release(amount) { this.reservedCash = Math.max(0, this.reservedCash - amount); }
+  deposit(amount) { this.cashBalance += amount; }
+  withdraw(amount) {
+    if (this.cashBalance &lt; amount) throw new InsufficientFundsException(`Insufficient funds in ${this.id}`);
+    this.cashBalance -= amount;
+  }
+}
+
+// ---------- Order (abstract) ----------
+class Order {
+  constructor(id, account, stock, quantity, type, limitPrice) {
+    if (new.target === Order) throw new Error(&#x27;Order is abstract&#x27;);
+    this.id = id; this.account = account; this.stock = stock;
+    this.quantity = quantity; this.type = type; this.limitPrice = limitPrice;
+    this.reservedEstimate = 0;
+    this.status = OrderStatus.PENDING;
+  }
+  getSide() { throw new Error(&#x27;abstract method&#x27;); }
+  cancel() {
+    if (this.status !== OrderStatus.PENDING) throw new InvalidOrderStateException(&#x27;Order not cancellable&#x27;);
+    this.status = OrderStatus.CANCELLED;
+  }
+}
+
+class BuyOrder extends Order { getSide() { return Side.BUY; } }
+class SellOrder extends Order { getSide() { return Side.SELL; } }
+
+// ---------- ExecutionStrategy ----------
+class MarketExecutionStrategy {
+  tryExecute(order, currentPrice) { return currentPrice; } // always executes, market orders take the going price
+}
+class LimitExecutionStrategy {
+  tryExecute(order, currentPrice) {
+    const conditionMet = order.getSide() === Side.BUY ? currentPrice &lt;= order.limitPrice : currentPrice &gt;= order.limitPrice;
+    return conditionMet ? currentPrice : null;
+  }
+}
+
+// ---------- MarketDataFeed ----------
+class SimpleMarketDataFeed {
+  constructor(stocks) { this.stocks = stocks; this.listeners = new Map(); } // symbol -&gt; Stock, symbol -&gt; listeners[]
+
+  getPrice(symbol) { return this.stocks.get(symbol).currentPrice; }
+
+  subscribe(symbol, listener) {
+    if (!this.listeners.has(symbol)) this.listeners.set(symbol, []);
+    const ls = this.listeners.get(symbol);
+    if (!ls.includes(listener)) ls.push(listener);
+  }
+
+  updatePrice(symbol, newPrice) {
+    this.stocks.get(symbol).updatePrice(newPrice);
+    for (const l of this.listeners.get(symbol) || []) l.onPriceUpdate(symbol, newPrice); // push, don&#x27;t poll
+  }
+}
+
+// ---------- Broker (Facade) ----------
+class Broker {
+  constructor(feed) {
+    this.feed = feed;
+    this.accounts = new Map();
+    this.ordersById = new Map();
+    this.pendingOrdersBySymbol = new Map();
+    this.marketStrategy = new MarketExecutionStrategy();
+    this.limitStrategy = new LimitExecutionStrategy();
+    this.nextOrderId = 1;
+  }
+
+  addAccount(account) { this.accounts.set(account.id, account); }
+  deposit(account, amount) { account.deposit(amount); }
+  withdraw(account, amount) { account.withdraw(amount); }
+
+  placeOrder(account, stock, side, quantity, type, limitPrice) {
+    account.lock.acquire(); // guard reserve + execution-attempt + settle atomically
+    try {
+      const strategy = type === OrderType.MARKET ? this.marketStrategy : this.limitStrategy;
+      const currentPrice = this.feed.getPrice(stock.symbol);
+      const id = `ORD-${this.nextOrderId++}`;
+      let order;
+
+      if (side === Side.BUY) {
+        const estimatedCost = quantity * (type === OrderType.MARKET ? currentPrice : limitPrice);
+        account.reserve(estimatedCost); // throws InsufficientFundsException
+        order = new BuyOrder(id, account, stock, quantity, type, limitPrice);
+        order.reservedEstimate = estimatedCost;
+      } else {
+        account.portfolio.reserveShares(stock, quantity); // throws InsufficientHoldingsException
+        order = new SellOrder(id, account, stock, quantity, type, limitPrice);
+      }
+      this.ordersById.set(order.id, order);
+
+      const result = strategy.tryExecute(order, currentPrice);
+      if (result !== null) {
+        this._settle(order, result);
+      } else {
+        order.status = OrderStatus.PENDING;
+        if (!this.pendingOrdersBySymbol.has(stock.symbol)) this.pendingOrdersBySymbol.set(stock.symbol, []);
+        this.pendingOrdersBySymbol.get(stock.symbol).push(order);
+        this.feed.subscribe(stock.symbol, this); // re-checked on future price ticks
+      }
+      return order;
+    } finally {
+      account.lock.release();
+    }
+  }
+
+  onPriceUpdate(symbol, newPrice) {
+    const pending = this.pendingOrdersBySymbol.get(symbol);
+    if (!pending) return;
+    const stillPending = [];
+    for (const order of pending) {
+      if (order.status !== OrderStatus.PENDING) continue;
+      order.account.lock.acquire();
+      try {
+        const strategy = order.type === OrderType.MARKET ? this.marketStrategy : this.limitStrategy;
+        const result = strategy.tryExecute(order, newPrice);
+        if (result !== null) this._settle(order, result);
+        else stillPending.push(order);
+      } finally {
+        order.account.lock.release();
+      }
+    }
+    this.pendingOrdersBySymbol.set(symbol, stillPending);
+  }
+
+  cancelOrder(orderId) {
+    const order = this.ordersById.get(orderId);
+    if (!order) throw new OrderNotFoundException(`No such order: ${orderId}`);
+    order.account.lock.acquire();
+    try {
+      if (order.status !== OrderStatus.PENDING) throw new InvalidOrderStateException(&#x27;Order not cancellable&#x27;);
+      if (order.getSide() === Side.BUY) order.account.release(order.reservedEstimate);
+      else order.account.portfolio.releaseShares(order.stock, order.quantity);
+      order.status = OrderStatus.CANCELLED;
+    } finally {
+      order.account.lock.release();
+    }
+  }
+
+  // Must be called while holding order.account.lock.
+  _settle(order, executionPrice) {
+    const account = order.account;
+    if (order.getSide() === Side.BUY) {
+      account.release(order.reservedEstimate);
+      account.withdraw(executionPrice * order.quantity);
+      account.portfolio.addHolding(order.stock, order.quantity);
+    } else {
+      account.portfolio.settle(order.stock, order.quantity, Side.SELL); // removes reserved shares
+      account.deposit(executionPrice * order.quantity);
+    }
+    order.status = OrderStatus.EXECUTED;
+  }
+}
+
+// ---------- Demo ----------
+function main() {
+  const appl = new Stock(&#x27;AAPL&#x27;, 150.0);
+  const stocks = new Map([[&#x27;AAPL&#x27;, appl]]);
+  const feed = new SimpleMarketDataFeed(stocks);
+
+  const broker = new Broker(feed);
+  const account = new Account(&#x27;A1&#x27;, 10000.0);
+  broker.addAccount(account);
+
+  const buy = broker.placeOrder(account, appl, Side.BUY, 10, OrderType.MARKET, 0);
+  console.log(`Market buy status=${buy.status} cash=${account.cashBalance} holdings=${account.portfolio.holdingOf(&#x27;AAPL&#x27;)}`);
+
+  const limitSell = broker.placeOrder(account, appl, Side.SELL, 5, OrderType.LIMIT, 160.0);
+  console.log(`Limit sell status=${limitSell.status}`);
+
+  feed.updatePrice(&#x27;AAPL&#x27;, 161.0); // Observer push triggers re-check
+  console.log(`After price tick, limit sell status=${limitSell.status} cash=${account.cashBalance}`);
+
+  const toCancel = broker.placeOrder(account, appl, Side.SELL, 2, OrderType.LIMIT, 500.0);
+  broker.cancelOrder(toCancel.id);
+  console.log(`Cancelled order status=${toCancel.status} holdings=${account.portfolio.holdingOf(&#x27;AAPL&#x27;)}`);
+
+  // Sequential &quot;race&quot;: both attempts guarded by the same lock discipline as Java/C++;
+  // the second is correctly rejected because the first already consumed all shares.
+  const raceAccount = new Account(&#x27;A2&#x27;, 5000.0);
+  broker.addAccount(raceAccount);
+  broker.placeOrder(raceAccount, appl, Side.BUY, 3, OrderType.MARKET, 0);
+
+  const trySell = () =&gt; {
+    try {
+      broker.placeOrder(raceAccount, appl, Side.SELL, 3, OrderType.MARKET, 0);
+    } catch (e) {
+      console.log(&#x27;Rejected as expected:&#x27;, e.message);
+    }
+  };
+  trySell();
+  trySell();
+  console.log(`Race account final holdings=${raceAccount.portfolio.holdingOf(&#x27;AAPL&#x27;)} (never negative)`);
+}
+
+if (require.main === module) main();
+
+module.exports = {
+  Account, Portfolio, Stock, Order, BuyOrder, SellOrder,
+  MarketExecutionStrategy, LimitExecutionStrategy, SimpleMarketDataFeed, Broker,
+  Side, OrderType, OrderStatus,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Problem 21: Stock Brokerage System
+// Patterns: Strategy (ExecutionStrategy), Observer (MarketDataFeed -&gt; Broker), Facade (Broker)
+// Concurrency note: this synchronous demo runs on a single thread, so there is no real data
+// race to guard against here -- but we still model a per-account Lock explicitly (mirroring
+// the Java/C++ versions&#x27; mutex) so the *shape* of the critical section (reserve -&gt; tryExecute
+// -&gt; settle, all atomic w.r.t. one account) is structurally faithful and would compose
+// correctly if ported to a worker/thread-based environment.
+
+class InsufficientFundsException extends Error {}
+class InsufficientHoldingsException extends Error {}
+class InvalidOrderStateException extends Error {}
+class OrderNotFoundException extends Error {}
+
+enum Side { BUY = &#x27;BUY&#x27;, SELL = &#x27;SELL&#x27; }
+enum OrderType { MARKET = &#x27;MARKET&#x27;, LIMIT = &#x27;LIMIT&#x27; }
+enum OrderStatus { PENDING = &#x27;PENDING&#x27;, EXECUTED = &#x27;EXECUTED&#x27;, CANCELLED = &#x27;CANCELLED&#x27; }
+
+// Trivial synchronous lock: acquire/release bracket the critical section explicitly,
+// keeping the code shape identical to the Java/C++ mutex-guarded versions.
+class Lock {
+  acquire(): void { /* no-op: single-threaded event loop, but marks the critical section */ }
+  release(): void { /* no-op */ }
+}
+
+// ---------- Stock ----------
+class Stock {
+  constructor(public symbol: string, public currentPrice: number) {}
+  updatePrice(newPrice: number): void { this.currentPrice = newPrice; }
+}
+
+// ---------- Portfolio (owned by Account) ----------
+class Portfolio {
+  private holdings = new Map&lt;string, number&gt;();
+  private reserved = new Map&lt;string, number&gt;();
+
+  reserveShares(stock: Stock, qty: number): void {
+    const owned = this.holdings.get(stock.symbol) || 0;
+    const alreadyReserved = this.reserved.get(stock.symbol) || 0;
+    if (owned - alreadyReserved &lt; qty) throw new InsufficientHoldingsException(`Not enough shares of ${stock.symbol}`);
+    this.reserved.set(stock.symbol, alreadyReserved + qty);
+  }
+  releaseShares(stock: Stock, qty: number): void {
+    this.reserved.set(stock.symbol, (this.reserved.get(stock.symbol) || 0) - qty);
+  }
+  addHolding(stock: Stock, qty: number): void {
+    this.holdings.set(stock.symbol, (this.holdings.get(stock.symbol) || 0) + qty);
+  }
+  // Removes settled (sold) shares from both holdings and their reservation.
+  settle(stock: Stock, qty: number, side: Side): void {
+    if (side === Side.SELL) {
+      this.holdings.set(stock.symbol, (this.holdings.get(stock.symbol) || 0) - qty);
+      this.reserved.set(stock.symbol, (this.reserved.get(stock.symbol) || 0) - qty);
+    }
+  }
+  holdingOf(symbol: string): number { return this.holdings.get(symbol) || 0; }
+}
+
+// ---------- Account (owns Portfolio) ----------
+class Account {
+  cashBalance: number;
+  reservedCash = 0;
+  readonly portfolio = new Portfolio();
+  readonly lock = new Lock(); // guards reserve/execute/settle atomicity
+
+  constructor(public id: string, initialCash: number) { this.cashBalance = initialCash; }
+
+  reserve(amount: number): void {
+    if (this.cashBalance - this.reservedCash &lt; amount) throw new InsufficientFundsException(`Insufficient funds in ${this.id}`);
+    this.reservedCash += amount;
+  }
+  release(amount: number): void { this.reservedCash = Math.max(0, this.reservedCash - amount); }
+  deposit(amount: number): void { this.cashBalance += amount; }
+  withdraw(amount: number): void {
+    if (this.cashBalance &lt; amount) throw new InsufficientFundsException(`Insufficient funds in ${this.id}`);
+    this.cashBalance -= amount;
+  }
+}
+
+// ---------- Order (abstract) ----------
+abstract class Order {
+  reservedEstimate = 0;
+  status: OrderStatus = OrderStatus.PENDING;
+
+  constructor(
+    public id: string, public account: Account, public stock: Stock,
+    public quantity: number, public type: OrderType, public limitPrice: number,
+  ) {}
+
+  abstract getSide(): Side;
+
+  cancel(): void {
+    if (this.status !== OrderStatus.PENDING) throw new InvalidOrderStateException(&#x27;Order not cancellable&#x27;);
+    this.status = OrderStatus.CANCELLED;
+  }
+}
+
+class BuyOrder extends Order { getSide(): Side { return Side.BUY; } }
+class SellOrder extends Order { getSide(): Side { return Side.SELL; } }
+
+// ---------- ExecutionStrategy ----------
+interface ExecutionStrategy {
+  tryExecute(order: Order, currentPrice: number): number | null;
+}
+
+class MarketExecutionStrategy implements ExecutionStrategy {
+  tryExecute(_order: Order, currentPrice: number): number | null { return currentPrice; } // always executes
+}
+class LimitExecutionStrategy implements ExecutionStrategy {
+  tryExecute(order: Order, currentPrice: number): number | null {
+    const conditionMet = order.getSide() === Side.BUY ? currentPrice &lt;= order.limitPrice : currentPrice &gt;= order.limitPrice;
+    return conditionMet ? currentPrice : null;
+  }
+}
+
+// ---------- MarketDataFeed ----------
+interface PriceListener {
+  onPriceUpdate(symbol: string, newPrice: number): void;
+}
+
+interface MarketDataFeed {
+  getPrice(symbol: string): number;
+  subscribe(symbol: string, listener: PriceListener): void;
+}
+
+class SimpleMarketDataFeed implements MarketDataFeed {
+  private listeners = new Map&lt;string, PriceListener[]&gt;();
+  constructor(private stocks: Map&lt;string, Stock&gt;) {}
+
+  getPrice(symbol: string): number { return this.stocks.get(symbol)!.currentPrice; }
+
+  subscribe(symbol: string, listener: PriceListener): void {
+    if (!this.listeners.has(symbol)) this.listeners.set(symbol, []);
+    const ls = this.listeners.get(symbol)!;
+    if (!ls.includes(listener)) ls.push(listener);
+  }
+
+  updatePrice(symbol: string, newPrice: number): void {
+    this.stocks.get(symbol)!.updatePrice(newPrice);
+    for (const l of this.listeners.get(symbol) || []) l.onPriceUpdate(symbol, newPrice); // push, don&#x27;t poll
+  }
+}
+
+// ---------- Broker (Facade) ----------
+class Broker implements PriceListener {
+  private accounts = new Map&lt;string, Account&gt;();
+  private ordersById = new Map&lt;string, Order&gt;();
+  private pendingOrdersBySymbol = new Map&lt;string, Order[]&gt;();
+  private marketStrategy = new MarketExecutionStrategy();
+  private limitStrategy = new LimitExecutionStrategy();
+  private nextOrderId = 1;
+
+  constructor(private feed: MarketDataFeed) {}
+
+  addAccount(account: Account): void { this.accounts.set(account.id, account); }
+  deposit(account: Account, amount: number): void { account.deposit(amount); }
+  withdraw(account: Account, amount: number): void { account.withdraw(amount); }
+
+  placeOrder(account: Account, stock: Stock, side: Side, quantity: number, type: OrderType, limitPrice: number): Order {
+    account.lock.acquire(); // guard reserve + execution-attempt + settle atomically
+    try {
+      const strategy: ExecutionStrategy = type === OrderType.MARKET ? this.marketStrategy : this.limitStrategy;
+      const currentPrice = this.feed.getPrice(stock.symbol);
+      const id = `ORD-${this.nextOrderId++}`;
+      let order: Order;
+
+      if (side === Side.BUY) {
+        const estimatedCost = quantity * (type === OrderType.MARKET ? currentPrice : limitPrice);
+        account.reserve(estimatedCost); // throws InsufficientFundsException
+        order = new BuyOrder(id, account, stock, quantity, type, limitPrice);
+        order.reservedEstimate = estimatedCost;
+      } else {
+        account.portfolio.reserveShares(stock, quantity); // throws InsufficientHoldingsException
+        order = new SellOrder(id, account, stock, quantity, type, limitPrice);
+      }
+      this.ordersById.set(order.id, order);
+
+      const result = strategy.tryExecute(order, currentPrice);
+      if (result !== null) {
+        this.settle(order, result);
+      } else {
+        order.status = OrderStatus.PENDING;
+        if (!this.pendingOrdersBySymbol.has(stock.symbol)) this.pendingOrdersBySymbol.set(stock.symbol, []);
+        this.pendingOrdersBySymbol.get(stock.symbol)!.push(order);
+        this.feed.subscribe(stock.symbol, this); // re-checked on future price ticks
+      }
+      return order;
+    } finally {
+      account.lock.release();
+    }
+  }
+
+  onPriceUpdate(symbol: string, newPrice: number): void {
+    const pending = this.pendingOrdersBySymbol.get(symbol);
+    if (!pending) return;
+    const stillPending: Order[] = [];
+    for (const order of pending) {
+      if (order.status !== OrderStatus.PENDING) continue;
+      order.account.lock.acquire();
+      try {
+        const strategy: ExecutionStrategy = order.type === OrderType.MARKET ? this.marketStrategy : this.limitStrategy;
+        const result = strategy.tryExecute(order, newPrice);
+        if (result !== null) this.settle(order, result);
+        else stillPending.push(order);
+      } finally {
+        order.account.lock.release();
+      }
+    }
+    this.pendingOrdersBySymbol.set(symbol, stillPending);
+  }
+
+  cancelOrder(orderId: string): void {
+    const order = this.ordersById.get(orderId);
+    if (!order) throw new OrderNotFoundException(`No such order: ${orderId}`);
+    order.account.lock.acquire();
+    try {
+      if (order.status !== OrderStatus.PENDING) throw new InvalidOrderStateException(&#x27;Order not cancellable&#x27;);
+      if (order.getSide() === Side.BUY) order.account.release(order.reservedEstimate);
+      else order.account.portfolio.releaseShares(order.stock, order.quantity);
+      order.status = OrderStatus.CANCELLED;
+    } finally {
+      order.account.lock.release();
+    }
+  }
+
+  // Must be called while holding order.account.lock.
+  private settle(order: Order, executionPrice: number): void {
+    const account = order.account;
+    if (order.getSide() === Side.BUY) {
+      account.release(order.reservedEstimate);
+      account.withdraw(executionPrice * order.quantity);
+      account.portfolio.addHolding(order.stock, order.quantity);
+    } else {
+      account.portfolio.settle(order.stock, order.quantity, Side.SELL); // removes reserved shares
+      account.deposit(executionPrice * order.quantity);
+    }
+    order.status = OrderStatus.EXECUTED;
+  }
+}
+
+// ---------- Demo ----------
+function main(): void {
+  const appl = new Stock(&#x27;AAPL&#x27;, 150.0);
+  const stocks = new Map&lt;string, Stock&gt;([[&#x27;AAPL&#x27;, appl]]);
+  const feed = new SimpleMarketDataFeed(stocks);
+
+  const broker = new Broker(feed);
+  const account = new Account(&#x27;A1&#x27;, 10000.0);
+  broker.addAccount(account);
+
+  const buy = broker.placeOrder(account, appl, Side.BUY, 10, OrderType.MARKET, 0);
+  console.log(`Market buy status=${buy.status} cash=${account.cashBalance} holdings=${account.portfolio.holdingOf(&#x27;AAPL&#x27;)}`);
+
+  const limitSell = broker.placeOrder(account, appl, Side.SELL, 5, OrderType.LIMIT, 160.0);
+  console.log(`Limit sell status=${limitSell.status}`);
+
+  feed.updatePrice(&#x27;AAPL&#x27;, 161.0); // Observer push triggers re-check
+  console.log(`After price tick, limit sell status=${limitSell.status} cash=${account.cashBalance}`);
+
+  const toCancel = broker.placeOrder(account, appl, Side.SELL, 2, OrderType.LIMIT, 500.0);
+  broker.cancelOrder(toCancel.id);
+  console.log(`Cancelled order status=${toCancel.status} holdings=${account.portfolio.holdingOf(&#x27;AAPL&#x27;)}`);
+
+  // Sequential &quot;race&quot;: both attempts guarded by the same lock discipline as Java/C++;
+  // the second is correctly rejected because the first already consumed all shares.
+  const raceAccount = new Account(&#x27;A2&#x27;, 5000.0);
+  broker.addAccount(raceAccount);
+  broker.placeOrder(raceAccount, appl, Side.BUY, 3, OrderType.MARKET, 0);
+
+  const trySell = () =&gt; {
+    try {
+      broker.placeOrder(raceAccount, appl, Side.SELL, 3, OrderType.MARKET, 0);
+    } catch (e) {
+      console.log(&#x27;Rejected as expected:&#x27;, (e as Error).message);
+    }
+  };
+  trySell();
+  trySell();
+  console.log(`Race account final holdings=${raceAccount.portfolio.holdingOf(&#x27;AAPL&#x27;)} (never negative)`);
+}
+
+main();
+
+export {
+  Account, Portfolio, Stock, Order, BuyOrder, SellOrder,
+  ExecutionStrategy, MarketExecutionStrategy, LimitExecutionStrategy,
+  MarketDataFeed, SimpleMarketDataFeed, Broker, Side, OrderType, OrderStatus,
+};
+</code></pre>
+</div><div class="prevnext"><a class="prevnext-link prev" href="p20.html">&larr; 20. Chat Application (WhatsApp-style)</a><a class="prevnext-link next" href="synthesis.html">Cross-Problem Synthesis &rarr;</a></div>
 </div>
 </main>
 

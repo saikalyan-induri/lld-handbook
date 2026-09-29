@@ -61,7 +61,8 @@
 <a href="#p1-y">Y. Scaling Boundary</a><a href="#p1-z">Z. Failure Scenarios</a><a href="#p1-aa">AA. Bad Designs</a>
 <a href="#p1-ab">AB. Trade-Offs</a><a href="#p1-ac">AC. Interviewer Evaluation</a><a href="#p1-ad">AD. Simulation</a>
 <a href="#p1-ae">AE. Source Comparison</a><a href="#p1-af">AF. Cheat Sheet</a>
-</div><div class="jumpbar"><label for="jump-p1">Jump to section:</label><select id="jump-p1" class="jump-select" data-jump-select><option value="p1-a">A. Realistic Interview Prompt</option><option value="p1-b">B. Difficulty</option><option value="p1-c">C. What This Problem Tests</option><option value="p1-d">D. Requirements</option><option value="p1-e">E. Clarifying Questions</option><option value="p1-f">F. Assumptions</option><option value="p1-g">G. Actors</option><option value="p1-h">H. Core Domain Entities</option><option value="p1-i">I. Class Relationships</option><option value="p1-j">J. Class Diagram</option><option value="p1-k">K. Responsibility Mapping</option><option value="p1-l">L. SOLID Analysis</option><option value="p1-m">M. Design Patterns</option><option value="p1-n">N. What Is Likely to Change?</option><option value="p1-o">O. Design Evolution</option><option value="p1-p">P. API / Interface Design</option><option value="p1-q">Q. Pseudocode — Critical Logic</option><option value="p1-r">R. End-to-End Use Case</option><option value="p1-s">S. Data Structures</option><option value="p1-t">T. Complexity Analysis</option><option value="p1-u">U. Testing Strategy</option><option value="p1-v">V. Interviewer Follow-Ups</option><option value="p1-w">W. Concurrency</option><option value="p1-x">X. Persistence</option><option value="p1-y">Y. Scaling Boundary</option><option value="p1-z">Z. Failure Scenarios</option><option value="p1-aa">AA. Common Bad Designs</option><option value="p1-ab">AB. Design Trade-Offs</option><option value="p1-ac">AC. Interviewer Evaluation</option><option value="p1-ad">AD. Interview Simulation</option><option value="p1-ae">AE. Online Solution Comparison</option><option value="p1-af">AF. Interview Cheat Sheet</option></select></div>
+<a href="#p1-ag">AG. Full Implementation</a>
+</div><div class="jumpbar"><label for="jump-p1">Jump to section:</label><select id="jump-p1" class="jump-select" data-jump-select><option value="p1-a">A. Realistic Interview Prompt</option><option value="p1-b">B. Difficulty</option><option value="p1-c">C. What This Problem Tests</option><option value="p1-d">D. Requirements</option><option value="p1-e">E. Clarifying Questions</option><option value="p1-f">F. Assumptions</option><option value="p1-g">G. Actors</option><option value="p1-h">H. Core Domain Entities</option><option value="p1-i">I. Class Relationships</option><option value="p1-j">J. Class Diagram</option><option value="p1-k">K. Responsibility Mapping</option><option value="p1-l">L. SOLID Analysis</option><option value="p1-m">M. Design Patterns</option><option value="p1-n">N. What Is Likely to Change?</option><option value="p1-o">O. Design Evolution</option><option value="p1-p">P. API / Interface Design</option><option value="p1-q">Q. Pseudocode — Critical Logic</option><option value="p1-r">R. End-to-End Use Case</option><option value="p1-s">S. Data Structures</option><option value="p1-t">T. Complexity Analysis</option><option value="p1-u">U. Testing Strategy</option><option value="p1-v">V. Interviewer Follow-Ups</option><option value="p1-w">W. Concurrency</option><option value="p1-x">X. Persistence</option><option value="p1-y">Y. Scaling Boundary</option><option value="p1-z">Z. Failure Scenarios</option><option value="p1-aa">AA. Common Bad Designs</option><option value="p1-ab">AB. Design Trade-Offs</option><option value="p1-ac">AC. Interviewer Evaluation</option><option value="p1-ad">AD. Interview Simulation</option><option value="p1-ae">AE. Online Solution Comparison</option><option value="p1-af">AF. Interview Cheat Sheet</option><option value="p1-ag">AG. Full Implementation</option></select></div>
 
 <h3 id="p1-a">A. Realistic Interview Prompt</h3>
 <div class="prompt">"Design a parking lot system. It should support multiple vehicle types and multiple spot types, assign a spot when a vehicle enters, generate a ticket, and compute a fee when the vehicle leaves. Assume it can have multiple floors."</div>
@@ -607,7 +608,1098 @@ ParkingSpot.vacate()                  // spot now FREE
 <tr><td><strong>Top follow-ups</strong></td><td>EV spots, reservations, concurrent entrances, payment failure, city-scale (HLD boundary)</td></tr>
 <tr><td><strong>Common mistakes</strong></td><td>God-class ParkingLot; Singleton by default; type-string if/else chains</td></tr>
 <tr><td><strong>What NOT to over-engineer</strong></td><td>Payment gateway, hardware modeling, reservations — unless explicitly asked</td></tr>
-</table><div class="prevnext"><span></span><a class="prevnext-link next" href="p2.html">2. LRU Cache &rarr;</a></div>
+</table>
+
+<h3 id="p1-ag">AG. Full Implementation</h3>
+<p>A complete, compilable reference implementation of every class in the diagram above (composition, inheritance, interface realization, and dependency-injected strategies all preserved per section I), with a runnable demo exercising the primary flow — in Java, C++, JavaScript, and TypeScript.</p>
+<div class="code-tabs">
+<pre data-lang="java"><code class="language-java">// Parking Lot - full LLD implementation (single-file demo).
+// Difficulty badge includes &quot;Concurrency&quot;, so spot allocation + occupation is guarded
+// by a lock to guarantee two concurrent parkVehicle() calls never get the same spot.
+import java.util.*;
+import java.util.concurrent.locks.*;
+
+public class p1 {
+
+    // ---------- Vehicle hierarchy ----------
+    enum VehicleSize { MOTORCYCLE, COMPACT, LARGE }
+
+    static abstract class Vehicle {
+        private final String licensePlate;
+        Vehicle(String licensePlate) { this.licensePlate = licensePlate; }
+        String getLicensePlate() { return licensePlate; }
+        abstract VehicleSize getSize();
+    }
+
+    static class Motorcycle extends Vehicle {
+        Motorcycle(String plate) { super(plate); }
+        VehicleSize getSize() { return VehicleSize.MOTORCYCLE; }
+    }
+
+    static class Car extends Vehicle {
+        Car(String plate) { super(plate); }
+        VehicleSize getSize() { return VehicleSize.COMPACT; }
+    }
+
+    static class Bus extends Vehicle {
+        Bus(String plate) { super(plate); }
+        VehicleSize getSize() { return VehicleSize.LARGE; }
+    }
+
+    // ---------- ParkingSpot ----------
+    static class ParkingSpot {
+        private final String id;
+        private final VehicleSize size;
+        private boolean occupied = false;
+        private Vehicle currentVehicle;
+
+        ParkingSpot(String id, VehicleSize size) { this.id = id; this.size = size; }
+
+        String getId() { return id; }
+        VehicleSize getSize() { return size; }
+        boolean isOccupied() { return occupied; }
+
+        // A larger spot can host a smaller vehicle; ordinal() works because the enum
+        // is declared smallest-to-largest.
+        boolean canFit(VehicleSize vehicleSize) { return !occupied &amp;&amp; size.ordinal() &gt;= vehicleSize.ordinal(); }
+
+        void occupy(Vehicle vehicle) {
+            if (occupied) throw new IllegalStateException(&quot;Spot &quot; + id + &quot; already occupied&quot;);
+            occupied = true;
+            currentVehicle = vehicle;
+        }
+
+        void vacate() {
+            occupied = false;
+            currentVehicle = null;
+        }
+    }
+
+    // ---------- Floor ----------
+    static class Floor {
+        private final int floorNumber;
+        private final List&lt;ParkingSpot&gt; spots;
+
+        Floor(int floorNumber, List&lt;ParkingSpot&gt; spots) {
+            this.floorNumber = floorNumber;
+            this.spots = spots;
+        }
+
+        int getFloorNumber() { return floorNumber; }
+        List&lt;ParkingSpot&gt; getSpots() { return spots; }
+
+        // First compatible free spot on this floor, or null if none.
+        ParkingSpot findAvailableSpot(VehicleSize size) {
+            for (ParkingSpot s : spots) {
+                if (s.canFit(size)) return s;
+            }
+            return null;
+        }
+    }
+
+    // ---------- SpotAllocator (interface) + strategies ----------
+    interface SpotAllocator {
+        ParkingSpot allocate(Vehicle vehicle);
+    }
+
+    // Picks the first free compatible spot, scanning floors in order.
+    static class FirstAvailableAllocator implements SpotAllocator {
+        private final List&lt;Floor&gt; floors;
+        FirstAvailableAllocator(List&lt;Floor&gt; floors) { this.floors = floors; }
+        public ParkingSpot allocate(Vehicle vehicle) {
+            for (Floor f : floors) {
+                ParkingSpot spot = f.findAvailableSpot(vehicle.getSize());
+                if (spot != null) return spot;
+            }
+            return null;
+        }
+    }
+
+    // Picks the compatible spot whose size is the closest fit (least wasted space),
+    // scanning floors in order and comparing candidates across floors.
+    static class NearestSpotAllocator implements SpotAllocator {
+        private final List&lt;Floor&gt; floors;
+        NearestSpotAllocator(List&lt;Floor&gt; floors) { this.floors = floors; }
+        public ParkingSpot allocate(Vehicle vehicle) {
+            ParkingSpot best = null;
+            for (Floor f : floors) {
+                for (ParkingSpot s : f.getSpots()) {
+                    if (!s.canFit(vehicle.getSize())) continue;
+                    if (best == null || s.getSize().ordinal() &lt; best.getSize().ordinal()) best = s;
+                }
+            }
+            return best;
+        }
+    }
+
+    // ---------- Ticket ----------
+    enum TicketStatus { ACTIVE, CLOSED }
+
+    static class Ticket {
+        private static int SEQ = 1;
+        private final String id;
+        private final Vehicle vehicle;
+        private final ParkingSpot spot;
+        private final long entryTime;
+        private long exitTime;
+        private TicketStatus status;
+
+        private Ticket(Vehicle vehicle, ParkingSpot spot, long entryTime) {
+            this.id = &quot;T-&quot; + (SEQ++);
+            this.vehicle = vehicle;
+            this.spot = spot;
+            this.entryTime = entryTime;
+            this.status = TicketStatus.ACTIVE;
+        }
+
+        static Ticket create(Vehicle vehicle, ParkingSpot spot, long entryTime) {
+            return new Ticket(vehicle, spot, entryTime);
+        }
+
+        void close(long exitTime) {
+            this.exitTime = exitTime;
+            this.status = TicketStatus.CLOSED;
+        }
+
+        String getId() { return id; }
+        Vehicle getVehicle() { return vehicle; }
+        ParkingSpot getSpot() { return spot; }
+        long getEntryTime() { return entryTime; }
+        long getExitTime() { return exitTime; }
+        TicketStatus getStatus() { return status; }
+    }
+
+    // ---------- FeeStrategy (interface) + strategies ----------
+    interface FeeStrategy {
+        double calculate(Ticket closedTicket);
+    }
+
+    static class HourlyFeeStrategy implements FeeStrategy {
+        private final double ratePerHour;
+        HourlyFeeStrategy(double ratePerHour) { this.ratePerHour = ratePerHour; }
+        public double calculate(Ticket t) {
+            long durationMs = t.getExitTime() - t.getEntryTime();
+            double hours = Math.max(1, Math.ceil(durationMs / 3600000.0)); // round up, min 1 hour
+            return hours * ratePerHour;
+        }
+    }
+
+    // Applies a surcharge multiplier if entry happened during peak hours (9-11, 17-19).
+    static class PeakHourFeeStrategy implements FeeStrategy {
+        private final double ratePerHour;
+        private final double peakMultiplier;
+        PeakHourFeeStrategy(double ratePerHour, double peakMultiplier) {
+            this.ratePerHour = ratePerHour;
+            this.peakMultiplier = peakMultiplier;
+        }
+        public double calculate(Ticket t) {
+            long durationMs = t.getExitTime() - t.getEntryTime();
+            double hours = Math.max(1, Math.ceil(durationMs / 3600000.0));
+            int entryHour = (int) ((t.getEntryTime() / 3600000) % 24);
+            boolean peak = (entryHour &gt;= 9 &amp;&amp; entryHour &lt; 11) || (entryHour &gt;= 17 &amp;&amp; entryHour &lt; 19);
+            return hours * ratePerHour * (peak ? peakMultiplier : 1.0);
+        }
+    }
+
+    // ---------- Exceptions ----------
+    static class NoAvailableSpotException extends RuntimeException {
+        NoAvailableSpotException(String msg) { super(msg); }
+    }
+    static class InvalidTicketException extends RuntimeException {
+        InvalidTicketException(String msg) { super(msg); }
+    }
+
+    // ---------- ParkingLot (facade) ----------
+    static class ParkingLot {
+        private final List&lt;Floor&gt; floors;
+        private final SpotAllocator allocator;   // injected interface, not a concrete class
+        private final FeeStrategy feeStrategy;    // injected interface, not a concrete class
+        // Single lock guarding the &quot;decide spot + occupy spot&quot; sequence, which spans two
+        // separate objects (allocator, spot) and therefore cannot be made atomic by either
+        // object alone.
+        private final Lock lock = new ReentrantLock();
+
+        ParkingLot(List&lt;Floor&gt; floors, SpotAllocator allocator, FeeStrategy feeStrategy) {
+            this.floors = floors;
+            this.allocator = allocator;
+            this.feeStrategy = feeStrategy;
+        }
+
+        Ticket parkVehicle(Vehicle vehicle) {
+            lock.lock();
+            try {
+                ParkingSpot spot = allocator.allocate(vehicle);
+                if (spot == null) throw new NoAvailableSpotException(&quot;No available spot for &quot; + vehicle.getSize());
+                spot.occupy(vehicle);
+                return Ticket.create(vehicle, spot, System.currentTimeMillis());
+            } finally {
+                lock.unlock();
+            }
+        }
+
+        double unparkVehicle(Ticket ticket) {
+            lock.lock();
+            try {
+                if (ticket.getStatus() != TicketStatus.ACTIVE) throw new InvalidTicketException(&quot;Ticket not active: &quot; + ticket.getId());
+                ticket.close(System.currentTimeMillis());
+                double fee = feeStrategy.calculate(ticket);
+                ticket.getSpot().vacate();
+                return fee;
+            } finally {
+                lock.unlock();
+            }
+        }
+    }
+
+    // ---------- Demo ----------
+    public static void main(String[] args) {
+        List&lt;ParkingSpot&gt; f1Spots = Arrays.asList(
+                new ParkingSpot(&quot;F1-M1&quot;, VehicleSize.MOTORCYCLE),
+                new ParkingSpot(&quot;F1-C1&quot;, VehicleSize.COMPACT)
+        );
+        Floor floor1 = new Floor(1, f1Spots);
+        List&lt;Floor&gt; floors = new ArrayList&lt;&gt;(Collections.singletonList(floor1));
+
+        SpotAllocator allocator = new NearestSpotAllocator(floors);
+        FeeStrategy feeStrategy = new HourlyFeeStrategy(10.0);
+        ParkingLot lot = new ParkingLot(floors, allocator, feeStrategy);
+
+        Car car = new Car(&quot;KA-01-1234&quot;);
+        Ticket t1 = lot.parkVehicle(car);
+        System.out.println(&quot;Parked car, ticket=&quot; + t1.getId() + &quot; spot=&quot; + t1.getSpot().getId());
+
+        Motorcycle bike = new Motorcycle(&quot;KA-01-5678&quot;);
+        Ticket t2 = lot.parkVehicle(bike);
+        System.out.println(&quot;Parked bike, ticket=&quot; + t2.getId() + &quot; spot=&quot; + t2.getSpot().getId());
+
+        try {
+            Bus bus = new Bus(&quot;KA-01-9999&quot;);
+            lot.parkVehicle(bus); // no LARGE spot exists -&gt; should fail
+        } catch (NoAvailableSpotException e) {
+            System.out.println(&quot;Expected failure parking bus: &quot; + e.getMessage());
+        }
+
+        double fee = lot.unparkVehicle(t1);
+        System.out.println(&quot;Unparked car, fee=&quot; + fee);
+    }
+}
+</code></pre>
+<pre data-lang="cpp" hidden><code class="language-cpp">// Parking Lot - full LLD implementation (single-file demo).
+// Difficulty badge includes &quot;Concurrency&quot;, so spot allocation + occupation is guarded
+// by a mutex to guarantee two concurrent parkVehicle() calls never get the same spot.
+#include &lt;iostream&gt;
+#include &lt;vector&gt;
+#include &lt;memory&gt;
+#include &lt;string&gt;
+#include &lt;mutex&gt;
+#include &lt;stdexcept&gt;
+#include &lt;chrono&gt;
+#include &lt;cmath&gt;
+
+// ---------- Vehicle hierarchy ----------
+enum class VehicleSize { MOTORCYCLE = 0, COMPACT = 1, LARGE = 2 };
+
+class Vehicle {
+public:
+    Vehicle(std::string plate) : licensePlate(std::move(plate)) {}
+    virtual ~Vehicle() = default;
+    const std::string&amp; getLicensePlate() const { return licensePlate; }
+    virtual VehicleSize getSize() const = 0;
+private:
+    std::string licensePlate;
+};
+
+class Motorcycle : public Vehicle {
+public:
+    explicit Motorcycle(std::string plate) : Vehicle(std::move(plate)) {}
+    VehicleSize getSize() const override { return VehicleSize::MOTORCYCLE; }
+};
+
+class Car : public Vehicle {
+public:
+    explicit Car(std::string plate) : Vehicle(std::move(plate)) {}
+    VehicleSize getSize() const override { return VehicleSize::COMPACT; }
+};
+
+class Bus : public Vehicle {
+public:
+    explicit Bus(std::string plate) : Vehicle(std::move(plate)) {}
+    VehicleSize getSize() const override { return VehicleSize::LARGE; }
+};
+
+// ---------- ParkingSpot ----------
+class ParkingSpot {
+public:
+    ParkingSpot(std::string id, VehicleSize size) : id(std::move(id)), size(size) {}
+
+    const std::string&amp; getId() const { return id; }
+    VehicleSize getSize() const { return size; }
+    bool isOccupied() const { return occupied; }
+
+    // A larger spot can host a smaller vehicle; enum values are ordered smallest-to-largest.
+    bool canFit(VehicleSize vehicleSize) const {
+        return !occupied &amp;&amp; static_cast&lt;int&gt;(size) &gt;= static_cast&lt;int&gt;(vehicleSize);
+    }
+
+    void occupy(Vehicle* vehicle) {
+        if (occupied) throw std::runtime_error(&quot;Spot &quot; + id + &quot; already occupied&quot;);
+        occupied = true;
+        currentVehicle = vehicle;
+    }
+
+    void vacate() {
+        occupied = false;
+        currentVehicle = nullptr;
+    }
+
+private:
+    std::string id;
+    VehicleSize size;
+    bool occupied = false;
+    Vehicle* currentVehicle = nullptr;
+};
+
+// ---------- Floor ----------
+class Floor {
+public:
+    Floor(int floorNumber, std::vector&lt;std::unique_ptr&lt;ParkingSpot&gt;&gt; spots)
+        : floorNumber(floorNumber), spots(std::move(spots)) {}
+
+    int getFloorNumber() const { return floorNumber; }
+    std::vector&lt;std::unique_ptr&lt;ParkingSpot&gt;&gt;&amp; getSpots() { return spots; }
+
+    // First compatible free spot on this floor, or nullptr if none.
+    ParkingSpot* findAvailableSpot(VehicleSize size) {
+        for (auto&amp; s : spots) {
+            if (s-&gt;canFit(size)) return s.get();
+        }
+        return nullptr;
+    }
+
+private:
+    int floorNumber;
+    std::vector&lt;std::unique_ptr&lt;ParkingSpot&gt;&gt; spots;
+};
+
+// ---------- Ticket ----------
+enum class TicketStatus { ACTIVE, CLOSED };
+
+class Ticket {
+public:
+    static std::unique_ptr&lt;Ticket&gt; create(Vehicle* vehicle, ParkingSpot* spot, long long entryTime) {
+        return std::unique_ptr&lt;Ticket&gt;(new Ticket(vehicle, spot, entryTime));
+    }
+
+    void close(long long exit) { exitTime = exit; status = TicketStatus::CLOSED; }
+
+    const std::string&amp; getId() const { return id; }
+    Vehicle* getVehicle() const { return vehicle; }
+    ParkingSpot* getSpot() const { return spot; }
+    long long getEntryTime() const { return entryTime; }
+    long long getExitTime() const { return exitTime; }
+    TicketStatus getStatus() const { return status; }
+
+private:
+    Ticket(Vehicle* vehicle, ParkingSpot* spot, long long entryTime)
+        : id(&quot;T-&quot; + std::to_string(nextId++)), vehicle(vehicle), spot(spot),
+          entryTime(entryTime), exitTime(0), status(TicketStatus::ACTIVE) {}
+
+    static int nextId;
+    std::string id;
+    Vehicle* vehicle;
+    ParkingSpot* spot;
+    long long entryTime;
+    long long exitTime;
+    TicketStatus status;
+};
+int Ticket::nextId = 1;
+
+// ---------- SpotAllocator (interface) + strategies ----------
+class SpotAllocator {
+public:
+    virtual ~SpotAllocator() = default;
+    virtual ParkingSpot* allocate(Vehicle* vehicle) = 0;
+};
+
+// Picks the first free compatible spot, scanning floors in order.
+class FirstAvailableAllocator : public SpotAllocator {
+public:
+    explicit FirstAvailableAllocator(std::vector&lt;Floor*&gt; floors) : floors(std::move(floors)) {}
+    ParkingSpot* allocate(Vehicle* vehicle) override {
+        for (auto* f : floors) {
+            ParkingSpot* spot = f-&gt;findAvailableSpot(vehicle-&gt;getSize());
+            if (spot) return spot;
+        }
+        return nullptr;
+    }
+private:
+    std::vector&lt;Floor*&gt; floors;
+};
+
+// Picks the compatible spot whose size is the closest fit (least wasted space).
+class NearestSpotAllocator : public SpotAllocator {
+public:
+    explicit NearestSpotAllocator(std::vector&lt;Floor*&gt; floors) : floors(std::move(floors)) {}
+    ParkingSpot* allocate(Vehicle* vehicle) override {
+        ParkingSpot* best = nullptr;
+        for (auto* f : floors) {
+            for (auto&amp; s : f-&gt;getSpots()) {
+                if (!s-&gt;canFit(vehicle-&gt;getSize())) continue;
+                if (!best || static_cast&lt;int&gt;(s-&gt;getSize()) &lt; static_cast&lt;int&gt;(best-&gt;getSize())) best = s.get();
+            }
+        }
+        return best;
+    }
+private:
+    std::vector&lt;Floor*&gt; floors;
+};
+
+// ---------- FeeStrategy (interface) + strategies ----------
+class FeeStrategy {
+public:
+    virtual ~FeeStrategy() = default;
+    virtual double calculate(const Ticket&amp; closedTicket) const = 0;
+};
+
+class HourlyFeeStrategy : public FeeStrategy {
+public:
+    explicit HourlyFeeStrategy(double ratePerHour) : ratePerHour(ratePerHour) {}
+    double calculate(const Ticket&amp; t) const override {
+        long long durationMs = t.getExitTime() - t.getEntryTime();
+        double hours = std::max(1.0, std::ceil(durationMs / 3600000.0));
+        return hours * ratePerHour;
+    }
+private:
+    double ratePerHour;
+};
+
+// Applies a surcharge multiplier if entry happened during peak hours (9-11, 17-19).
+class PeakHourFeeStrategy : public FeeStrategy {
+public:
+    PeakHourFeeStrategy(double ratePerHour, double peakMultiplier)
+        : ratePerHour(ratePerHour), peakMultiplier(peakMultiplier) {}
+    double calculate(const Ticket&amp; t) const override {
+        long long durationMs = t.getExitTime() - t.getEntryTime();
+        double hours = std::max(1.0, std::ceil(durationMs / 3600000.0));
+        int entryHour = static_cast&lt;int&gt;((t.getEntryTime() / 3600000) % 24);
+        bool peak = (entryHour &gt;= 9 &amp;&amp; entryHour &lt; 11) || (entryHour &gt;= 17 &amp;&amp; entryHour &lt; 19);
+        return hours * ratePerHour * (peak ? peakMultiplier : 1.0);
+    }
+private:
+    double ratePerHour;
+    double peakMultiplier;
+};
+
+// ---------- Exceptions ----------
+class NoAvailableSpotException : public std::runtime_error {
+public:
+    explicit NoAvailableSpotException(const std::string&amp; msg) : std::runtime_error(msg) {}
+};
+class InvalidTicketException : public std::runtime_error {
+public:
+    explicit InvalidTicketException(const std::string&amp; msg) : std::runtime_error(msg) {}
+};
+
+// ---------- ParkingLot (facade) ----------
+class ParkingLot {
+public:
+    ParkingLot(std::vector&lt;Floor*&gt; floors, std::unique_ptr&lt;SpotAllocator&gt; allocator,
+               std::unique_ptr&lt;FeeStrategy&gt; feeStrategy)
+        : floors(std::move(floors)), allocator(std::move(allocator)), feeStrategy(std::move(feeStrategy)) {}
+
+    std::unique_ptr&lt;Ticket&gt; parkVehicle(Vehicle* vehicle) {
+        // Single lock guarding &quot;decide spot + occupy spot&quot;, which spans two separate
+        // objects (allocator, spot) and cannot be made atomic by either object alone.
+        std::lock_guard&lt;std::mutex&gt; guard(lock);
+        ParkingSpot* spot = allocator-&gt;allocate(vehicle);
+        if (!spot) throw NoAvailableSpotException(&quot;No available spot for this vehicle size&quot;);
+        spot-&gt;occupy(vehicle);
+        return Ticket::create(vehicle, spot, nowMs());
+    }
+
+    double unparkVehicle(Ticket* ticket) {
+        std::lock_guard&lt;std::mutex&gt; guard(lock);
+        if (ticket-&gt;getStatus() != TicketStatus::ACTIVE) throw InvalidTicketException(&quot;Ticket not active: &quot; + ticket-&gt;getId());
+        ticket-&gt;close(nowMs());
+        double fee = feeStrategy-&gt;calculate(*ticket);
+        ticket-&gt;getSpot()-&gt;vacate();
+        return fee;
+    }
+
+private:
+    static long long nowMs() {
+        return std::chrono::duration_cast&lt;std::chrono::milliseconds&gt;(
+                   std::chrono::system_clock::now().time_since_epoch())
+            .count();
+    }
+
+    std::vector&lt;Floor*&gt; floors;
+    std::unique_ptr&lt;SpotAllocator&gt; allocator;
+    std::unique_ptr&lt;FeeStrategy&gt; feeStrategy;
+    std::mutex lock;
+};
+
+// ---------- Demo ----------
+int main() {
+    std::vector&lt;std::unique_ptr&lt;ParkingSpot&gt;&gt; f1Spots;
+    f1Spots.push_back(std::make_unique&lt;ParkingSpot&gt;(&quot;F1-M1&quot;, VehicleSize::MOTORCYCLE));
+    f1Spots.push_back(std::make_unique&lt;ParkingSpot&gt;(&quot;F1-C1&quot;, VehicleSize::COMPACT));
+    Floor floor1(1, std::move(f1Spots));
+    std::vector&lt;Floor*&gt; floors = {&amp;floor1};
+
+    auto allocator = std::make_unique&lt;NearestSpotAllocator&gt;(floors);
+    auto feeStrategy = std::make_unique&lt;HourlyFeeStrategy&gt;(10.0);
+    ParkingLot lot(floors, std::move(allocator), std::move(feeStrategy));
+
+    Car car(&quot;KA-01-1234&quot;);
+    auto t1 = lot.parkVehicle(&amp;car);
+    std::cout &lt;&lt; &quot;Parked car, ticket=&quot; &lt;&lt; t1-&gt;getId() &lt;&lt; &quot; spot=&quot; &lt;&lt; t1-&gt;getSpot()-&gt;getId() &lt;&lt; &quot;\n&quot;;
+
+    Motorcycle bike(&quot;KA-01-5678&quot;);
+    auto t2 = lot.parkVehicle(&amp;bike);
+    std::cout &lt;&lt; &quot;Parked bike, ticket=&quot; &lt;&lt; t2-&gt;getId() &lt;&lt; &quot; spot=&quot; &lt;&lt; t2-&gt;getSpot()-&gt;getId() &lt;&lt; &quot;\n&quot;;
+
+    try {
+        Bus bus(&quot;KA-01-9999&quot;);
+        lot.parkVehicle(&amp;bus); // no LARGE spot exists -&gt; should fail
+    } catch (const NoAvailableSpotException&amp; e) {
+        std::cout &lt;&lt; &quot;Expected failure parking bus: &quot; &lt;&lt; e.what() &lt;&lt; &quot;\n&quot;;
+    }
+
+    double fee = lot.unparkVehicle(t1.get());
+    std::cout &lt;&lt; &quot;Unparked car, fee=&quot; &lt;&lt; fee &lt;&lt; &quot;\n&quot;;
+    return 0;
+}
+</code></pre>
+<pre data-lang="javascript" hidden><code class="language-javascript">// Parking Lot - full LLD implementation (single-file demo).
+// Difficulty badge includes &quot;Concurrency&quot;. Node&#x27;s event loop is single-threaded, so true
+// data races can&#x27;t happen here, but we still model the critical section explicitly with a
+// tiny async mutex so the *design* correctly reflects &quot;allocate+occupy must be atomic&quot; -
+// this matters if this class were ever ported to a worker-thread / multi-process context.
+
+// ---------- Vehicle hierarchy ----------
+const VehicleSize = { MOTORCYCLE: 0, COMPACT: 1, LARGE: 2 };
+
+class Vehicle {
+  constructor(licensePlate) {
+    if (new.target === Vehicle) throw new Error(&quot;Vehicle is abstract&quot;);
+    this.licensePlate = licensePlate;
+  }
+  getSize() {
+    throw new Error(&quot;getSize() must be implemented by subclass&quot;);
+  }
+}
+
+class Motorcycle extends Vehicle {
+  getSize() { return VehicleSize.MOTORCYCLE; }
+}
+
+class Car extends Vehicle {
+  getSize() { return VehicleSize.COMPACT; }
+}
+
+class Bus extends Vehicle {
+  getSize() { return VehicleSize.LARGE; }
+}
+
+// ---------- ParkingSpot ----------
+class ParkingSpot {
+  constructor(id, size) {
+    this.id = id;
+    this.size = size;
+    this.occupied = false;
+    this.currentVehicle = null;
+  }
+
+  // A larger spot can host a smaller vehicle; VehicleSize values are ordered
+  // smallest-to-largest so a simple numeric compare works.
+  canFit(vehicleSize) {
+    return !this.occupied &amp;&amp; this.size &gt;= vehicleSize;
+  }
+
+  occupy(vehicle) {
+    if (this.occupied) throw new Error(`Spot ${this.id} already occupied`);
+    this.occupied = true;
+    this.currentVehicle = vehicle;
+  }
+
+  vacate() {
+    this.occupied = false;
+    this.currentVehicle = null;
+  }
+}
+
+// ---------- Floor ----------
+class Floor {
+  constructor(floorNumber, spots) {
+    this.floorNumber = floorNumber;
+    this.spots = spots;
+  }
+
+  // First compatible free spot on this floor, or null if none.
+  findAvailableSpot(size) {
+    for (const s of this.spots) {
+      if (s.canFit(size)) return s;
+    }
+    return null;
+  }
+}
+
+// ---------- Ticket ----------
+const TicketStatus = { ACTIVE: &quot;ACTIVE&quot;, CLOSED: &quot;CLOSED&quot; };
+
+let __ticketSeq = 1;
+class Ticket {
+  constructor(vehicle, spot, entryTime) {
+    this.id = `T-${__ticketSeq++}`;
+    this.vehicle = vehicle;
+    this.spot = spot;
+    this.entryTime = entryTime;
+    this.exitTime = null;
+    this.status = TicketStatus.ACTIVE;
+  }
+
+  static create(vehicle, spot, entryTime) {
+    return new Ticket(vehicle, spot, entryTime);
+  }
+
+  close(exitTime) {
+    this.exitTime = exitTime;
+    this.status = TicketStatus.CLOSED;
+  }
+}
+
+// ---------- SpotAllocator (interface) + strategies ----------
+class SpotAllocator {
+  allocate(_vehicle) {
+    throw new Error(&quot;allocate() must be implemented&quot;);
+  }
+}
+
+// Picks the first free compatible spot, scanning floors in order.
+class FirstAvailableAllocator extends SpotAllocator {
+  constructor(floors) {
+    super();
+    this.floors = floors;
+  }
+  allocate(vehicle) {
+    for (const f of this.floors) {
+      const spot = f.findAvailableSpot(vehicle.getSize());
+      if (spot) return spot;
+    }
+    return null;
+  }
+}
+
+// Picks the compatible spot whose size is the closest fit (least wasted space).
+class NearestSpotAllocator extends SpotAllocator {
+  constructor(floors) {
+    super();
+    this.floors = floors;
+  }
+  allocate(vehicle) {
+    let best = null;
+    for (const f of this.floors) {
+      for (const s of f.spots) {
+        if (!s.canFit(vehicle.getSize())) continue;
+        if (!best || s.size &lt; best.size) best = s;
+      }
+    }
+    return best;
+  }
+}
+
+// ---------- FeeStrategy (interface) + strategies ----------
+class FeeStrategy {
+  calculate(_closedTicket) {
+    throw new Error(&quot;calculate() must be implemented&quot;);
+  }
+}
+
+class HourlyFeeStrategy extends FeeStrategy {
+  constructor(ratePerHour) {
+    super();
+    this.ratePerHour = ratePerHour;
+  }
+  calculate(t) {
+    const durationMs = t.exitTime - t.entryTime;
+    const hours = Math.max(1, Math.ceil(durationMs / 3600000));
+    return hours * this.ratePerHour;
+  }
+}
+
+// Applies a surcharge multiplier if entry happened during peak hours (9-11, 17-19).
+class PeakHourFeeStrategy extends FeeStrategy {
+  constructor(ratePerHour, peakMultiplier) {
+    super();
+    this.ratePerHour = ratePerHour;
+    this.peakMultiplier = peakMultiplier;
+  }
+  calculate(t) {
+    const durationMs = t.exitTime - t.entryTime;
+    const hours = Math.max(1, Math.ceil(durationMs / 3600000));
+    const entryHour = Math.floor(t.entryTime / 3600000) % 24;
+    const peak = (entryHour &gt;= 9 &amp;&amp; entryHour &lt; 11) || (entryHour &gt;= 17 &amp;&amp; entryHour &lt; 19);
+    return hours * this.ratePerHour * (peak ? this.peakMultiplier : 1);
+  }
+}
+
+// ---------- Errors ----------
+class NoAvailableSpotException extends Error {}
+class InvalidTicketException extends Error {}
+
+// ---------- Tiny async mutex (see file header for why) ----------
+class Mutex {
+  constructor() { this._locked = false; this._waiters = []; }
+  async acquire() {
+    if (!this._locked) { this._locked = true; return; }
+    await new Promise((resolve) =&gt; this._waiters.push(resolve));
+    this._locked = true;
+  }
+  release() {
+    this._locked = false;
+    const next = this._waiters.shift();
+    if (next) next();
+  }
+}
+
+// ---------- ParkingLot (facade) ----------
+class ParkingLot {
+  constructor(floors, allocator, feeStrategy) {
+    this.floors = floors;
+    this.allocator = allocator; // injected interface, not a concrete class
+    this.feeStrategy = feeStrategy; // injected interface, not a concrete class
+    this.lock = new Mutex();
+  }
+
+  async parkVehicle(vehicle) {
+    await this.lock.acquire();
+    try {
+      const spot = this.allocator.allocate(vehicle);
+      if (!spot) throw new NoAvailableSpotException(`No available spot for vehicle size ${vehicle.getSize()}`);
+      spot.occupy(vehicle);
+      return Ticket.create(vehicle, spot, Date.now());
+    } finally {
+      this.lock.release();
+    }
+  }
+
+  async unparkVehicle(ticket) {
+    await this.lock.acquire();
+    try {
+      if (ticket.status !== TicketStatus.ACTIVE) throw new InvalidTicketException(`Ticket not active: ${ticket.id}`);
+      ticket.close(Date.now());
+      const fee = this.feeStrategy.calculate(ticket);
+      ticket.spot.vacate();
+      return fee;
+    } finally {
+      this.lock.release();
+    }
+  }
+}
+
+// ---------- Demo ----------
+async function main() {
+  const f1Spots = [
+    new ParkingSpot(&quot;F1-M1&quot;, VehicleSize.MOTORCYCLE),
+    new ParkingSpot(&quot;F1-C1&quot;, VehicleSize.COMPACT),
+  ];
+  const floor1 = new Floor(1, f1Spots);
+  const floors = [floor1];
+
+  const allocator = new NearestSpotAllocator(floors);
+  const feeStrategy = new HourlyFeeStrategy(10.0);
+  const lot = new ParkingLot(floors, allocator, feeStrategy);
+
+  const car = new Car(&quot;KA-01-1234&quot;);
+  const t1 = await lot.parkVehicle(car);
+  console.log(`Parked car, ticket=${t1.id} spot=${t1.spot.id}`);
+
+  const bike = new Motorcycle(&quot;KA-01-5678&quot;);
+  const t2 = await lot.parkVehicle(bike);
+  console.log(`Parked bike, ticket=${t2.id} spot=${t2.spot.id}`);
+
+  try {
+    const bus = new Bus(&quot;KA-01-9999&quot;);
+    await lot.parkVehicle(bus); // no LARGE spot exists -&gt; should fail
+  } catch (e) {
+    console.log(`Expected failure parking bus: ${e.message}`);
+  }
+
+  const fee = await lot.unparkVehicle(t1);
+  console.log(`Unparked car, fee=${fee}`);
+}
+
+if (require.main === module) {
+  main();
+}
+
+module.exports = {
+  VehicleSize, Vehicle, Motorcycle, Car, Bus, ParkingSpot, Floor, Ticket, TicketStatus,
+  SpotAllocator, FirstAvailableAllocator, NearestSpotAllocator,
+  FeeStrategy, HourlyFeeStrategy, PeakHourFeeStrategy,
+  NoAvailableSpotException, InvalidTicketException, ParkingLot,
+};
+</code></pre>
+<pre data-lang="typescript" hidden><code class="language-typescript">// Parking Lot - full LLD implementation (single-file demo).
+// Difficulty badge includes &quot;Concurrency&quot;. JS/TS is single-threaded, so true data races
+// can&#x27;t happen, but the critical section is still modeled explicitly with a tiny async
+// mutex so the *design* reflects &quot;allocate+occupy must be atomic&quot; faithfully.
+
+// ---------- Vehicle hierarchy ----------
+enum VehicleSize {
+  MOTORCYCLE = 0,
+  COMPACT = 1,
+  LARGE = 2,
+}
+
+abstract class Vehicle {
+  constructor(protected readonly licensePlate: string) {}
+  abstract getSize(): VehicleSize;
+  getLicensePlate(): string { return this.licensePlate; }
+}
+
+class Motorcycle extends Vehicle {
+  getSize(): VehicleSize { return VehicleSize.MOTORCYCLE; }
+}
+
+class Car extends Vehicle {
+  getSize(): VehicleSize { return VehicleSize.COMPACT; }
+}
+
+class Bus extends Vehicle {
+  getSize(): VehicleSize { return VehicleSize.LARGE; }
+}
+
+// ---------- ParkingSpot ----------
+class ParkingSpot {
+  private occupied = false;
+  private currentVehicle: Vehicle | null = null;
+
+  constructor(private readonly id: string, private readonly size: VehicleSize) {}
+
+  getId(): string { return this.id; }
+  getSize(): VehicleSize { return this.size; }
+  isOccupied(): boolean { return this.occupied; }
+
+  // A larger spot can host a smaller vehicle; VehicleSize is ordered smallest-to-largest.
+  canFit(vehicleSize: VehicleSize): boolean {
+    return !this.occupied &amp;&amp; this.size &gt;= vehicleSize;
+  }
+
+  occupy(vehicle: Vehicle): void {
+    if (this.occupied) throw new Error(`Spot ${this.id} already occupied`);
+    this.occupied = true;
+    this.currentVehicle = vehicle;
+  }
+
+  vacate(): void {
+    this.occupied = false;
+    this.currentVehicle = null;
+  }
+}
+
+// ---------- Floor ----------
+class Floor {
+  constructor(private readonly floorNumber: number, private readonly spots: ParkingSpot[]) {}
+
+  getFloorNumber(): number { return this.floorNumber; }
+  getSpots(): ParkingSpot[] { return this.spots; }
+
+  // First compatible free spot on this floor, or null if none.
+  findAvailableSpot(size: VehicleSize): ParkingSpot | null {
+    for (const s of this.spots) {
+      if (s.canFit(size)) return s;
+    }
+    return null;
+  }
+}
+
+// ---------- Ticket ----------
+enum TicketStatus { ACTIVE = &quot;ACTIVE&quot;, CLOSED = &quot;CLOSED&quot; }
+
+let ticketSeq = 1;
+class Ticket {
+  readonly id: string;
+  exitTime: number | null = null;
+  status: TicketStatus = TicketStatus.ACTIVE;
+
+  private constructor(
+    readonly vehicle: Vehicle,
+    readonly spot: ParkingSpot,
+    readonly entryTime: number
+  ) {
+    this.id = `T-${ticketSeq++}`;
+  }
+
+  static create(vehicle: Vehicle, spot: ParkingSpot, entryTime: number): Ticket {
+    return new Ticket(vehicle, spot, entryTime);
+  }
+
+  close(exitTime: number): void {
+    this.exitTime = exitTime;
+    this.status = TicketStatus.CLOSED;
+  }
+}
+
+// ---------- SpotAllocator (interface) + strategies ----------
+interface SpotAllocator {
+  allocate(vehicle: Vehicle): ParkingSpot | null;
+}
+
+// Picks the first free compatible spot, scanning floors in order.
+class FirstAvailableAllocator implements SpotAllocator {
+  constructor(private readonly floors: Floor[]) {}
+  allocate(vehicle: Vehicle): ParkingSpot | null {
+    for (const f of this.floors) {
+      const spot = f.findAvailableSpot(vehicle.getSize());
+      if (spot) return spot;
+    }
+    return null;
+  }
+}
+
+// Picks the compatible spot whose size is the closest fit (least wasted space).
+class NearestSpotAllocator implements SpotAllocator {
+  constructor(private readonly floors: Floor[]) {}
+  allocate(vehicle: Vehicle): ParkingSpot | null {
+    let best: ParkingSpot | null = null;
+    for (const f of this.floors) {
+      for (const s of f.getSpots()) {
+        if (!s.canFit(vehicle.getSize())) continue;
+        if (!best || s.getSize() &lt; best.getSize()) best = s;
+      }
+    }
+    return best;
+  }
+}
+
+// ---------- FeeStrategy (interface) + strategies ----------
+interface FeeStrategy {
+  calculate(closedTicket: Ticket): number;
+}
+
+class HourlyFeeStrategy implements FeeStrategy {
+  constructor(private readonly ratePerHour: number) {}
+  calculate(t: Ticket): number {
+    const durationMs = (t.exitTime ?? 0) - t.entryTime;
+    const hours = Math.max(1, Math.ceil(durationMs / 3600000));
+    return hours * this.ratePerHour;
+  }
+}
+
+// Applies a surcharge multiplier if entry happened during peak hours (9-11, 17-19).
+class PeakHourFeeStrategy implements FeeStrategy {
+  constructor(private readonly ratePerHour: number, private readonly peakMultiplier: number) {}
+  calculate(t: Ticket): number {
+    const durationMs = (t.exitTime ?? 0) - t.entryTime;
+    const hours = Math.max(1, Math.ceil(durationMs / 3600000));
+    const entryHour = Math.floor(t.entryTime / 3600000) % 24;
+    const peak = (entryHour &gt;= 9 &amp;&amp; entryHour &lt; 11) || (entryHour &gt;= 17 &amp;&amp; entryHour &lt; 19);
+    return hours * this.ratePerHour * (peak ? this.peakMultiplier : 1);
+  }
+}
+
+// ---------- Errors ----------
+class NoAvailableSpotException extends Error {}
+class InvalidTicketException extends Error {}
+
+// ---------- Tiny async mutex (see file header for why) ----------
+class Mutex {
+  private locked = false;
+  private waiters: Array&lt;() =&gt; void&gt; = [];
+
+  async acquire(): Promise&lt;void&gt; {
+    if (!this.locked) { this.locked = true; return; }
+    await new Promise&lt;void&gt;((resolve) =&gt; this.waiters.push(resolve));
+    this.locked = true;
+  }
+
+  release(): void {
+    this.locked = false;
+    const next = this.waiters.shift();
+    if (next) next();
+  }
+}
+
+// ---------- ParkingLot (facade) ----------
+class ParkingLot {
+  private readonly lock = new Mutex();
+
+  constructor(
+    private readonly floors: Floor[],
+    private readonly allocator: SpotAllocator,   // injected interface, not a concrete class
+    private readonly feeStrategy: FeeStrategy     // injected interface, not a concrete class
+  ) {}
+
+  async parkVehicle(vehicle: Vehicle): Promise&lt;Ticket&gt; {
+    await this.lock.acquire();
+    try {
+      const spot = this.allocator.allocate(vehicle);
+      if (!spot) throw new NoAvailableSpotException(`No available spot for vehicle size ${vehicle.getSize()}`);
+      spot.occupy(vehicle);
+      return Ticket.create(vehicle, spot, Date.now());
+    } finally {
+      this.lock.release();
+    }
+  }
+
+  async unparkVehicle(ticket: Ticket): Promise&lt;number&gt; {
+    await this.lock.acquire();
+    try {
+      if (ticket.status !== TicketStatus.ACTIVE) throw new InvalidTicketException(`Ticket not active: ${ticket.id}`);
+      ticket.close(Date.now());
+      const fee = this.feeStrategy.calculate(ticket);
+      ticket.spot.vacate();
+      return fee;
+    } finally {
+      this.lock.release();
+    }
+  }
+}
+
+// ---------- Demo ----------
+async function main(): Promise&lt;void&gt; {
+  const f1Spots: ParkingSpot[] = [
+    new ParkingSpot(&quot;F1-M1&quot;, VehicleSize.MOTORCYCLE),
+    new ParkingSpot(&quot;F1-C1&quot;, VehicleSize.COMPACT),
+  ];
+  const floor1 = new Floor(1, f1Spots);
+  const floors: Floor[] = [floor1];
+
+  const allocator: SpotAllocator = new NearestSpotAllocator(floors);
+  const feeStrategy: FeeStrategy = new HourlyFeeStrategy(10.0);
+  const lot = new ParkingLot(floors, allocator, feeStrategy);
+
+  const car = new Car(&quot;KA-01-1234&quot;);
+  const t1 = await lot.parkVehicle(car);
+  console.log(`Parked car, ticket=${t1.id} spot=${t1.spot.getId()}`);
+
+  const bike = new Motorcycle(&quot;KA-01-5678&quot;);
+  const t2 = await lot.parkVehicle(bike);
+  console.log(`Parked bike, ticket=${t2.id} spot=${t2.spot.getId()}`);
+
+  try {
+    const bus = new Bus(&quot;KA-01-9999&quot;);
+    await lot.parkVehicle(bus); // no LARGE spot exists -&gt; should fail
+  } catch (e) {
+    console.log(`Expected failure parking bus: ${(e as Error).message}`);
+  }
+
+  const fee = await lot.unparkVehicle(t1);
+  console.log(`Unparked car, fee=${fee}`);
+}
+
+main();
+
+export {
+  VehicleSize, Vehicle, Motorcycle, Car, Bus, ParkingSpot, Floor, Ticket, TicketStatus,
+  SpotAllocator, FirstAvailableAllocator, NearestSpotAllocator,
+  FeeStrategy, HourlyFeeStrategy, PeakHourFeeStrategy,
+  NoAvailableSpotException, InvalidTicketException, ParkingLot,
+};
+</code></pre>
+</div><div class="prevnext"><span></span><a class="prevnext-link next" href="p2.html">2. LRU Cache &rarr;</a></div>
 </div>
 </main>
 
